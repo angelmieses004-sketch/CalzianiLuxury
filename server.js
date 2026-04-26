@@ -700,16 +700,13 @@ async function getPayPalToken() {
 }
 
 app.post('/api/paypal/create-order', async (req, res) => {
-  const { cart } = req.body || {};
+  const { cart, shippingFee = 5, shipping } = req.body || {};
   if (!cart?.length) return res.status(400).json({ error: 'Carrito vacío.' });
   if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_SECRET)
     return res.status(503).json({ error: 'PayPal no configurado.' });
 
-  const usdRate  = Number(process.env.USD_RATE) || 57;
-  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const itbis    = Math.round(subtotal * 0.18 * 100) / 100;
-  const totalRD  = Math.round((subtotal + itbis) * 100) / 100;
-  const totalUSD = (totalRD / usdRate).toFixed(2);
+  const subtotal  = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const totalUSD  = (Math.round((subtotal + Number(shippingFee)) * 100) / 100).toFixed(2);
 
   try {
     const token    = await getPayPalToken();
@@ -723,6 +720,14 @@ app.post('/api/paypal/create-order', async (req, res) => {
           reference_id: orderNum,
           amount: { currency_code: 'USD', value: totalUSD },
           description: `Calziani — ${cart.length} producto(s)`,
+          shipping: shipping ? {
+            name: { full_name: shipping.name || '' },
+            address: {
+              address_line_1: shipping.address || '',
+              admin_area_1:   shipping.province || '',
+              country_code:   'DO',
+            },
+          } : undefined,
         }],
       }),
     });
@@ -736,7 +741,7 @@ app.post('/api/paypal/create-order', async (req, res) => {
     db.prepare(`
       INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, cardnet_session, customer_email)
       VALUES (?, ?, ?, ?, ?, ?, 'pending_paypal', ?, ?)
-    `).run(orderNum, req.user?.id || null, JSON.stringify(cart), subtotal, itbis, totalRD, ppData.id, null);
+    `).run(orderNum, req.user?.id || null, JSON.stringify({ cart, shipping }), subtotal, 0, Number(totalUSD), ppData.id, shipping?.name || null);
 
     res.json({ orderId: ppData.id, orderNumber: orderNum });
   } catch (e) {

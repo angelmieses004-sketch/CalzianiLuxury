@@ -57,9 +57,35 @@
         <ul class="cart-items" id="cartItems"></ul>
       </div>
       <div class="cart-drawer__foot" id="cartFoot">
+
+        <!-- Shipping form -->
+        <div class="shipping-form" id="shippingForm">
+          <p class="shipping-form__title">Datos de envío</p>
+          <div class="shipping-fields">
+            <input class="shipping-input" id="shipName"     type="text"  placeholder="Nombre completo *" autocomplete="name" />
+            <input class="shipping-input" id="shipPhone"    type="tel"   placeholder="Teléfono / WhatsApp *" autocomplete="tel" />
+            <select class="shipping-input shipping-select" id="shipCountry">
+              <option value="">Seleccionar país *</option>
+              <option value="Dominican Republic">República Dominicana</option>
+              <option value="United States">Estados Unidos</option>
+              <option value="Puerto Rico">Puerto Rico</option>
+              <option value="Canada">Canadá</option>
+              <option value="Mexico">México</option>
+              <option value="Colombia">Colombia</option>
+              <option value="Venezuela">Venezuela</option>
+              <option value="Spain">España</option>
+              <option value="Other">Otro</option>
+            </select>
+            <input class="shipping-input" id="shipProvince" type="text"  placeholder="Provincia / Estado *" autocomplete="address-level1" />
+            <input class="shipping-input" id="shipAddress"  type="text"  placeholder="Dirección completa *" autocomplete="street-address" />
+          </div>
+          <p class="shipping-err hidden" id="shippingErr">Por favor completa todos los datos de envío.</p>
+        </div>
+
         <div class="cart-totals">
-          <div class="cart-totals__row"><span>Subtotal</span><span id="cartSubtotal">RD$0</span></div>
-          <div class="cart-totals__row cart-totals__total"><span>Total</span><span id="cartTotal">RD$0</span></div>
+          <div class="cart-totals__row"><span>Subtotal</span><span id="cartSubtotal">$0</span></div>
+          <div class="cart-totals__row cart-totals__shipping"><span>Envío</span><span id="cartShipping">$5.00</span></div>
+          <div class="cart-totals__row cart-totals__total"><span>Total</span><span id="cartTotal">$0</span></div>
         </div>
 
         <!-- Payment method selector -->

@@ -133,9 +133,12 @@
   const cartItems   = document.getElementById('cartItems');
   const cartEmpty   = document.getElementById('cartEmpty');
   const cartFoot    = document.getElementById('cartFoot');
-  const cartSubtotal= document.getElementById('cartSubtotal');
-  const cartTotal   = document.getElementById('cartTotal');
-  const checkoutBtn = document.getElementById('checkoutBtn');
+  const cartSubtotal  = document.getElementById('cartSubtotal');
+  const cartShipping  = document.getElementById('cartShipping');
+  const cartTotal     = document.getElementById('cartTotal');
+  const checkoutBtn   = document.getElementById('checkoutBtn');
+
+  const SHIPPING_USD  = 5; // flat shipping fee in USD
 
   function openCart()  { cartDrawer.classList.add('open'); cartDrawer.setAttribute('aria-hidden','false'); document.body.style.overflow = 'hidden'; }
   function closeCart() { cartDrawer.classList.remove('open'); cartDrawer.setAttribute('aria-hidden','true'); document.body.style.overflow = ''; }
@@ -193,8 +196,10 @@
 
     // Totals
     const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+    const total    = subtotal + SHIPPING_USD;
     cartSubtotal.textContent = formatPrice(subtotal);
-    cartTotal.textContent    = formatPrice(subtotal);
+    if (cartShipping) cartShipping.textContent = formatPrice(SHIPPING_USD);
+    cartTotal.textContent    = formatPrice(total);
 
     // Qty buttons
     cartItems.querySelectorAll('.qty-btn').forEach(btn => {
@@ -270,11 +275,29 @@
     document.head.appendChild(script);
   }
 
+  function getShippingInfo() {
+    return {
+      name:     (document.getElementById('shipName')?.value     || '').trim(),
+      phone:    (document.getElementById('shipPhone')?.value    || '').trim(),
+      country:  (document.getElementById('shipCountry')?.value  || '').trim(),
+      province: (document.getElementById('shipProvince')?.value || '').trim(),
+      address:  (document.getElementById('shipAddress')?.value  || '').trim(),
+    };
+  }
+
+  function validateShipping() {
+    const s = getShippingInfo();
+    const ok = s.name && s.phone && s.country && s.province && s.address;
+    const errEl = document.getElementById('shippingErr');
+    if (errEl) errEl.classList.toggle('hidden', ok);
+    return ok;
+  }
+
   function cartTotals() {
     const cart        = getCart();
     const subtotalUSD = cart.reduce((s, i) => s + i.price * i.qty, 0);
-    const total       = Math.round(subtotalUSD * 100) / 100;
-    return { subtotal: total, total, totalUSD: total.toFixed(2) };
+    const total       = Math.round((subtotalUSD + SHIPPING_USD) * 100) / 100;
+    return { subtotal: subtotalUSD, shipping: SHIPPING_USD, total, totalUSD: total.toFixed(2) };
   }
 
   function renderPayPalButtons() {
@@ -286,15 +309,16 @@
       style: { layout: 'vertical', color: 'black', shape: 'rect', label: 'pay', height: 44 },
 
       createOrder: async () => {
-        const cart = getCart();
+        if (!validateShipping()) throw new Error('shipping_missing');
+        const cart     = getCart();
+        const shipping = getShippingInfo();
         const res  = await fetch('/api/paypal/create-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cart }),
+          body: JSON.stringify({ cart, shippingFee: SHIPPING_USD, shipping }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        // Update USD note
         const { totalUSD } = cartTotals();
         if (cartUsdNote) cartUsdNote.textContent = `Total a pagar: USD $${totalUSD}`;
         return data.orderId;
@@ -324,12 +348,31 @@
   }
 
   btnWhatsapp?.addEventListener('click', () => {
-    const cart   = getCart();
+    const cart = getCart();
     if (!cart.length) return;
-    const { total } = cartTotals();
-    const items  = cart.map(i => `• ${i.name}${i.size ? ` (${i.size})` : ''} x${i.qty} — ${formatPrice(i.price * i.qty)}`).join('\n');
-    const msg    = `Hola! Quiero confirmar mi pedido en Calziani 🛍️\n\n${items}\n\n*Total: ${formatPrice(total)}*\nAdjunto comprobante de transferencia.`;
-    const phone  = (payConfig.whatsapp || '18093076122').replace(/\D/g, '');
+    if (!validateShipping()) return;
+    const ship = getShippingInfo();
+    const { subtotal, total } = cartTotals();
+    const items = cart.map(i => `• ${i.name}${i.size ? ` (${i.size})` : ''} x${i.qty} — ${formatPrice(i.price * i.qty)}`).join('\n');
+    const msg = [
+      `Hola! Quiero confirmar mi pedido en Calziani 🛍️`,
+      ``,
+      items,
+      ``,
+      `Subtotal: ${formatPrice(subtotal)}`,
+      `Envío: ${formatPrice(SHIPPING_USD)}`,
+      `*Total: ${formatPrice(total)}*`,
+      ``,
+      `📦 Datos de envío:`,
+      `Nombre: ${ship.name}`,
+      `Teléfono: ${ship.phone}`,
+      `País: ${ship.country}`,
+      `Provincia: ${ship.province}`,
+      `Dirección: ${ship.address}`,
+      ``,
+      `Adjunto comprobante de transferencia.`,
+    ].join('\n');
+    const phone = (payConfig.whatsapp || '18093076122').replace(/\D/g, '');
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
   });
 

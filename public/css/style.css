@@ -345,6 +345,44 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   flex-shrink: 0;
 }
 
+/* ─── Shipping form ─────────────────────────────────────────────────────────── */
+.shipping-form {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--gray-200);
+}
+.shipping-form__title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--black);
+  margin-bottom: 0.6rem;
+}
+.shipping-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.shipping-input {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  font-size: 0.83rem;
+  color: var(--black);
+  background: var(--white);
+  transition: border-color var(--transition);
+}
+.shipping-input:focus { outline: none; border-color: var(--black); }
+.shipping-input::placeholder { color: var(--gray-400); }
+.shipping-select { appearance: none; -webkit-appearance: none; cursor: pointer; }
+.shipping-err {
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  color: #e53;
+}
+
 .cart-totals { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
 .cart-totals__row {
   display: flex;
