@@ -22,7 +22,7 @@
   };
 
   function formatPrice(price) {
-    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(price);
+    return 'RD$' + new Intl.NumberFormat('es-DO', { maximumFractionDigits: 0 }).format(price);
   }
 
   function stockLabel(stock) {
@@ -36,6 +36,177 @@
       .replace(/&/g,'&amp;').replace(/</g,'&lt;')
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
+
+  // ─── Favorites (localStorage) ─────────────────────────────────────────────────
+  function getFavs() {
+    try { return JSON.parse(localStorage.getItem('calziani_favs') || '[]'); } catch { return []; }
+  }
+  function saveFavs(favs) { localStorage.setItem('calziani_favs', JSON.stringify(favs)); }
+  function isFav(id) { return getFavs().includes(Number(id)); }
+  function toggleFav(id) {
+    id = Number(id);
+    const favs = getFavs();
+    const idx  = favs.indexOf(id);
+    if (idx >= 0) favs.splice(idx, 1); else favs.push(id);
+    saveFavs(favs);
+    return idx < 0;
+  }
+
+  // ─── Cart (localStorage) ──────────────────────────────────────────────────────
+  function getCart() {
+    try { return JSON.parse(localStorage.getItem('calziani_cart') || '[]'); } catch { return []; }
+  }
+  function saveCart(cart) { localStorage.setItem('calziani_cart', JSON.stringify(cart)); }
+
+  function addToCart(product) {
+    const cart = getCart();
+    const key  = `${product.id}__${product.size || ''}`;
+    const existing = cart.find(i => `${i.id}__${i.size || ''}` === key);
+    if (existing) { existing.qty += 1; }
+    else { cart.push({ ...product, qty: 1 }); }
+    saveCart(cart);
+    updateCartUI();
+    openCart();
+  }
+
+  function removeFromCart(id, size) {
+    const key  = `${id}__${size || ''}`;
+    saveCart(getCart().filter(i => `${i.id}__${i.size || ''}` !== key));
+    updateCartUI();
+  }
+
+  function changeQty(id, size, delta) {
+    const key  = `${id}__${size || ''}`;
+    const cart = getCart();
+    const item = cart.find(i => `${i.id}__${i.size || ''}` === key);
+    if (!item) return;
+    item.qty = Math.max(1, item.qty + delta);
+    saveCart(cart);
+    updateCartUI();
+  }
+
+  function cartCount() { return getCart().reduce((s, i) => s + i.qty, 0); }
+
+  // ─── Cart UI ──────────────────────────────────────────────────────────────────
+  const cartDrawer  = document.getElementById('cartDrawer');
+  const cartBackdrop= document.getElementById('cartBackdrop');
+  const cartClose   = document.getElementById('cartClose');
+  const cartBtn     = document.getElementById('cartBtn');
+  const cartBadge   = document.getElementById('cartBadge');
+  const cartItems   = document.getElementById('cartItems');
+  const cartEmpty   = document.getElementById('cartEmpty');
+  const cartFoot    = document.getElementById('cartFoot');
+  const cartSubtotal= document.getElementById('cartSubtotal');
+  const cartItbis   = document.getElementById('cartItbis');
+  const cartTotal   = document.getElementById('cartTotal');
+  const checkoutBtn = document.getElementById('checkoutBtn');
+
+  function openCart()  { cartDrawer.classList.add('open'); cartDrawer.setAttribute('aria-hidden','false'); document.body.style.overflow = 'hidden'; }
+  function closeCart() { cartDrawer.classList.remove('open'); cartDrawer.setAttribute('aria-hidden','true'); document.body.style.overflow = ''; }
+
+  cartBtn?.addEventListener('click', openCart);
+  cartClose?.addEventListener('click', closeCart);
+  cartBackdrop?.addEventListener('click', closeCart);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && cartDrawer?.classList.contains('open')) closeCart(); });
+
+  function updateCartUI() {
+    const cart  = getCart();
+    const count = cartCount();
+
+    // Badge
+    if (cartBadge) {
+      cartBadge.textContent = count;
+      cartBadge.classList.toggle('hidden', count === 0);
+    }
+
+    // Empty state
+    if (!cart.length) {
+      cartEmpty.classList.remove('hidden');
+      cartItems.classList.add('hidden');
+      cartFoot.classList.add('hidden');
+      return;
+    }
+    cartEmpty.classList.add('hidden');
+    cartItems.classList.remove('hidden');
+    cartFoot.classList.remove('hidden');
+
+    // Items
+    cartItems.innerHTML = cart.map(item => `
+      <li class="cart-item">
+        <div class="cart-item__img">
+          ${item.cover
+            ? `<img src="/img/products/${escHtml(item.cover)}" alt="${escHtml(item.name)}" />`
+            : `<div class="cart-item__img-empty">C</div>`}
+        </div>
+        <div class="cart-item__info">
+          <p class="cart-item__name">${escHtml(item.name)}</p>
+          ${item.size ? `<p class="cart-item__size">Talle: ${escHtml(item.size)}</p>` : ''}
+          <div class="cart-item__qty">
+            <button class="qty-btn" data-id="${item.id}" data-size="${item.size||''}" data-delta="-1">−</button>
+            <span>${item.qty}</span>
+            <button class="qty-btn" data-id="${item.id}" data-size="${item.size||''}" data-delta="1">+</button>
+          </div>
+        </div>
+        <div class="cart-item__right">
+          <span class="cart-item__price">${formatPrice(item.price * item.qty)}</span>
+          <button class="cart-item__remove" data-id="${item.id}" data-size="${item.size||''}" aria-label="Eliminar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </li>`).join('');
+
+    // Totals
+    const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+    const itbis    = Math.round(subtotal * 0.18 * 100) / 100;
+    const total    = Math.round((subtotal + itbis) * 100) / 100;
+    cartSubtotal.textContent = formatPrice(subtotal);
+    cartItbis.textContent    = formatPrice(itbis);
+    cartTotal.textContent    = formatPrice(total);
+
+    // Qty buttons
+    cartItems.querySelectorAll('.qty-btn').forEach(btn => {
+      btn.addEventListener('click', () => changeQty(btn.dataset.id, btn.dataset.size, Number(btn.dataset.delta)));
+    });
+    cartItems.querySelectorAll('.cart-item__remove').forEach(btn => {
+      btn.addEventListener('click', () => removeFromCart(btn.dataset.id, btn.dataset.size));
+    });
+  }
+
+  // ─── Checkout ─────────────────────────────────────────────────────────────────
+  checkoutBtn?.addEventListener('click', async () => {
+    const cart = getCart();
+    if (!cart.length) return;
+
+    checkoutBtn.disabled = true;
+    checkoutBtn.textContent = 'Procesando...';
+
+    try {
+      const res  = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cart }),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || 'Error al procesar el pago.'); return; }
+
+      // Auto-submit form to Cardnet
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = data.cardnetUrl;
+      const input = document.createElement('input');
+      input.type  = 'hidden';
+      input.name  = 'SESSION';
+      input.value = data.session;
+      form.appendChild(input);
+      document.body.appendChild(form);
+      form.submit();
+    } catch {
+      alert('Error de conexión. Intentá nuevamente.');
+    } finally {
+      checkoutBtn.disabled = false;
+      checkoutBtn.textContent = 'Pagar con tarjeta';
+    }
+  });
 
   // ─── Size filter bar ────────────────────────────────────────────────────────
   function renderSizeFilter(category) {
@@ -88,9 +259,10 @@
       const isOffer  = p.compare_price && p.compare_price > p.price;
       const discount = isOffer ? Math.round((1 - p.price / p.compare_price) * 100) : 0;
       const sl       = stockLabel(p.stock);
+      const fav      = isFav(p.id);
 
       const imgHtml = p.cover
-        ? `<img src="/img/products/${p.cover}" alt="${escHtml(p.name)}" class="product-card__img" loading="lazy" />`
+        ? `<img src="/img/products/${escHtml(p.cover)}" alt="${escHtml(p.name)}" class="product-card__img" loading="lazy" />`
         : `<div class="product-card__img-empty"><span>CALZIANI</span></div>`;
 
       const badgeHtml = isOffer
@@ -101,19 +273,47 @@
         ? `<span class="pc-price pc-price--sale">${formatPrice(p.price)}</span><span class="pc-price-orig">${formatPrice(p.compare_price)}</span>`
         : `<span class="pc-price">${formatPrice(p.price)}</span>`;
 
-      return `<a class="product-card" href="/product/${p.id}" aria-label="Ver ${escHtml(p.name)}">
-        <div class="product-card__media">
-          ${imgHtml}
-          ${badgeHtml}
-        </div>
-        <div class="product-card__info">
-          <p class="pc-category">${CATEGORY_LABELS[p.category] || p.category}</p>
-          <h3 class="pc-name">${escHtml(p.name)}</h3>
-          <div class="pc-pricing">${priceHtml}</div>
-          ${p.sizes && p.sizes.length ? `<div class="pc-sizes">${p.sizes.map(s => `<span class="pc-size">${s}</span>`).join('')}</div>` : ''}
-        </div>
-      </a>`;
+      return `<div class="product-card-wrap">
+        <a class="product-card" href="/product/${p.id}" aria-label="Ver ${escHtml(p.name)}">
+          <div class="product-card__media">
+            ${imgHtml}
+            ${badgeHtml}
+            <button class="pc-fav-btn${fav ? ' active' : ''}" data-id="${p.id}" aria-label="Favorito" title="Favorito">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            </button>
+            <button class="pc-cart-btn" data-id="${p.id}" data-name="${escHtml(p.name)}" data-price="${p.price}" data-cover="${escHtml(p.cover || '')}" aria-label="Agregar al carrito">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              Agregar
+            </button>
+          </div>
+          <div class="product-card__info">
+            <p class="pc-category">${CATEGORY_LABELS[p.category] || p.category}</p>
+            <h3 class="pc-name">${escHtml(p.name)}</h3>
+            <div class="pc-pricing">${priceHtml}</div>
+            ${p.sizes && p.sizes.length ? `<div class="pc-sizes">${p.sizes.map(s => `<span class="pc-size">${s}</span>`).join('')}</div>` : ''}
+          </div>
+        </a>
+      </div>`;
     }).join('');
+
+    // Fav buttons
+    grid.querySelectorAll('.pc-fav-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault(); e.stopPropagation();
+        const id  = btn.dataset.id;
+        const now = toggleFav(id);
+        btn.classList.toggle('active', now);
+        btn.querySelector('svg').setAttribute('fill', now ? 'currentColor' : 'none');
+      });
+    });
+
+    // Add to cart buttons
+    grid.querySelectorAll('.pc-cart-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault(); e.stopPropagation();
+        addToCart({ id: Number(btn.dataset.id), name: btn.dataset.name, price: Number(btn.dataset.price), cover: btn.dataset.cover, size: '' });
+      });
+    });
   }
 
   // ─── Category nav ────────────────────────────────────────────────────────────
@@ -178,7 +378,7 @@
   const tabsContainer = document.querySelector('.auth-tabs');
 
   function switchAuthTab(tab) {
-    const isMeta = tab === 'forgot'; // panels that hide the tab bar
+    const isMeta = tab === 'forgot';
     if (tabsContainer) tabsContainer.classList.toggle('hidden', isMeta);
     authTabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
     authPanels.forEach(p => {
@@ -188,12 +388,10 @@
   }
 
   authTabs.forEach(t => t.addEventListener('click', () => switchAuthTab(t.dataset.tab)));
-
   document.querySelectorAll('.auth-link-btn').forEach(btn => {
     btn.addEventListener('click', () => btn.dataset.to && switchAuthTab(btn.dataset.to));
   });
 
-  // Forgot password
   document.getElementById('forgotBtn')?.addEventListener('click', () => switchAuthTab('forgot'));
 
   const forgotSubmitBtn = document.getElementById('forgotSubmitBtn');
@@ -224,7 +422,6 @@
   authBackdrop?.addEventListener('click', closeAuthModal);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && authModal?.classList.contains('open')) closeAuthModal(); });
 
-  // ─── Login submit ─────────────────────────────────────────────────────────────
   loginSubmitBtn?.addEventListener('click', async () => {
     hideAuthError(loginError);
     const email    = document.getElementById('loginEmail').value.trim();
@@ -243,7 +440,6 @@
     finally { loginSubmitBtn.disabled = false; loginSubmitBtn.textContent = 'Iniciar sesión'; }
   });
 
-  // ─── Register submit ──────────────────────────────────────────────────────────
   regSubmitBtn?.addEventListener('click', async () => {
     hideAuthError(registerError);
     const name     = document.getElementById('regName').value.trim();
@@ -264,10 +460,8 @@
     finally { regSubmitBtn.disabled = false; regSubmitBtn.textContent = 'Crear cuenta'; }
   });
 
-  // ─── User UI ─────────────────────────────────────────────────────────────────
   function setUserUI(user) {
     currentUser = user;
-    const loginTriggerEl = document.getElementById('loginTrigger');
     if (!user) {
       headerUser.innerHTML = `<button class="user-btn" id="loginTrigger">Iniciar sesión</button>`;
       document.getElementById('loginTrigger')?.addEventListener('click', () => openAuthModal('login'));
@@ -308,7 +502,6 @@
     setUserUI(null);
   });
 
-  // ─── Google OAuth ─────────────────────────────────────────────────────────────
   document.getElementById('btnGoogle')?.addEventListener('click', () => { window.location.href = '/auth/google'; });
 
   async function checkGoogle() {
@@ -322,7 +515,6 @@
     } catch { /* ignore */ }
   }
 
-  // Handle redirect from Google OAuth
   if (new URLSearchParams(window.location.search).get('auth') === 'success') {
     history.replaceState(null, '', '/');
   }
@@ -340,6 +532,7 @@
   renderSizeFilter(currentCategory);
   fetchProducts();
   initAuth();
+  updateCartUI();
 
   // ─── Hide/show header on scroll ───────────────────────────────────────────────
   const header = document.querySelector('.header');

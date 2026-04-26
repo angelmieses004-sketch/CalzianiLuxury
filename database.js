@@ -67,6 +67,22 @@ db.exec(`
     expires_at TEXT NOT NULL,
     used INTEGER DEFAULT 0
   );
+
+  CREATE TABLE IF NOT EXISTS orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_number TEXT NOT NULL UNIQUE,
+    user_id INTEGER REFERENCES users(id),
+    items_json TEXT NOT NULL,
+    subtotal REAL NOT NULL,
+    itbis REAL NOT NULL,
+    total REAL NOT NULL,
+    status TEXT DEFAULT 'pending',
+    cardnet_session TEXT,
+    cardnet_session_key TEXT,
+    customer_name TEXT,
+    customer_email TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 // Migrations

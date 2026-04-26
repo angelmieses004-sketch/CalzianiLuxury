@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pago exitoso — Calziani</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="icon" href="/img/587730407_17843809347618797_3290323688225420457_n.jpg" />
+  <style>
+    .pay-page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; }
+    .pay-icon { width: 72px; height: 72px; background: #f0fdf4; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
+    .pay-title { font-size: 1.5rem; font-weight: 700; letter-spacing: 0.06em; margin-bottom: 0.5rem; }
+    .pay-sub { font-size: 0.9rem; color: #666; margin-bottom: 0.75rem; }
+    .pay-order { font-size: 0.8rem; color: #999; margin-bottom: 2rem; font-family: monospace; }
+    .pay-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .pay-btn { padding: 0.75rem 2rem; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 2px; }
+    .pay-btn-primary { background: #111; color: #fff; }
+    .pay-btn-primary:hover { opacity: 0.85; }
+    .pay-btn-secondary { border: 1px solid #e0e0e0; color: #111; }
+    .pay-btn-secondary:hover { background: #f5f5f5; }
+  </style>
+</head>
+<body>
+  <div class="pay-page">
+    <div class="pay-icon">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h1 class="pay-title">¡Pago aprobado!</h1>
+    <p class="pay-sub">Tu pedido fue procesado correctamente. Gracias por comprar en Calziani.</p>
+    <p class="pay-order" id="orderRef"></p>
+    <div class="pay-actions">
+      <a href="/" class="pay-btn pay-btn-primary">Seguir comprando</a>
+      <a href="https://www.instagram.com/calziani.luxury" target="_blank" class="pay-btn pay-btn-secondary">Seguinos en Instagram</a>
+    </div>
+  </div>
+  <script>
+    const order = new URLSearchParams(location.search).get('order');
+    if (order) document.getElementById('orderRef').textContent = 'Número de orden: ' + order;
+    // Clear cart on successful payment
+    localStorage.removeItem('calziani_cart');
+  </script>
+</body>
+</html>

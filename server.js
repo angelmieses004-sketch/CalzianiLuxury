@@ -628,6 +628,118 @@ app.put('/api/admin/password', requireAuth, (req, res) => {
   }
 });
 
+// ─── Cardnet checkout ─────────────────────────────────────────────────────────
+const CARDNET_ENV          = process.env.CARDNET_ENV === 'production' ? 'production' : 'sandbox';
+const CARDNET_SESSION_URL  = CARDNET_ENV === 'production'
+  ? 'https://ecommerce.cardnet.com.do/sessions'
+  : 'https://labservicios.cardnet.com.do/sessions';
+const CARDNET_AUTH_URL     = CARDNET_ENV === 'production'
+  ? 'https://ecommerce.cardnet.com.do/authorize'
+  : 'https://labservicios.cardnet.com.do/authorize';
+
+function padAmount(amount) {
+  // Cardnet expects 12-digit zero-padded integer in centavos (RD$100 → "000000010000")
+  return String(Math.round(amount * 100)).padStart(12, '0');
+}
+
+function generateOrderNumber() {
+  const ts  = Date.now().toString(36).toUpperCase();
+  const rnd = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `CAL-${ts}-${rnd}`;
+}
+
+app.post('/api/checkout', async (req, res) => {
+  const { cart, customer } = req.body || {};
+  if (!cart || !Array.isArray(cart) || cart.length === 0)
+    return res.status(400).json({ error: 'El carrito está vacío.' });
+
+  const ITBIS_RATE = 0.18;
+  const subtotal   = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+  const itbis      = Math.round(subtotal * ITBIS_RATE * 100) / 100;
+  const total      = Math.round((subtotal + itbis) * 100) / 100;
+
+  const orderNumber = generateOrderNumber();
+  const transId     = String(Date.now()).slice(-6);
+  const baseUrl     = process.env.BASE_URL || 'http://localhost:3000';
+
+  const merchantNumber   = process.env.CARDNET_MERCHANT_NUMBER  || '349000000';
+  const merchantTerminal = process.env.CARDNET_MERCHANT_TERMINAL || '58585858';
+  const acquiringCode    = process.env.CARDNET_ACQUIRING_CODE    || '349';
+  const merchantType     = process.env.CARDNET_MERCHANT_TYPE     || '7997';
+  const merchantName     = process.env.CARDNET_MERCHANT_NAME     || 'CALZIANI               SANTO DOMINGO  DO';
+
+  const payload = {
+    TransactionType: '0200',
+    CurrencyCode: '214',
+    AcquiringInstitutionCode: acquiringCode,
+    MerchantType: merchantType,
+    MerchantNumber: merchantNumber,
+    MerchantTerminal: merchantTerminal,
+    ReturnUrl: `${baseUrl}/payment/success?order=${orderNumber}`,
+    CancelUrl:  `${baseUrl}/payment/cancel?order=${orderNumber}`,
+    PageLanguaje: 'ESP',
+    OrdenId: orderNumber.slice(-20),
+    TransactionId: transId,
+    Amount: padAmount(total),
+    Tax: padAmount(itbis),
+    MerchantName: merchantName,
+    Ipclient: req.ip || '0.0.0.0',
+  };
+
+  // Optional 3DS fields if customer info provided
+  if (customer?.email) {
+    payload['3DS_email']       = customer.email;
+    payload['3DS_mobilePhone'] = customer.phone || '';
+    payload['3DS_billAddr_city']    = 'SantoDomingo';
+    payload['3DS_billAddr_state']   = 'DN';
+    payload['3DS_billAddr_country'] = 'DOP';
+    payload['3DS_billAddr_postCode']= '10111';
+    payload['3DS_billAddr_line1']   = customer.address || 'N/A';
+  }
+
+  try {
+    // Create Cardnet session
+    const cnRes  = await fetch(CARDNET_SESSION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Proxy-Connection': 'Keep-Alive' },
+      body: JSON.stringify(payload),
+    });
+    const cnData = await cnRes.json();
+    if (!cnData.SESSION) {
+      console.error('Cardnet session error:', cnData);
+      return res.status(502).json({ error: 'No se pudo iniciar el pago. Intentá nuevamente.' });
+    }
+
+    // Save order
+    const userId = req.user?.id || null;
+    db.prepare(`
+      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, cardnet_session, cardnet_session_key, customer_name, customer_email)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
+    `).run(
+      orderNumber, userId,
+      JSON.stringify(cart),
+      subtotal, itbis, total,
+      cnData.SESSION, cnData['session-key'],
+      customer?.name  || null,
+      customer?.email || null,
+    );
+
+    res.json({ session: cnData.SESSION, cardnetUrl: CARDNET_AUTH_URL, orderNumber });
+  } catch (e) {
+    console.error('Checkout error:', e);
+    res.status(500).json({ error: 'Error al procesar el pago. Intentá nuevamente.' });
+  }
+});
+
+// Order status (for admin)
+app.get('/api/admin/orders', requireAuth, (req, res) => {
+  const orders = db.prepare(
+    `SELECT id, order_number, customer_name, customer_email, subtotal, itbis, total, status, created_at
+     FROM orders ORDER BY created_at DESC LIMIT 100`
+  ).all();
+  res.json(orders);
+});
+
 // ─── Global error handler (returns JSON, never HTML) ──────────────────────────
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
@@ -639,7 +751,9 @@ app.use((err, req, res, next) => {
 // ─── Fallback SPA routes ───────────────────────────────────────────────────────
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/product/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'product.html')));
-app.get('/reset-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
+app.get('/reset-password',   (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
+app.get('/payment/success', (req, res) => res.sendFile(path.join(__dirname, 'public', 'payment-success.html')));
+app.get('/payment/cancel',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'payment-cancel.html')));
 app.get('/{*splat}', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 app.listen(PORT, () => {
