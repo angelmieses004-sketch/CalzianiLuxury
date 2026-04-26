@@ -64,6 +64,11 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   z-index: 100;
   background: var(--white);
   border-bottom: 1px solid var(--gray-200);
+  transform: translateY(0);
+  transition: transform 0.3s ease;
+}
+.header.header--hidden {
+  transform: translateY(-100%);
 }
 
 .header__inner {
