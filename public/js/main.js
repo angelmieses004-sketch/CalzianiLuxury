@@ -614,6 +614,12 @@
     history.replaceState(null, '', '/');
   }
 
+  // Open cart if redirected from product page with ?cart=open
+  if (new URLSearchParams(window.location.search).get('cart') === 'open') {
+    history.replaceState(null, '', '/');
+    setTimeout(openCart, 300);
+  }
+
   async function initAuth() {
     try {
       const res  = await fetch('/api/auth/me');
