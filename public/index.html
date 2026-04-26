@@ -14,23 +14,15 @@
     <span data-i18n="announcement">ENVÍO MUNDIAL GRATUITO EN PEDIDOS +$150</span>
   </div>
 
-  <!-- HEADER -->
+  <!-- HEADER
+       HTML order for mobile-first: logo → actions → search → nav
+       On desktop, CSS order: nav=2, search=3, actions=4 -->
   <header class="header">
     <div class="header__inner">
+
       <a href="/" class="header__logo">CALZIANI</a>
 
-      <nav class="header__nav">
-        <button class="nav-btn active" data-cat="all" data-i18n="cat_all">Todo</button>
-        <button class="nav-btn" data-cat="calzado" data-i18n="cat_calzado">Calzado</button>
-        <button class="nav-btn" data-cat="ropa" data-i18n="cat_ropa">Ropa</button>
-        <button class="nav-btn" data-cat="accesorio" data-i18n="cat_accesorio">Accesorios</button>
-      </nav>
-
-      <div class="header__search">
-        <input type="text" id="searchInput" placeholder="Buscar..." autocomplete="off" data-i18n-placeholder="search_placeholder" />
-      </div>
-
-      <!-- All right-side icons grouped together -->
+      <!-- Actions: logo + these = Row 1 on mobile -->
       <div class="header__actions">
         <div class="header__user" id="headerUser">
           <button class="user-btn" id="loginTrigger" data-i18n="sign_in">Iniciar sesión</button>
@@ -52,6 +44,20 @@
           <span class="cart-badge hidden" id="cartBadge">0</span>
         </button>
       </div>
+
+      <!-- Search: Row 2 on mobile, Row 1 (middle) on desktop via order:3 -->
+      <div class="header__search">
+        <input type="text" id="searchInput" placeholder="Buscar..." autocomplete="off" data-i18n-placeholder="search_placeholder" />
+      </div>
+
+      <!-- Nav: Row 3 on mobile (scroll strip), Row 1 on desktop via order:2 -->
+      <nav class="header__nav">
+        <button class="nav-btn active" data-cat="all" data-i18n="cat_all">Todo</button>
+        <button class="nav-btn" data-cat="calzado" data-i18n="cat_calzado">Calzado</button>
+        <button class="nav-btn" data-cat="ropa" data-i18n="cat_ropa">Ropa</button>
+        <button class="nav-btn" data-cat="accesorio" data-i18n="cat_accesorio">Accesorios</button>
+      </nav>
+
     </div>
   </header>
 
