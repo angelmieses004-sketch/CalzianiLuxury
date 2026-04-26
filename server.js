@@ -5,7 +5,6 @@ const fs = require('fs');
 const multer = require('multer');
 const sharp = require('sharp');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
 // express-session is required inside the SqliteStore class definition below
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
@@ -143,22 +142,32 @@ passport.deserializeUser((id, done) => {
 });
 
 // ─── Mailer ────────────────────────────────────────────────────────────────────
-const emailConfigured = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+const emailConfigured = !!(process.env.EMAIL_PASS);
 
-const mailer = nodemailer.createTransport(emailConfigured ? {
-  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-  port: Number(process.env.EMAIL_PORT) || 587,
-  secure: false,
-  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-  tls: { rejectUnauthorized: false },
-} : { streamTransport: true, newline: 'unix' }); // dev fallback: logs to console
+// Use Resend HTTP API directly (more reliable than SMTP in production)
+async function sendEmail({ to, subject, html }) {
+  const from = process.env.EMAIL_FROM || 'Calziani <no-reply@calziani.com>';
+  if (!emailConfigured) return; // dev: already logged to console elsewhere
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.EMAIL_PASS}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ from, to, subject, html }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Resend API error: ${err}`);
+  }
+}
 
 function generateCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
 async function sendVerificationEmail(toEmail, code) {
-  const from = process.env.EMAIL_FROM || 'Calziani <no-reply@calziani.com>';
   const html = `
     <div style="font-family:Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#fff;border:1px solid #e8e8e8">
       <h1 style="font-size:20px;font-weight:700;letter-spacing:0.08em;margin:0 0 8px">CALZIANI</h1>
@@ -172,7 +181,7 @@ async function sendVerificationEmail(toEmail, code) {
     console.log(`\n📧  [DEV] Código de verificación para ${toEmail}: ${code}\n`);
     return;
   }
-  await mailer.sendMail({ from, to: toEmail, subject: 'Tu código de verificación — Calziani', html });
+  await sendEmail({ to: toEmail, subject: 'Tu código de verificación — Calziani', html });
 }
 
 const app = express();
@@ -414,8 +423,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
           <a href="${resetLink}" style="display:block;text-align:center;background:#111;color:#fff;padding:14px 24px;font-size:14px;font-weight:700;letter-spacing:0.08em;text-decoration:none;border-radius:2px;margin:0 0 20px">Restablecer contraseña</a>
           <p style="font-size:12px;color:#aaa;margin:0">Este enlace expira en 30 minutos. Si no solicitaste esto, ignorá este mensaje.</p>
         </div>`;
-      const from = process.env.EMAIL_FROM || 'Calziani <no-reply@calziani.com>';
-      await mailer.sendMail({ from, to: emailLc, subject: 'Restablecer tu contraseña — Calziani', html });
+      await sendEmail({ to: emailLc, subject: 'Restablecer tu contraseña — Calziani', html });
     }
 
     res.json({ message: 'Si ese email existe, recibirás un enlace.' });
