@@ -705,39 +705,48 @@ app.post('/api/paypal/create-order', async (req, res) => {
   if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_SECRET)
     return res.status(503).json({ error: 'PayPal no configurado.' });
 
-  const subtotal  = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const totalUSD  = (Math.round((subtotal + Number(shippingFee)) * 100) / 100).toFixed(2);
+  const subtotal  = cart.reduce((s, i) => s + Number(i.price) * Number(i.qty), 0);
+  const totalUSD  = (Math.round((subtotal + Number(shippingFee || 5)) * 100) / 100).toFixed(2);
+
+  if (isNaN(Number(totalUSD)) || Number(totalUSD) <= 0) {
+    return res.status(400).json({ error: 'Total inválido: ' + totalUSD });
+  }
+
+  const orderNum  = `CAL-${Date.now().toString(36).toUpperCase()}`;
+  const ppPayload = {
+    intent: 'CAPTURE',
+    purchase_units: [{ amount: { currency_code: 'USD', value: totalUSD } }],
+  };
+
+  console.log('[PayPal] Sending payload:', JSON.stringify(ppPayload));
 
   try {
-    const token    = await getPayPalToken();
-    const orderNum = `CAL-${Date.now().toString(36).toUpperCase()}`;
-    const ppRes    = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
+    const token  = await getPayPalToken();
+    const ppRes  = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        intent: 'CAPTURE',
-        purchase_units: [{
-          reference_id: orderNum,
-          amount: { currency_code: 'USD', value: totalUSD },
-          description: `Calziani — ${cart.length} producto(s)`,
-        }],
-      }),
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'PayPal-Request-Id': orderNum },
+      body: JSON.stringify(ppPayload),
     });
     const ppData = await ppRes.json();
+    console.log('[PayPal] Response status:', ppRes.status, JSON.stringify(ppData).slice(0, 400));
+
     if (!ppData.id) {
-      console.error('PayPal order response:', JSON.stringify(ppData));
-      return res.status(502).json({ error: 'Error creando orden PayPal: ' + (ppData.message || ppData.error || JSON.stringify(ppData)) });
+      return res.status(502).json({ error: 'PayPal error: ' + (ppData.message || JSON.stringify(ppData)) });
     }
 
     // Save order
-    db.prepare(`
-      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, cardnet_session, customer_email)
-      VALUES (?, ?, ?, ?, ?, ?, 'pending_paypal', ?, ?)
-    `).run(orderNum, req.user?.id || null, JSON.stringify({ cart, shipping }), subtotal, 0, Number(totalUSD), ppData.id, shipping?.name || null);
+    try {
+      db.prepare(`
+        INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, cardnet_session, customer_email)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending_paypal', ?, ?)
+      `).run(orderNum, req.user?.id || null, JSON.stringify({ cart, shipping }), subtotal, 0, Number(totalUSD), ppData.id, shipping?.name || null);
+    } catch (dbErr) {
+      console.error('[PayPal] DB save error (non-fatal):', dbErr.message);
+    }
 
     res.json({ orderId: ppData.id, orderNumber: orderNum });
   } catch (e) {
-    console.error('PayPal create-order error:', e);
+    console.error('[PayPal] create-order error:', e);
     res.status(500).json({ error: 'Error al conectar con PayPal.' });
   }
 });
