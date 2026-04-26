@@ -13,7 +13,10 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const bcrypt = require('bcryptjs');
 const db = require('./database');
 
-const UPLOAD_DIR = path.join(__dirname, 'public', 'img', 'products');
+// In production use /data/img/products (persistent volume); locally use public/img/products
+const DATA_DIR   = process.env.DATA_DIR || path.join(__dirname, 'public');
+const UPLOAD_DIR = path.join(DATA_DIR, 'img', 'products');
+if (!require('fs').existsSync(UPLOAD_DIR)) require('fs').mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // Multer: memory storage, multiple files under field name "images"
 const upload = multer({
@@ -187,6 +190,10 @@ app.use(Session({
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.static(path.join(__dirname, 'public')));
+// In production, serve uploaded images from the persistent volume
+if (process.env.DATA_DIR) {
+  app.use('/img/products', express.static(path.join(process.env.DATA_DIR, 'img', 'products')));
+}
 
 // Clean expired sessions every hour
 setInterval(() => sqliteStore._cleanup(), 60 * 60 * 1000);
