@@ -218,40 +218,35 @@
 
   // ─── Payment methods ──────────────────────────────────────────────────────────
   let payConfig   = {};
-  let paypalLoaded = false;
-  let activeMethod = 'paypal';
+  let activeMethod = 'card';
 
-  const payMethodTabs   = document.querySelectorAll('.pay-method-tab');
-  const payPanelPaypal  = document.getElementById('payPanelPaypal');
-  const payPanelTransfer= document.getElementById('payPanelTransfer');
-  const transferInfo    = document.getElementById('transferInfo');
-  const btnWhatsapp     = document.getElementById('btnWhatsapp');
-  const cartUsdNote     = document.getElementById('cartUsdNote');
+  const payMethodTabs    = document.querySelectorAll('.pay-method-tab');
+  const payPanelCard     = document.getElementById('payPanelCard');
+  const payPanelTransfer = document.getElementById('payPanelTransfer');
+  const transferInfo     = document.getElementById('transferInfo');
+  const btnWhatsapp      = document.getElementById('btnWhatsapp');
+  const btnAzulPay       = document.getElementById('btnAzulPay');
+  const azulNote         = document.getElementById('azulNote');
 
   payMethodTabs.forEach(tab => {
     tab.addEventListener('click', () => {
       payMethodTabs.forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       activeMethod = tab.dataset.method;
-      payPanelPaypal.classList.toggle('active', activeMethod === 'paypal');
-      payPanelTransfer.classList.toggle('active', activeMethod === 'transfer');
-      if (activeMethod === 'paypal' && !paypalLoaded) loadPayPal();
+      payPanelCard?.classList.toggle('active', activeMethod === 'card');
+      payPanelTransfer?.classList.toggle('active', activeMethod === 'transfer');
     });
   });
 
   async function loadPaymentConfig() {
     try {
-      const res  = await fetch('/api/payment-config');
-      payConfig  = await res.json();
+      const res = await fetch('/api/payment-config');
+      payConfig = await res.json();
       renderTransferInfo();
-      if (payConfig.paypalClientId) {
-        loadPayPal();
-      } else {
-        // No PayPal → hide tab, activate transfer by default
-        const ppTab = document.querySelector('[data-method="paypal"]');
-        if (ppTab) ppTab.style.display = 'none';
-        document.querySelector('[data-method="transfer"]')?.click();
-      }
+      // Show DOP total note in AZUL panel
+      const { total } = cartTotals();
+      const dopRate   = currencyRates.DOP || 59.48;
+      if (azulNote) azulNote.textContent = `Total: RD$${(total * dopRate).toFixed(0)} (USD $${total.toFixed(2)})`;
     } catch { /* ignore */ }
   }
 
@@ -264,15 +259,6 @@
       <div class="transfer-row"><span>Titular</span><strong>${c.bankHolder || '—'}</strong></div>
       <div class="transfer-row"><span>Tipo</span><strong>${c.bankType || '—'}</strong></div>
       <p class="transfer-note">Enviá el comprobante por WhatsApp y confirmamos tu pedido.</p>`;
-  }
-
-  function loadPayPal() {
-    if (paypalLoaded || !payConfig.paypalClientId) return;
-    paypalLoaded = true;
-    const script = document.createElement('script');
-    script.src = `https://www.paypal.com/sdk/js?client-id=${payConfig.paypalClientId}&currency=USD&locale=es_DO`;
-    script.onload = renderPayPalButtons;
-    document.head.appendChild(script);
   }
 
   function getShippingInfo() {
@@ -300,52 +286,48 @@
     return { subtotal: subtotalUSD, shipping: SHIPPING_USD, total, totalUSD: total.toFixed(2) };
   }
 
-  function renderPayPalButtons() {
-    const container = document.getElementById('paypalButtonContainer');
-    if (!container || !window.paypal) return;
-    container.innerHTML = '';
+  // ─── AZUL card payment ───────────────────────────────────────────────────────
+  btnAzulPay?.addEventListener('click', async () => {
+    if (!validateShipping()) return;
+    const cart     = getCart();
+    if (!cart.length) return;
+    const shipping = getShippingInfo();
+    const { total } = cartTotals();
 
-    window.paypal.Buttons({
-      style: { layout: 'vertical', color: 'black', shape: 'rect', label: 'pay', height: 44 },
+    btnAzulPay.disabled = true;
+    btnAzulPay.textContent = 'Procesando...';
 
-      createOrder: async () => {
-        if (!validateShipping()) throw new Error('shipping_missing');
-        const cart     = getCart();
-        const shipping = getShippingInfo();
-        const res  = await fetch('/api/paypal/create-order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cart, shippingFee: SHIPPING_USD, shipping }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        const { totalUSD } = cartTotals();
-        if (cartUsdNote) cartUsdNote.textContent = `Total a pagar: USD $${totalUSD}`;
-        return data.orderId;
-      },
-
-      onApprove: async (data) => {
-        const res  = await fetch(`/api/paypal/capture-order/${data.orderID}`, { method: 'POST' });
-        const captured = await res.json();
-        if (captured.status === 'COMPLETED') {
-          localStorage.removeItem('calziani_cart');
-          window.location.href = '/payment/success?method=paypal';
-        } else {
-          alert('El pago no pudo completarse. Intentá nuevamente.');
-        }
-      },
-
-      onError: (err) => {
-        console.error('PayPal error', err);
-        // Switch to transfer method automatically
-        document.querySelector('[data-method="transfer"]')?.click();
-      },
-    }).render('#paypalButtonContainer');
-
-    // Show USD note for PayPal
-    const { totalUSD } = cartTotals();
-    if (cartUsdNote) cartUsdNote.textContent = `Total PayPal: USD $${totalUSD}`;
-  }
+    try {
+      const res  = await fetch('/api/azul/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cart, total, shipping }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Error al iniciar el pago.');
+        btnAzulPay.disabled = false;
+        btnAzulPay.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Pagar con tarjeta`;
+        return;
+      }
+      // Auto-submit hidden form to AZUL
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = data.azulUrl;
+      Object.entries(data.fields).forEach(([k, v]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden'; input.name = k; input.value = v;
+        form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      localStorage.setItem('calziani_pending_order', data.orderNumber);
+      form.submit();
+    } catch (e) {
+      alert('Error de conexión. Intentá nuevamente.');
+      btnAzulPay.disabled = false;
+      btnAzulPay.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Pagar con tarjeta`;
+    }
+  });
 
   btnWhatsapp?.addEventListener('click', () => {
     const cart = getCart();

@@ -682,6 +682,82 @@ app.get('/api/payment-config', (req, res) => {
   });
 });
 
+// ─── AZUL Payment Page ────────────────────────────────────────────────────────
+const AZUL_ENV  = process.env.AZUL_ENV === 'production' ? 'production' : 'sandbox';
+const AZUL_URL  = AZUL_ENV === 'production'
+  ? 'https://pagos.azul.com.do/PaymentPage/Default.aspx'
+  : 'https://pruebas.azul.com.do/PaymentPage/Default.aspx';
+
+app.post('/api/azul/checkout', (req, res) => {
+  const { AZUL_MERCHANT_ID, AZUL_MERCHANT_NAME, AZUL_MERCHANT_TYPE, AZUL_AUTH_KEY } = process.env;
+
+  if (!AZUL_MERCHANT_ID || !AZUL_AUTH_KEY) {
+    return res.status(503).json({ error: 'AZUL no está configurado. Configure las credenciales en las variables de entorno.' });
+  }
+
+  const { cart, total, shipping } = req.body || {};
+  if (!cart?.length || !total) return res.status(400).json({ error: 'Carrito vacío.' });
+
+  const dopRate    = Number(process.env.USD_RATE) || 59.48;
+  const totalDOP   = Math.round(total * dopRate * 100); // last 2 digits = cents, e.g. 5000 = RD$50.00
+  const amountStr  = String(totalDOP);
+  const itbisStr   = '000'; // No ITBIS
+
+  const orderNum   = `CAL${Date.now().toString().slice(-10)}`;
+  const baseUrl    = process.env.BASE_URL || 'http://localhost:3000';
+  const approvedUrl = `${baseUrl}/payment/success?method=azul`;
+  const declinedUrl = `${baseUrl}/payment/cancel?method=declined`;
+  const cancelUrl   = `${baseUrl}/payment/cancel?method=cancelled`;
+
+  const merchantId   = AZUL_MERCHANT_ID;
+  const merchantName = AZUL_MERCHANT_NAME || 'Calziani';
+  const merchantType = AZUL_MERCHANT_TYPE || 'Comercio electronico';
+  const currencyCode = '$'; // DOP symbol for AZUL
+
+  // SHA-512 AuthHash — exact order per AZUL docs
+  const hashInput = [
+    merchantId, merchantName, merchantType, currencyCode,
+    orderNum, amountStr, itbisStr,
+    approvedUrl, declinedUrl, cancelUrl, approvedUrl, // approvedUrl appears twice (ResponsePostUrl)
+    '1', 'orderId', orderNum, '0',                    // UseCustomField1, Label, Value, UseCustomField2
+    AZUL_AUTH_KEY,
+  ].join('');
+
+  const authHash = crypto.createHash('sha512').update(hashInput).digest('hex').toUpperCase();
+
+  // Save pending order
+  try {
+    db.prepare(`
+      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, customer_name, customer_email)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending_azul', ?, ?)
+    `).run(orderNum, req.user?.id || null, JSON.stringify({ cart, shipping }), total, 0, total, shipping?.name || null, null);
+  } catch (e) { console.error('AZUL DB save:', e.message); }
+
+  res.json({
+    azulUrl: AZUL_URL,
+    orderNumber: orderNum,
+    fields: {
+      MerchantId:        merchantId,
+      MerchantName:      merchantName,
+      MerchantType:      merchantType,
+      CurrencyCode:      currencyCode,
+      OrderNumber:       orderNum,
+      Amount:            amountStr,
+      itbis:             itbisStr,
+      ApprovedUrl:       approvedUrl,
+      DeclinedUrl:       declinedUrl,
+      CancelUrl:         cancelUrl,
+      ResponsePostUrl:   approvedUrl,
+      UseCustomField1:   '1',
+      CustomField1Label: 'orderId',
+      CustomField1Value: orderNum,
+      UseCustomField2:   '0',
+      AuthHash:          authHash,
+      ShowTransactionResult: '0',
+    },
+  });
+});
+
 // ─── PayPal ────────────────────────────────────────────────────────────────────
 const PAYPAL_ENV        = process.env.PAYPAL_ENV === 'production' ? 'production' : 'sandbox';
 const PAYPAL_API_BASE   = PAYPAL_ENV === 'production'
