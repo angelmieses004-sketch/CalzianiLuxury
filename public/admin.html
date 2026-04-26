@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calziani — Admin</title>
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body>
+
+  <!-- LOGIN SCREEN -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-box">
+      <h1 class="login-logo">CALZIANI</h1>
+      <p class="login-sub">Panel de administración</p>
+      <form id="loginForm" class="login-form" novalidate>
+        <div class="field">
+          <label for="loginUser">Usuario</label>
+          <input type="text" id="loginUser" autocomplete="username" placeholder="admin" />
+        </div>
+        <div class="field">
+          <label for="loginPass">Contraseña</label>
+          <input type="password" id="loginPass" autocomplete="current-password" placeholder="••••••••" />
+        </div>
+        <div id="loginError" class="form-error hidden"></div>
+        <button type="submit" class="btn btn-primary btn-full">Ingresar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ADMIN PANEL -->
+  <div id="adminPanel" class="admin hidden">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar__logo">CALZIANI</div>
+      <nav class="sidebar__nav">
+        <button class="sidebar__link active" data-view="products">
+          <span class="sidebar__icon">▤</span> Productos
+        </button>
+        <button class="sidebar__link" data-view="new">
+          <span class="sidebar__icon">＋</span> Nuevo producto
+        </button>
+        <button class="sidebar__link" data-view="settings">
+          <span class="sidebar__icon">⚙</span> Ajustes
+        </button>
+      </nav>
+      <button class="sidebar__logout" id="logoutBtn">Cerrar sesión</button>
+    </aside>
+
+    <!-- Main content -->
+    <div class="admin__main">
+
+      <!-- Toast -->
+      <div id="toast" class="toast hidden"></div>
+
+      <!-- VIEW: Products list -->
+      <section id="viewProducts" class="view active">
+        <div class="view__header">
+          <h2 class="view__title">Productos</h2>
+          <div class="view__actions">
+            <input type="text" id="adminSearch" placeholder="Buscar producto..." class="admin-search" />
+            <select id="adminCatFilter" class="admin-select">
+              <option value="all">Todas las categorías</option>
+              <option value="calzado">Calzado</option>
+              <option value="ropa">Ropa</option>
+              <option value="accesorio">Accesorio</option>
+            </select>
+          </div>
+        </div>
+        <div id="adminProductList" class="product-table-wrap">
+          <div class="table-loading">Cargando...</div>
+        </div>
+      </section>
+
+      <!-- VIEW: New / Edit product -->
+      <section id="viewNew" class="view">
+        <div class="view__header">
+          <h2 class="view__title" id="formTitle">Nuevo producto</h2>
+        </div>
+        <form id="productForm" class="product-form" novalidate>
+          <input type="hidden" id="editId" value="" />
+
+          <div class="form-row">
+            <div class="field">
+              <label for="fName">Nombre <span class="required">*</span></label>
+              <input type="text" id="fName" placeholder="Ej: Zapatilla Runner Pro" maxlength="120" />
+            </div>
+            <div class="field">
+              <label for="fCategory">Categoría <span class="required">*</span></label>
+              <select id="fCategory">
+                <option value="">Seleccionar…</option>
+                <option value="calzado">Calzado</option>
+                <option value="ropa">Ropa</option>
+                <option value="accesorio">Accesorio</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="fPrice">Precio de venta (ARS) <span class="required">*</span></label>
+              <input type="number" id="fPrice" placeholder="0" min="0" step="0.01" />
+            </div>
+            <div class="field">
+              <label for="fComparePrice">Precio original (dejar vacío si no hay oferta)</label>
+              <div class="offer-input-wrap">
+                <input type="number" id="fComparePrice" placeholder="0" min="0" step="0.01" />
+                <span class="offer-badge-preview" id="offerBadgePreview">OFERTA</span>
+              </div>
+              <p class="field-hint">Si ingresás un precio original mayor al de venta, el producto se marcará como oferta.</p>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="fStock">Stock</label>
+              <input type="number" id="fStock" placeholder="0" min="0" step="1" value="0" />
+            </div>
+            <div class="field">
+              <label for="fShipping">Tiempo de envío</label>
+              <input type="text" id="fShipping" placeholder="Ej: 3-5 días hábiles" maxlength="60" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Imágenes del producto</label>
+            <div id="imgGrid" class="img-grid"></div>
+            <label class="img-add-btn" for="fImages">
+              <span>＋ Agregar imágenes</span>
+              <span class="img-upload-hint">JPG, PNG o WEBP — máx. 8 MB c/u · Se recortan a cuadrado automáticamente</span>
+              <input type="file" id="fImages" accept="image/jpeg,image/png,image/webp" multiple class="hidden" />
+            </label>
+          </div>
+
+          <div class="field" id="sizesField">
+            <label>Talles disponibles</label>
+            <div id="sizesContainer" class="sizes-grid"></div>
+            <p class="sizes-hint" id="sizesHint">Seleccioná una categoría para ver los talles.</p>
+          </div>
+
+          <div class="field">
+            <label for="fDesc">Descripción</label>
+            <textarea id="fDesc" rows="5" placeholder="Descripción del producto…" maxlength="1000"></textarea>
+          </div>
+
+          <div id="formError" class="form-error hidden"></div>
+
+          <div class="form-btns">
+            <button type="submit" class="btn btn-primary" id="formSubmitBtn">Guardar producto</button>
+            <button type="button" class="btn btn-ghost" id="formCancelBtn">Cancelar</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- VIEW: Settings -->
+      <section id="viewSettings" class="view">
+        <div class="view__header">
+          <h2 class="view__title">Ajustes</h2>
+        </div>
+        <div class="settings-card">
+          <h3 class="settings-card__title">Cambiar contraseña</h3>
+          <form id="passwordForm" class="product-form" novalidate>
+            <div class="field">
+              <label for="newPass">Nueva contraseña</label>
+              <input type="password" id="newPass" placeholder="Mínimo 6 caracteres" />
+            </div>
+            <div class="field">
+              <label for="confirmPass">Confirmar contraseña</label>
+              <input type="password" id="confirmPass" placeholder="Repetir contraseña" />
+            </div>
+            <div id="passError" class="form-error hidden"></div>
+            <div class="form-btns">
+              <button type="submit" class="btn btn-primary">Actualizar contraseña</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- DELETE CONFIRM MODAL -->
+  <div id="deleteModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal__backdrop" id="deleteBackdrop"></div>
+    <div class="modal__box modal__box--sm">
+      <h3 class="modal__title">Eliminar producto</h3>
+      <p class="modal__body">¿Estás seguro de que querés eliminar este producto? Esta acción no se puede deshacer.</p>
+      <div class="modal__actions">
+        <button class="btn btn-danger" id="confirmDeleteBtn">Eliminar</button>
+        <button class="btn btn-ghost" id="cancelDeleteBtn">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>

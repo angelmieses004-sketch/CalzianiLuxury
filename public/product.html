@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calziani</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/product.css" />
+  <link rel="icon" href="/img/587730407_17843809347618797_3290323688225420457_n.jpg" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header__inner">
+      <a href="/" class="header__logo">CALZIANI</a>
+      <nav class="header__nav">
+        <button class="nav-btn" data-cat="all" onclick="location.href='/'">Todo</button>
+        <button class="nav-btn" data-cat="calzado" onclick="location.href='/?cat=calzado'">Calzado</button>
+        <button class="nav-btn" data-cat="ropa" onclick="location.href='/?cat=ropa'">Ropa</button>
+        <button class="nav-btn" data-cat="accesorio" onclick="location.href='/?cat=accesorio'">Accesorios</button>
+      </nav>
+      <div class="header__user" id="headerUser">
+        <button class="user-btn" id="loginTrigger">Iniciar sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- PRODUCT PAGE -->
+  <main class="product-page" id="productPage">
+    <div class="product-page__loading">Cargando...</div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer__inner">
+      <span class="footer__brand">CALZIANI</span>
+      <span class="footer__copy">&copy; 2026 Todos los derechos reservados.</span>
+    </div>
+  </footer>
+
+  <script src="/js/product.js"></script>
+</body>
+</html>

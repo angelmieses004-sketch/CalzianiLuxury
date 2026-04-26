@@ -1,0 +1,96 @@
+const Database = require('better-sqlite3');
+const path = require('path');
+
+const db = new Database(path.join(__dirname, 'calziani.db'));
+
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    price REAL NOT NULL CHECK(price >= 0),
+    category TEXT NOT NULL CHECK(category IN ('calzado', 'ropa', 'accesorio')),
+    stock INTEGER DEFAULT 0 CHECK(stock >= 0),
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS product_images (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    filename TEXT NOT NULL,
+    position INTEGER DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS admin (
+    id INTEGER PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    password TEXT,
+    google_id TEXT UNIQUE,
+    avatar TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    sid TEXT PRIMARY KEY,
+    sess TEXT NOT NULL,
+    expired TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS verification_codes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    code TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used INTEGER DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS password_resets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    used INTEGER DEFAULT 0
+  );
+`);
+
+// Migrations
+try { db.exec(`ALTER TABLE users ADD COLUMN verified INTEGER DEFAULT 0`); } catch (_) {}
+try { db.exec(`ALTER TABLE products ADD COLUMN sizes TEXT DEFAULT '[]'`); } catch (_) {}
+try { db.exec(`ALTER TABLE products ADD COLUMN shipping_days TEXT DEFAULT NULL`); } catch (_) {}
+try { db.exec(`ALTER TABLE products ADD COLUMN compare_price REAL DEFAULT NULL`); } catch (_) {}
+try { db.exec(`ALTER TABLE products ADD COLUMN image TEXT DEFAULT NULL`); } catch (_) {}
+
+// Migrate old single `image` column into product_images table (run once)
+const productsWithLegacyImage = db.prepare(
+  `SELECT id, image FROM products WHERE image IS NOT NULL AND image != ''`
+).all();
+const insertImg = db.prepare(
+  `INSERT OR IGNORE INTO product_images (product_id, filename, position) VALUES (?, ?, 0)`
+);
+const migrateMany = db.transaction(() => {
+  for (const p of productsWithLegacyImage) {
+    const exists = db.prepare(
+      `SELECT id FROM product_images WHERE product_id = ? AND filename = ?`
+    ).get(p.id, p.image);
+    if (!exists) insertImg.run(p.id, p.image);
+  }
+});
+migrateMany();
+
+const existingAdmin = db.prepare('SELECT id FROM admin WHERE id = 1').get();
+if (!existingAdmin) {
+  db.prepare("INSERT INTO admin (id, username, password) VALUES (1, 'admin', 'calziani2024')").run();
+}
+
+module.exports = db;
