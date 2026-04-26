@@ -142,6 +142,15 @@
     return sym + new Intl.NumberFormat(loc, { maximumFractionDigits: dec, minimumFractionDigits: dec }).format(converted);
   }
 
+  /** USD + DOP for checkout / cart (prices are stored in USD) */
+  function formatUsdCheckout(priceUSD) {
+    return '$' + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(priceUSD) + ' USD';
+  }
+  function formatDopCheckout(priceUSD) {
+    const dop = priceUSD * (currencyRates.DOP || 59.48);
+    return 'RD$ ' + new Intl.NumberFormat('es-DO', { maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(Math.round(dop));
+  }
+
   async function loadCurrencyRates() {
     try {
       const data = await (await fetch('/api/currency-rates')).json();
@@ -238,9 +247,12 @@
   const cartItems   = document.getElementById('cartItems');
   const cartEmpty   = document.getElementById('cartEmpty');
   const cartFoot    = document.getElementById('cartFoot');
-  const cartSubtotal  = document.getElementById('cartSubtotal');
-  const cartShipping  = document.getElementById('cartShipping');
-  const cartTotal     = document.getElementById('cartTotal');
+  const cartSubtotalUsd = document.getElementById('cartSubtotalUsd');
+  const cartSubtotalDop = document.getElementById('cartSubtotalDop');
+  const cartShippingUsd = document.getElementById('cartShippingUsd');
+  const cartShippingDop = document.getElementById('cartShippingDop');
+  const cartTotalUsd    = document.getElementById('cartTotalUsd');
+  const cartTotalDop     = document.getElementById('cartTotalDop');
   const checkoutBtn   = document.getElementById('checkoutBtn');
 
   const SHIPPING_USD  = 5; // flat shipping fee in USD
@@ -292,19 +304,25 @@
           </div>
         </div>
         <div class="cart-item__right">
-          <span class="cart-item__price">${formatPrice(item.price * item.qty)}</span>
+          <div class="cart-item__price-block">
+            <span class="cart-item__price">${formatUsdCheckout(item.price * item.qty)}</span>
+            <span class="cart-item__price-dop">${formatDopCheckout(item.price * item.qty)}</span>
+          </div>
           <button class="cart-item__remove" data-id="${item.id}" data-size="${item.size||''}" aria-label="Eliminar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
       </li>`).join('');
 
-    // Totals
+    // Totals (USD + DOP for transfer / local customers)
     const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
     const total    = subtotal + SHIPPING_USD;
-    cartSubtotal.textContent = formatPrice(subtotal);
-    if (cartShipping) cartShipping.textContent = formatPrice(SHIPPING_USD);
-    cartTotal.textContent    = formatPrice(total);
+    if (cartSubtotalUsd) cartSubtotalUsd.textContent = formatUsdCheckout(subtotal);
+    if (cartSubtotalDop) cartSubtotalDop.textContent = formatDopCheckout(subtotal);
+    if (cartShippingUsd) cartShippingUsd.textContent = formatUsdCheckout(SHIPPING_USD);
+    if (cartShippingDop) cartShippingDop.textContent = formatDopCheckout(SHIPPING_USD);
+    if (cartTotalUsd) cartTotalUsd.textContent = formatUsdCheckout(total);
+    if (cartTotalDop) cartTotalDop.textContent = formatDopCheckout(total);
 
     // Qty buttons
     cartItems.querySelectorAll('.qty-btn').forEach(btn => {
@@ -440,15 +458,15 @@
     if (!validateShipping()) return;
     const ship = getShippingInfo();
     const { subtotal, total } = cartTotals();
-    const items = cart.map(i => `• ${i.name}${i.size ? ` (${i.size})` : ''} x${i.qty} — ${formatPrice(i.price * i.qty)}`).join('\n');
+    const items = cart.map(i => `• ${i.name}${i.size ? ` (${i.size})` : ''} x${i.qty} — ${formatUsdCheckout(i.price * i.qty)} / ${formatDopCheckout(i.price * i.qty)}`).join('\n');
     const msg = [
       `Hola! Quiero confirmar mi pedido en Calziani 🛍️`,
       ``,
       items,
       ``,
-      `Subtotal: ${formatPrice(subtotal)}`,
-      `Envío: ${formatPrice(SHIPPING_USD)}`,
-      `*Total: ${formatPrice(total)}*`,
+      `Subtotal: ${formatUsdCheckout(subtotal)} / ${formatDopCheckout(subtotal)}`,
+      `Envío: ${formatUsdCheckout(SHIPPING_USD)} / ${formatDopCheckout(SHIPPING_USD)}`,
+      `*Total: ${formatUsdCheckout(total)} / ${formatDopCheckout(total)}*`,
       ``,
       `📦 Datos de envío:`,
       `Nombre: ${ship.name}`,
