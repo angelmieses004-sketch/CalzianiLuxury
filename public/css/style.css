@@ -58,10 +58,6 @@ input, textarea, select {
 input:focus, textarea:focus, select:focus { border-color: var(--black); }
 
 /* ─── Header ───────────────────────────────────────────────────────────────── */
-.announcement-bar + .header {
-  position: sticky;
-  top: 0;
-}
 .header {
   position: sticky;
   top: 0;
@@ -71,9 +67,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   transform: translateY(0);
   transition: transform 0.3s ease;
 }
-.header.header--hidden {
-  transform: translateY(-100%);
-}
+.header.header--hidden { transform: translateY(-100%); }
 
 .header__inner {
   max-width: 1280px;
@@ -95,7 +89,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 .header__nav {
   display: flex;
   gap: 0.25rem;
-  flex: 1;
 }
 
 .nav-btn {
@@ -108,9 +101,17 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   color: var(--gray-600);
   transition: color var(--transition), background var(--transition);
 }
-
 .nav-btn:hover { color: var(--black); background: var(--gray-100); }
 .nav-btn.active { color: var(--black); background: var(--gray-100); font-weight: 700; }
+
+/* All right-side icons grouped */
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
 
 /* ─── Currency selector ─────────────────────────────────────────────────────── */
 .currency-select {
@@ -1723,72 +1724,46 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 }
 
 @media (max-width: 768px) {
-  /* ── Header: two-row mobile layout ── */
+  /* ── Header mobile: Row 1 = logo + actions; Row 2 = search; Row 3 = nav ── */
   .header__inner {
     flex-wrap: wrap;
     height: auto;
-    padding: 0;
+    padding: 0 1rem;
     gap: 0;
     align-items: center;
   }
 
-  /* Row 1: logo + icons */
+  /* Row 1 — logo stretches, actions group stays right */
   .header__logo {
-    order: 1;
     flex: 1;
-    padding: 0 1rem;
-    line-height: 52px;
-  }
-  .header__user {
-    order: 2;
-    padding: 0 0 0 0.5rem;
+    height: 52px;
     display: flex;
     align-items: center;
-    height: 52px;
+    font-size: 1rem;
   }
+  .header__actions {
+    height: 52px;
+    gap: 0.3rem;
+    margin-left: 0;
+  }
+
+  /* Tighten action items */
   .user-btn {
-    font-size: 0.7rem;
-    padding: 0.28rem 0.6rem;
+    font-size: 0.68rem;
+    padding: 0.25rem 0.5rem;
     border: 1px solid var(--gray-200);
     border-radius: var(--radius);
     white-space: nowrap;
-    letter-spacing: 0.04em;
   }
-  .fav-header-btn {
-    order: 3;
-    width: 36px;
-    height: 52px;
-    border-radius: 0;
-  }
-  .currency-select {
-    order: 4;
-    height: 28px;
-    font-size: 0.7rem;
-    padding: 0 0.35rem;
-    margin-right: 0.25rem;
-  }
-  .lang-btn {
-    order: 5;
-    height: 28px;
-    font-size: 0.7rem;
-    padding: 0 0.4rem;
-    margin-right: 0.25rem;
-  }
-  .cart-btn {
-    order: 6;
-    width: 44px;
-    height: 52px;
-    border-radius: 0;
-    padding-right: 0.25rem;
-  }
+  .fav-header-btn { width: 32px; height: 32px; }
+  .currency-select { height: 28px; font-size: 0.68rem; padding: 0 0.3rem; }
+  .lang-btn { height: 28px; font-size: 0.68rem; padding: 0 0.35rem; }
+  .cart-btn { width: 36px; height: 36px; }
 
-  /* Row 2: search */
+  /* Row 2 — search full width */
   .header__search {
-    order: 7;
-    flex-basis: 100%;
-    padding: 0 1rem 0.6rem;
-    border-top: 1px solid var(--gray-200);
-    padding-top: 0.6rem;
+    flex: 0 0 100%;
+    padding: 0.5rem 0;
   }
   .header__search input {
     width: 100%;
@@ -1796,26 +1771,24 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
     padding: 0.45rem 0.75rem;
   }
 
-  /* Row 3: nav categories — horizontal scroll strip */
+  /* Row 3 — nav as horizontal scroll strip */
   .header__nav {
-    order: 8;
-    flex-basis: 100%;
+    flex: 0 0 100%;
     flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     border-top: 1px solid var(--gray-200);
-    padding: 0.4rem 0.75rem;
-    gap: 0.2rem;
+    padding: 0.45rem 0 0.55rem;
+    gap: 0.15rem;
   }
   .header__nav::-webkit-scrollbar { display: none; }
   .nav-btn {
     white-space: nowrap;
     flex-shrink: 0;
     font-size: 0.72rem;
-    padding: 0.32rem 0.85rem;
-    letter-spacing: 0.06em;
+    padding: 0.3rem 0.9rem;
   }
 
   /* ── Rest ── */
@@ -1836,7 +1809,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 @media (max-width: 480px) {
   .product-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem 0.5rem; }
   .pc-name { font-size: 0.82rem; }
-  .header__logo { font-size: 1rem; }
 }
 
 /* ─── Favorites empty state ─────────────────────────────────────────────────── */

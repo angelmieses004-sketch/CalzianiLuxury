@@ -18,35 +18,40 @@
   <header class="header">
     <div class="header__inner">
       <a href="/" class="header__logo">CALZIANI</a>
+
       <nav class="header__nav">
         <button class="nav-btn active" data-cat="all" data-i18n="cat_all">Todo</button>
         <button class="nav-btn" data-cat="calzado" data-i18n="cat_calzado">Calzado</button>
         <button class="nav-btn" data-cat="ropa" data-i18n="cat_ropa">Ropa</button>
         <button class="nav-btn" data-cat="accesorio" data-i18n="cat_accesorio">Accesorios</button>
       </nav>
+
       <div class="header__search">
         <input type="text" id="searchInput" placeholder="Buscar..." autocomplete="off" data-i18n-placeholder="search_placeholder" />
       </div>
-      <div class="header__user" id="headerUser">
-        <button class="user-btn" id="loginTrigger" data-i18n="sign_in">Iniciar sesión</button>
+
+      <!-- All right-side icons grouped together -->
+      <div class="header__actions">
+        <div class="header__user" id="headerUser">
+          <button class="user-btn" id="loginTrigger" data-i18n="sign_in">Iniciar sesión</button>
+        </div>
+        <a href="/favoritos" class="fav-header-btn" aria-label="Favoritos" title="Mis favoritos">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <span class="fav-header-count hidden" id="favHeaderCount">0</span>
+        </a>
+        <select class="currency-select" id="currencySelect" aria-label="Moneda">
+          <option value="USD">$ USD</option>
+          <option value="EUR">€ EUR</option>
+          <option value="DOP">RD$ DOP</option>
+        </select>
+        <button class="lang-btn" id="langBtn" aria-label="Cambiar idioma">
+          <span id="langLabel">ES</span>
+        </button>
+        <button class="cart-btn" id="cartBtn" aria-label="Carrito">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          <span class="cart-badge hidden" id="cartBadge">0</span>
+        </button>
       </div>
-      <a href="/favoritos" class="fav-header-btn" aria-label="Favoritos" title="Mis favoritos">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        <span class="fav-header-count hidden" id="favHeaderCount">0</span>
-      </a>
-      <select class="currency-select" id="currencySelect" aria-label="Moneda">
-        <option value="USD">$ USD</option>
-        <option value="EUR">€ EUR</option>
-        <option value="DOP">RD$ DOP</option>
-      </select>
-      <!-- Language toggle -->
-      <button class="lang-btn" id="langBtn" aria-label="Cambiar idioma">
-        <span id="langLabel">ES</span>
-      </button>
-      <button class="cart-btn" id="cartBtn" aria-label="Carrito">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        <span class="cart-badge hidden" id="cartBadge">0</span>
-      </button>
     </div>
   </header>
 
