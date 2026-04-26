@@ -267,11 +267,14 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   height: 100%;
   max-height: 100dvh;
   background: var(--white);
-  /* Grid: middle row scrolls reliably on iOS Safari (flex+overflow bug without minmax) */
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* One scrollable column: user scrolls entire cart (no squeezed middle row) */
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
   transform: translateX(100%);
   transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
   box-shadow: -4px 0 24px rgba(0,0,0,0.1);
@@ -279,7 +282,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 .cart-drawer.open .cart-drawer__panel { transform: translateX(0); }
 
 .cart-drawer__head {
-  grid-row: 1;
+  position: sticky;
+  top: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -305,11 +309,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 .cart-drawer__close:hover { color: var(--black); background: var(--gray-100); }
 
 .cart-drawer__body {
-  grid-row: 2;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
+  flex: 0 0 auto;
+  overflow: visible;
   padding: 1rem 1.5rem;
 }
 
@@ -319,7 +320,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  height: 100%;
+  min-height: 45vh;
   padding: 3rem 0;
   color: var(--gray-400);
   font-size: 0.9rem;
@@ -397,9 +398,10 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 .cart-item__remove:hover { color: var(--black); }
 
 .cart-drawer__foot {
-  grid-row: 3;
+  flex: 0 0 auto;
   border-top: 1px solid var(--gray-200);
   padding: 1.25rem 1.5rem;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
   flex-shrink: 0;
   background: var(--white);
 }
