@@ -686,7 +686,10 @@ app.post('/api/paypal/create-order', async (req, res) => {
       }),
     });
     const ppData = await ppRes.json();
-    if (!ppData.id) return res.status(502).json({ error: 'Error creando orden PayPal.' });
+    if (!ppData.id) {
+      console.error('PayPal order response:', JSON.stringify(ppData));
+      return res.status(502).json({ error: 'Error creando orden PayPal: ' + (ppData.message || ppData.error || JSON.stringify(ppData)) });
+    }
 
     // Save order
     db.prepare(`

@@ -206,11 +206,13 @@
       const res  = await fetch('/api/payment-config');
       payConfig  = await res.json();
       renderTransferInfo();
-      if (payConfig.paypalClientId) loadPayPal();
-      else {
-        // Hide PayPal tab if not configured
-        document.querySelector('[data-method="paypal"]')?.classList.add('pay-method-tab--disabled');
-        payPanelPaypal.innerHTML = '<p class="pay-not-configured">PayPal no configurado aún.</p>';
+      if (payConfig.paypalClientId) {
+        loadPayPal();
+      } else {
+        // No PayPal → hide tab, activate transfer by default
+        const ppTab = document.querySelector('[data-method="paypal"]');
+        if (ppTab) ppTab.style.display = 'none';
+        document.querySelector('[data-method="transfer"]')?.click();
       }
     } catch { /* ignore */ }
   }
@@ -281,7 +283,8 @@
 
       onError: (err) => {
         console.error('PayPal error', err);
-        alert('Hubo un error con PayPal. Intentá de nuevo o usá transferencia.');
+        // Switch to transfer method automatically
+        document.querySelector('[data-method="transfer"]')?.click();
       },
     }).render('#paypalButtonContainer');
 
