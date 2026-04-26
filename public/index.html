@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Calziani</title>
-  <link rel="stylesheet" href="/css/style.css?v=20260426e" />
+  <link rel="stylesheet" href="/css/style.css?v=20260426f" />
   <link rel="icon" href="/img/587730407_17843809347618797_3290323688225420457_n.jpg" />
 </head>
 <body>
@@ -124,6 +124,15 @@
               <span id="cartTotalDop" class="cart-totals__dop-line"></span>
             </div>
           </div>
+        </div>
+
+        <div class="cart-terms" id="cartTermsBlock">
+          <label class="cart-terms__label">
+            <input type="checkbox" id="acceptTerms" autocomplete="off" />
+            <span data-i18n="terms_checkbox">Acepto los términos y condiciones de Calziani.</span>
+          </label>
+          <button type="button" class="cart-terms__link" id="openTermsModal" data-i18n="terms_read">Ver términos completos</button>
+          <p class="cart-terms__err hidden" id="termsErr" data-i18n="terms_err">Debés aceptar los términos para continuar.</p>
         </div>
 
         <!-- Payment method selector -->
@@ -354,6 +363,27 @@
       <span class="footer__copy" data-i18n="footer_copy">&copy; 2026 All rights reserved.</span>
     </div>
   </footer>
+
+  <!-- TERMS MODAL (above cart drawer z-index) -->
+  <div id="termsModal" class="modal modal--terms" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal__backdrop" id="termsBackdrop"></div>
+    <div class="terms-modal-box">
+      <button type="button" class="auth-modal-close" id="termsModalClose" aria-label="Cerrar">&times;</button>
+      <h2 class="terms-modal__title" data-i18n="terms_modal_title">Términos y condiciones</h2>
+      <div class="terms-modal__body" id="termsModalBody">
+        <p class="terms-modal__lead">Al comprar en Calziani aceptás las siguientes condiciones:</p>
+        <ol class="terms-modal__list">
+          <li><strong>Productos y precios.</strong> Las fotos y descripciones son orientativas. Los precios se muestran en USD con referencia en DOP; pueden corregirse errores evidentes antes de confirmar el pedido.</li>
+          <li><strong>Pedidos.</strong> La compra queda sujeta a disponibilidad de stock y a la verificación del pago (transferencia u otro medio indicado).</li>
+          <li><strong>Envío.</strong> Los plazos son estimados y pueden variar por destino o causas ajenas a Calziani. El costo de envío es el indicado al momento del checkout.</li>
+          <li><strong>Devoluciones y reembolsos.</strong> Solo habrá reembolso o cambio por <strong>falla o defecto del producto</strong> (error de fábrica o envío incorrecto/dañado), previa revisión por Calziani. No proceden devoluciones por arrepentimiento, talla elegida incorrectamente o uso del artículo. Plazo para reclamos: <strong>7 días corridos</strong> desde la recepción, producto sin uso y con evidencia (fotos).</li>
+          <li><strong>Privacidad.</strong> Tus datos de envío y contacto se usan solo para gestionar el pedido y comunicarnos contigo.</li>
+          <li><strong>Legislación.</strong> Rigen las leyes de la República Dominicana.</li>
+        </ol>
+        <p class="terms-modal__foot">Si tenés dudas, escribinos por WhatsApp o Instagram antes de comprar.</p>
+      </div>
+    </div>
+  </div>
 
   <script src="/js/main.js"></script>
 </body>

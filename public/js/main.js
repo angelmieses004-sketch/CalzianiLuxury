@@ -44,6 +44,10 @@
       title_calzado:      'Calzado',
       title_ropa:         'Ropa',
       title_accesorio:    'Accesorios',
+      terms_checkbox:     'Acepto los términos y condiciones de Calziani.',
+      terms_read:         'Ver términos completos',
+      terms_err:          'Debés aceptar los términos para continuar.',
+      terms_modal_title:  'Términos y condiciones',
     },
     en: {
       announcement:       'FREE WORLDWIDE SHIPPING ON ORDERS +$150',
@@ -76,8 +80,43 @@
       title_calzado:      'Footwear',
       title_ropa:         'Clothing',
       title_accesorio:    'Accessories',
+      terms_checkbox:     'I accept Calziani\'s terms and conditions.',
+      terms_read:         'Read full terms',
+      terms_err:          'You must accept the terms to continue.',
+      terms_modal_title:  'Terms and conditions',
     },
   };
+
+  const TERMS_BODY_HTML = {
+    es: `
+        <p class="terms-modal__lead">Al comprar en Calziani aceptás las siguientes condiciones:</p>
+        <ol class="terms-modal__list">
+          <li><strong>Productos y precios.</strong> Las fotos y descripciones son orientativas. Los precios se muestran en USD con referencia en DOP; pueden corregirse errores evidentes antes de confirmar el pedido.</li>
+          <li><strong>Pedidos.</strong> La compra queda sujeta a disponibilidad de stock y a la verificación del pago (transferencia u otro medio indicado).</li>
+          <li><strong>Envío.</strong> Los plazos son estimados y pueden variar por destino o causas ajenas a Calziani. El costo de envío es el indicado al momento del checkout.</li>
+          <li><strong>Devoluciones y reembolsos.</strong> Solo habrá reembolso o cambio por <strong>falla o defecto del producto</strong> (error de fábrica o envío incorrecto/dañado), previa revisión por Calziani. No proceden devoluciones por arrepentimiento, talla elegida incorrectamente o uso del artículo. Plazo para reclamos: <strong>7 días corridos</strong> desde la recepción, producto sin uso y con evidencia (fotos).</li>
+          <li><strong>Privacidad.</strong> Tus datos de envío y contacto se usan solo para gestionar el pedido y comunicarnos contigo.</li>
+          <li><strong>Legislación.</strong> Rigen las leyes de la República Dominicana.</li>
+        </ol>
+        <p class="terms-modal__foot">Si tenés dudas, escribinos por WhatsApp o Instagram antes de comprar.</p>`,
+    en: `
+        <p class="terms-modal__lead">By purchasing from Calziani you agree to the following:</p>
+        <ol class="terms-modal__list">
+          <li><strong>Products and pricing.</strong> Photos and descriptions are indicative. Prices are shown in USD with a DOP reference; obvious errors may be corrected before the order is confirmed.</li>
+          <li><strong>Orders.</strong> Your purchase is subject to stock availability and payment verification (bank transfer or other method shown at checkout).</li>
+          <li><strong>Shipping.</strong> Delivery times are estimates and may vary by destination or events outside Calziani’s control. Shipping cost is as stated at checkout.</li>
+          <li><strong>Returns and refunds.</strong> Refunds or exchanges apply <strong>only for product failure or defect</strong> (manufacturing fault or wrong/damaged shipment), after review by Calziani. No refunds for change of mind, wrong size chosen by the customer, or used items. Claims: <strong>7 calendar days</strong> from receipt, unworn item with proof (photos).</li>
+          <li><strong>Privacy.</strong> Shipping and contact details are used only to fulfil your order and contact you about it.</li>
+          <li><strong>Governing law.</strong> The laws of the Dominican Republic apply.</li>
+        </ol>
+        <p class="terms-modal__foot">If you have questions, contact us on WhatsApp or Instagram before buying.</p>`,
+  };
+
+  function applyTermsModalBody() {
+    const el = document.getElementById('termsModalBody');
+    if (!el) return;
+    el.innerHTML = TERMS_BODY_HTML[activeLang] || TERMS_BODY_HTML.es;
+  }
 
   let activeLang = localStorage.getItem('calziani_lang') || 'es';
 
@@ -96,6 +135,7 @@
     if (langLabel) langLabel.textContent = activeLang.toUpperCase();
     // Update section title based on current category
     if (sectionTitle) sectionTitle.textContent = t(`title_${currentCategory}`);
+    applyTermsModalBody();
   }
 
   function initLangBtn() {
@@ -263,7 +303,16 @@
   cartBtn?.addEventListener('click', openCart);
   cartClose?.addEventListener('click', closeCart);
   cartBackdrop?.addEventListener('click', closeCart);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && cartDrawer?.classList.contains('open')) closeCart(); });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const termsModal = document.getElementById('termsModal');
+    if (termsModal?.classList.contains('open')) {
+      termsModal.classList.remove('open');
+      termsModal.setAttribute('aria-hidden', 'true');
+      return;
+    }
+    if (cartDrawer?.classList.contains('open')) closeCart();
+  });
 
   function updateCartUI() {
     const cart  = getCart();
@@ -280,6 +329,9 @@
       cartEmpty.classList.remove('hidden');
       cartItems.classList.add('hidden');
       cartFoot.classList.add('hidden');
+      const at = document.getElementById('acceptTerms');
+      if (at) at.checked = false;
+      updateCheckoutTermsGate();
       return;
     }
     cartEmpty.classList.add('hidden');
@@ -323,6 +375,7 @@
     if (cartShippingDop) cartShippingDop.textContent = formatDopCheckout(SHIPPING_USD);
     if (cartTotalUsd) cartTotalUsd.textContent = formatUsdCheckout(total);
     if (cartTotalDop) cartTotalDop.textContent = formatDopCheckout(total);
+    updateCheckoutTermsGate();
 
     // Qty buttons
     cartItems.querySelectorAll('.qty-btn').forEach(btn => {
@@ -402,6 +455,50 @@
     return ok;
   }
 
+  function validateTerms() {
+    const ok = !!document.getElementById('acceptTerms')?.checked;
+    document.getElementById('termsErr')?.classList.toggle('hidden', ok);
+    return ok;
+  }
+
+  function updateCheckoutTermsGate() {
+    const ok = !!document.getElementById('acceptTerms')?.checked;
+    ['btnWhatsapp', 'btnAzulPay'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      btn.disabled = !ok;
+      btn.style.opacity = ok ? '' : '0.45';
+      btn.style.cursor = ok ? '' : 'not-allowed';
+    });
+  }
+
+  function initTermsCheckout() {
+    const modal = document.getElementById('termsModal');
+    const accept = document.getElementById('acceptTerms');
+    const openBtn = document.getElementById('openTermsModal');
+    const backdrop = document.getElementById('termsBackdrop');
+    const closeBtn = document.getElementById('termsModalClose');
+
+    function closeTermsModal() {
+      modal?.classList.remove('open');
+      modal?.setAttribute('aria-hidden', 'true');
+    }
+    function openTermsModal() {
+      modal?.classList.add('open');
+      modal?.setAttribute('aria-hidden', 'false');
+    }
+
+    accept?.addEventListener('change', () => {
+      document.getElementById('termsErr')?.classList.add('hidden');
+      updateCheckoutTermsGate();
+    });
+    openBtn?.addEventListener('click', openTermsModal);
+    backdrop?.addEventListener('click', closeTermsModal);
+    closeBtn?.addEventListener('click', closeTermsModal);
+
+    updateCheckoutTermsGate();
+  }
+
   function cartTotals() {
     const cart        = getCart();
     const subtotalUSD = cart.reduce((s, i) => s + i.price * i.qty, 0);
@@ -412,6 +509,7 @@
   // ─── AZUL card payment ───────────────────────────────────────────────────────
   btnAzulPay?.addEventListener('click', async () => {
     if (!validateShipping()) return;
+    if (!validateTerms()) return;
     const cart     = getCart();
     if (!cart.length) return;
     const shipping = getShippingInfo();
@@ -456,6 +554,7 @@
     const cart = getCart();
     if (!cart.length) return;
     if (!validateShipping()) return;
+    if (!validateTerms()) return;
     const ship = getShippingInfo();
     const { subtotal, total } = cartTotals();
     const items = cart.map(i => `• ${i.name}${i.size ? ` (${i.size})` : ''} x${i.qty} — ${formatUsdCheckout(i.price * i.qty)} / ${formatDopCheckout(i.price * i.qty)}`).join('\n');
@@ -476,6 +575,10 @@
       `Dirección: ${ship.address}`,
       ``,
       `Adjunto comprobante de transferencia.`,
+      ``,
+      activeLang === 'en'
+        ? '✓ I confirm that I accepted Calziani\'s terms and conditions.'
+        : '✓ Confirmo que acepté los términos y condiciones de Calziani.',
     ].join('\n');
     const phone = (payConfig.whatsapp || '18093076122').replace(/\D/g, '');
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -903,6 +1006,7 @@
   });
   initCurrencySelect();
   initAuth();
+  initTermsCheckout();
   loadPaymentConfig();
   updateFavHeaderCount();
 
