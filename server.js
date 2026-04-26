@@ -720,14 +720,6 @@ app.post('/api/paypal/create-order', async (req, res) => {
           reference_id: orderNum,
           amount: { currency_code: 'USD', value: totalUSD },
           description: `Calziani — ${cart.length} producto(s)`,
-          shipping: shipping ? {
-            name: { full_name: shipping.name || '' },
-            address: {
-              address_line_1: shipping.address || '',
-              admin_area_1:   shipping.province || '',
-              country_code:   'DO',
-            },
-          } : undefined,
         }],
       }),
     });
