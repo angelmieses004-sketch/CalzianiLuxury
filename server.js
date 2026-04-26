@@ -628,6 +628,99 @@ app.put('/api/admin/password', requireAuth, (req, res) => {
   }
 });
 
+// ─── Payment config (public, for frontend) ────────────────────────────────────
+app.get('/api/payment-config', (req, res) => {
+  res.json({
+    paypalClientId: process.env.PAYPAL_CLIENT_ID || '',
+    usdRate: Number(process.env.USD_RATE) || 57,
+    bankName:   process.env.BANK_NAME   || '',
+    bankAccount:process.env.BANK_ACCOUNT|| '',
+    bankHolder: process.env.BANK_HOLDER || '',
+    bankType:   process.env.BANK_TYPE   || '',
+    whatsapp:   process.env.WHATSAPP_NUMBER || '',
+  });
+});
+
+// ─── PayPal ────────────────────────────────────────────────────────────────────
+const PAYPAL_ENV        = process.env.PAYPAL_ENV === 'production' ? 'production' : 'sandbox';
+const PAYPAL_API_BASE   = PAYPAL_ENV === 'production'
+  ? 'https://api-m.paypal.com'
+  : 'https://api-m.sandbox.paypal.com';
+
+async function getPayPalToken() {
+  const creds = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_SECRET}`).toString('base64');
+  const res   = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
+    method: 'POST',
+    headers: { 'Authorization': `Basic ${creds}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=client_credentials',
+  });
+  const data = await res.json();
+  return data.access_token;
+}
+
+app.post('/api/paypal/create-order', async (req, res) => {
+  const { cart } = req.body || {};
+  if (!cart?.length) return res.status(400).json({ error: 'Carrito vacío.' });
+  if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_SECRET)
+    return res.status(503).json({ error: 'PayPal no configurado.' });
+
+  const usdRate  = Number(process.env.USD_RATE) || 57;
+  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const itbis    = Math.round(subtotal * 0.18 * 100) / 100;
+  const totalRD  = Math.round((subtotal + itbis) * 100) / 100;
+  const totalUSD = (totalRD / usdRate).toFixed(2);
+
+  try {
+    const token    = await getPayPalToken();
+    const orderNum = `CAL-${Date.now().toString(36).toUpperCase()}`;
+    const ppRes    = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'CAPTURE',
+        purchase_units: [{
+          reference_id: orderNum,
+          amount: { currency_code: 'USD', value: totalUSD },
+          description: `Calziani — ${cart.length} producto(s)`,
+        }],
+      }),
+    });
+    const ppData = await ppRes.json();
+    if (!ppData.id) return res.status(502).json({ error: 'Error creando orden PayPal.' });
+
+    // Save order
+    db.prepare(`
+      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, cardnet_session, customer_email)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending_paypal', ?, ?)
+    `).run(orderNum, req.user?.id || null, JSON.stringify(cart), subtotal, itbis, totalRD, ppData.id, null);
+
+    res.json({ orderId: ppData.id, orderNumber: orderNum });
+  } catch (e) {
+    console.error('PayPal create-order error:', e);
+    res.status(500).json({ error: 'Error al conectar con PayPal.' });
+  }
+});
+
+app.post('/api/paypal/capture-order/:orderId', async (req, res) => {
+  if (!process.env.PAYPAL_CLIENT_ID) return res.status(503).json({ error: 'PayPal no configurado.' });
+  try {
+    const token  = await getPayPalToken();
+    const capRes = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders/${req.params.orderId}/capture`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    });
+    const capData = await capRes.json();
+    if (capData.status === 'COMPLETED') {
+      db.prepare(`UPDATE orders SET status = 'paid_paypal' WHERE cardnet_session = ?`).run(req.params.orderId);
+      localStorage && localStorage.removeItem('calziani_cart'); // no-op on server, handled client-side
+    }
+    res.json(capData);
+  } catch (e) {
+    console.error('PayPal capture error:', e);
+    res.status(500).json({ error: 'Error al capturar el pago.' });
+  }
+});
+
 // ─── Cardnet checkout ─────────────────────────────────────────────────────────
 const CARDNET_ENV          = process.env.CARDNET_ENV === 'production' ? 'production' : 'sandbox';
 const CARDNET_SESSION_URL  = CARDNET_ENV === 'production'

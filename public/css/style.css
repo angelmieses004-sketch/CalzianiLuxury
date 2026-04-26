@@ -336,6 +336,93 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   letter-spacing: 0.04em;
 }
 
+/* ─── Payment method tabs ───────────────────────────────────────────────────── */
+.pay-method-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.pay-method-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.5rem;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gray-600);
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
+  cursor: pointer;
+}
+.pay-method-tab:hover { border-color: var(--black); color: var(--black); }
+.pay-method-tab.active { border-color: var(--black); color: var(--black); background: var(--gray-100); }
+.pay-method-tab--disabled { opacity: 0.4; pointer-events: none; }
+
+.pay-panel { display: none; margin-bottom: 0.75rem; }
+.pay-panel.active { display: block; }
+
+.pay-not-configured {
+  font-size: 0.8rem;
+  color: var(--gray-400);
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.cart-usd-note {
+  font-size: 0.72rem;
+  color: var(--gray-400);
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+/* ─── Transfer info ─────────────────────────────────────────────────────────── */
+.transfer-info {
+  background: var(--gray-100);
+  border-radius: var(--radius);
+  padding: 0.875rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.transfer-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--gray-200);
+}
+.transfer-row:last-of-type { border-bottom: none; }
+.transfer-row span { color: var(--gray-400); }
+.transfer-row strong { color: var(--black); font-weight: 600; }
+
+.transfer-note {
+  font-size: 0.72rem;
+  color: var(--gray-400);
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+.btn-whatsapp {
+  width: 100%;
+  padding: 0.75rem;
+  background: #25D366;
+  color: white;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: opacity var(--transition);
+  margin-bottom: 0.75rem;
+}
+.btn-whatsapp:hover { opacity: 0.88; }
+
 /* ─── Product card heart + cart overlay ─────────────────────────────────────── */
 .product-card-wrap { position: relative; }
 
