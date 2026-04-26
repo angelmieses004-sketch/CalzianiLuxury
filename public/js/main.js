@@ -218,7 +218,7 @@
 
   // ─── Payment methods ──────────────────────────────────────────────────────────
   let payConfig   = {};
-  let activeMethod = 'card';
+  let activeMethod = 'transfer';
 
   const payMethodTabs    = document.querySelectorAll('.pay-method-tab');
   const payPanelCard     = document.getElementById('payPanelCard');
