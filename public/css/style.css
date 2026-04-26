@@ -108,6 +108,58 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 .nav-btn:hover { color: var(--black); background: var(--gray-100); }
 .nav-btn.active { color: var(--black); background: var(--gray-100); font-weight: 700; }
 
+/* ─── Currency selector ─────────────────────────────────────────────────────── */
+.currency-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--black);
+  cursor: pointer;
+  height: 34px;
+  flex-shrink: 0;
+  transition: border-color var(--transition);
+}
+.currency-select:hover { border-color: var(--gray-400); }
+.currency-select:focus { outline: none; border-color: var(--black); }
+
+/* ─── Favorites header button ───────────────────────────────────────────────── */
+.fav-header-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  color: var(--black);
+  border-radius: var(--radius);
+  transition: background var(--transition);
+}
+.fav-header-btn:hover { background: var(--gray-100); }
+.fav-header-count {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--black);
+  color: var(--white);
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
 /* ─── Cart button in header ─────────────────────────────────────────────────── */
 .cart-btn {
   position: relative;
@@ -1489,3 +1541,30 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   .header__search input { width: 130px; }
   .pc-name { font-size: 0.82rem; }
 }
+
+/* ─── Favorites empty state ─────────────────────────────────────────────────── */
+.favs-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5rem 2rem;
+  gap: 1.2rem;
+  text-align: center;
+  color: var(--gray-400);
+}
+.favs-empty p { font-size: 1rem; letter-spacing: 0.03em; }
+.btn-browse {
+  display: inline-block;
+  padding: 0.7rem 2rem;
+  background: var(--black);
+  color: var(--white);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: var(--radius);
+  transition: background var(--transition);
+}
+.btn-browse:hover { background: var(--gray-700); }

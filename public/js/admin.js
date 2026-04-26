@@ -32,7 +32,6 @@
   const fName          = document.getElementById('fName');
   const fCategory      = document.getElementById('fCategory');
   const fPrice         = document.getElementById('fPrice');
-  const fStock         = document.getElementById('fStock');
   const fDesc          = document.getElementById('fDesc');
   const formError          = document.getElementById('formError');
   const formSubmitBtn      = document.getElementById('formSubmitBtn');
@@ -59,7 +58,7 @@
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
   function formatPrice(p) {
-    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(p);
+    return '$' + new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(p);
   }
 
   function escHtml(str) {
@@ -84,32 +83,53 @@
     return { 'Content-Type': 'application/json', 'x-admin-token': token };
   }
 
-  // ─── Size checkboxes ────────────────────────────────────────────────────────
-  function renderSizeCheckboxes(category, selected = []) {
+  // ─── Size + stock inputs ────────────────────────────────────────────────────
+  function renderSizeStockInputs(category, selected = [], stockMap = {}) {
     const sizes = SIZES_BY_CATEGORY[category];
-
     if (!sizes) {
       sizesContainer.innerHTML = '';
       sizesHint.classList.remove('hidden');
       return;
     }
-
     sizesHint.classList.add('hidden');
     sizesContainer.innerHTML = sizes.map(s => {
       const checked = selected.includes(s) ? 'checked' : '';
-      return `<label class="size-checkbox">
-        <input type="checkbox" value="${s}" ${checked} />
-        <span>${s}</span>
+      const qty = stockMap[s] ?? '';
+      return `<label class="size-stock-row">
+        <input type="checkbox" class="size-cb" value="${s}" ${checked} />
+        <span class="size-stock-label">${s}</span>
+        <input type="number" class="size-stock-qty" data-size="${s}" value="${qty}" min="0" step="1" placeholder="0" ${checked ? '' : 'disabled'} />
+        <span class="size-stock-unit">uds</span>
       </label>`;
     }).join('');
+
+    // Toggle qty input enabled/disabled based on checkbox
+    sizesContainer.querySelectorAll('.size-cb').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const qtyInput = sizesContainer.querySelector(`.size-stock-qty[data-size="${cb.value}"]`);
+        if (qtyInput) {
+          qtyInput.disabled = !cb.checked;
+          if (!cb.checked) qtyInput.value = '';
+        }
+      });
+    });
   }
 
   function getSelectedSizes() {
-    return [...sizesContainer.querySelectorAll('input[type=checkbox]:checked')].map(cb => cb.value);
+    return [...sizesContainer.querySelectorAll('.size-cb:checked')].map(cb => cb.value);
+  }
+
+  function getSizesStock() {
+    const result = {};
+    sizesContainer.querySelectorAll('.size-cb:checked').forEach(cb => {
+      const qtyInput = sizesContainer.querySelector(`.size-stock-qty[data-size="${cb.value}"]`);
+      result[cb.value] = Number(qtyInput?.value) || 0;
+    });
+    return result;
   }
 
   fCategory.addEventListener('change', () => {
-    renderSizeCheckboxes(fCategory.value, []);
+    renderSizeStockInputs(fCategory.value, [], {});
   });
 
   // ─── Multi-image management ─────────────────────────────────────────────────
@@ -339,7 +359,6 @@
   function resetForm() {
     editId.value = '';
     productForm.reset();
-    fStock.value = '0';
     hideError(formError);
     formTitle.textContent = 'Nuevo producto';
     formSubmitBtn.textContent = 'Guardar producto';
@@ -363,11 +382,10 @@
       fName.value = p.name;
       fCategory.value = p.category;
       fPrice.value = p.price;
-      fStock.value = p.stock;
       fDesc.value = p.description || '';
       fComparePrice.value = p.compare_price || '';
       fShipping.value = p.shipping_days || '';
-      renderSizeCheckboxes(p.category, Array.isArray(p.sizes) ? p.sizes : []);
+      renderSizeStockInputs(p.category, Array.isArray(p.sizes) ? p.sizes : [], p.sizes_stock || {});
       updateOfferPreview();
       existingImages = Array.isArray(p.images) ? p.images : [];
       newFiles = [];
@@ -394,9 +412,9 @@
     const name = fName.value.trim();
     const category = fCategory.value;
     const price = fPrice.value;
-    const stock = fStock.value;
     const description = fDesc.value.trim();
     const sizes = getSelectedSizes();
+    const sizes_stock = getSizesStock();
     const compare_price = fComparePrice.value;
     const shipping_days = fShipping.value.trim();
     const id = editId.value;
@@ -416,9 +434,9 @@
     formData.append('name', name);
     formData.append('category', category);
     formData.append('price', price);
-    formData.append('stock', stock || '0');
     formData.append('description', description);
     formData.append('sizes', JSON.stringify(sizes));
+    formData.append('sizes_stock', JSON.stringify(sizes_stock));
     formData.append('compare_price', compare_price || '');
     formData.append('shipping_days', shipping_days || '');
     formData.append('remove_image_ids', JSON.stringify(removeIds));

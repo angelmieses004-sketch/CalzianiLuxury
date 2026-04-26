@@ -21,8 +21,39 @@
     accesorio: ['Única talla'],
   };
 
-  function formatPrice(price) {
-    return 'RD$' + new Intl.NumberFormat('es-DO', { maximumFractionDigits: 0 }).format(price);
+  // ─── Currency ─────────────────────────────────────────────────────────────────
+  let currencyRates = { USD: 1, EUR: 0.92, DOP: 59.48 };
+  let activeCurrency = localStorage.getItem('calziani_currency') || 'USD';
+
+  const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', DOP: 'RD$' };
+  const CURRENCY_LOCALES  = { USD: 'en-US', EUR: 'de-DE', DOP: 'es-DO' };
+  const CURRENCY_DECIMALS = { USD: 2, EUR: 2, DOP: 0 };
+
+  function formatPrice(priceUSD) {
+    const converted = priceUSD * (currencyRates[activeCurrency] || 1);
+    const sym = CURRENCY_SYMBOLS[activeCurrency];
+    const loc = CURRENCY_LOCALES[activeCurrency];
+    const dec = CURRENCY_DECIMALS[activeCurrency];
+    return sym + new Intl.NumberFormat(loc, { maximumFractionDigits: dec, minimumFractionDigits: dec }).format(converted);
+  }
+
+  async function loadCurrencyRates() {
+    try {
+      const data = await (await fetch('/api/currency-rates')).json();
+      currencyRates = { ...currencyRates, ...data };
+    } catch { /* use defaults */ }
+  }
+
+  function initCurrencySelect() {
+    const sel = document.getElementById('currencySelect');
+    if (!sel) return;
+    sel.value = activeCurrency;
+    sel.addEventListener('change', () => {
+      activeCurrency = sel.value;
+      localStorage.setItem('calziani_currency', activeCurrency);
+      updateCartUI();
+      renderProducts(lastProducts);
+    });
   }
 
   function stockLabel(stock) {
@@ -62,8 +93,13 @@
     const cart = getCart();
     const key  = `${product.id}__${product.size || ''}`;
     const existing = cart.find(i => `${i.id}__${i.size || ''}` === key);
-    if (existing) { existing.qty += 1; }
-    else { cart.push({ ...product, qty: 1 }); }
+    const maxQty = product.maxQty ?? Infinity;
+    if (existing) {
+      existing.qty = Math.min(maxQty, existing.qty + 1);
+      if (product.maxQty !== undefined) existing.maxQty = product.maxQty;
+    } else {
+      cart.push({ ...product, qty: 1 });
+    }
     saveCart(cart);
     updateCartUI();
     openCart();
@@ -80,7 +116,8 @@
     const cart = getCart();
     const item = cart.find(i => `${i.id}__${i.size || ''}` === key);
     if (!item) return;
-    item.qty = Math.max(1, item.qty + delta);
+    const maxQty = item.maxQty ?? Infinity;
+    item.qty = Math.min(maxQty, Math.max(1, item.qty + delta));
     saveCart(cart);
     updateCartUI();
   }
@@ -144,7 +181,7 @@
           <div class="cart-item__qty">
             <button class="qty-btn" data-id="${item.id}" data-size="${item.size||''}" data-delta="-1">−</button>
             <span>${item.qty}</span>
-            <button class="qty-btn" data-id="${item.id}" data-size="${item.size||''}" data-delta="1">+</button>
+            <button class="qty-btn" data-id="${item.id}" data-size="${item.size||''}" data-delta="1" ${item.maxQty !== undefined && item.qty >= item.maxQty ? 'disabled style="opacity:.35;cursor:default"' : ''}>+</button>
           </div>
         </div>
         <div class="cart-item__right">
@@ -172,9 +209,9 @@
     });
 
     // Refresh USD note if PayPal visible
-    if (activeMethod === 'paypal' && payConfig.usdRate && cartUsdNote) {
+    if (activeMethod === 'paypal' && cartUsdNote) {
       const { totalUSD } = cartTotals();
-      cartUsdNote.textContent = `≈ USD $${totalUSD} (tipo de cambio RD$${payConfig.usdRate})`;
+      cartUsdNote.textContent = `Total PayPal: USD $${totalUSD}`;
     }
   }
 
@@ -238,13 +275,11 @@
   }
 
   function cartTotals() {
-    const cart     = getCart();
-    const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-    const itbis    = Math.round(subtotal * 0.18 * 100) / 100;
-    const total    = Math.round((subtotal + itbis) * 100) / 100;
-    const usdRate  = payConfig.usdRate || 57;
-    const totalUSD = (total / usdRate).toFixed(2);
-    return { subtotal, itbis, total, totalUSD };
+    const cart        = getCart();
+    const subtotalUSD = cart.reduce((s, i) => s + i.price * i.qty, 0);
+    const itbisUSD    = Math.round(subtotalUSD * 0.18 * 100) / 100;
+    const totalUSD    = Math.round((subtotalUSD + itbisUSD) * 100) / 100;
+    return { subtotal: subtotalUSD, itbis: itbisUSD, total: totalUSD, totalUSD: totalUSD.toFixed(2) };
   }
 
   function renderPayPalButtons() {
@@ -288,9 +323,9 @@
       },
     }).render('#paypalButtonContainer');
 
-    // Show USD conversion note
+    // Show USD note for PayPal
     const { totalUSD } = cartTotals();
-    if (cartUsdNote) cartUsdNote.textContent = `≈ USD $${totalUSD} (tipo de cambio RD$${payConfig.usdRate || 57})`;
+    if (cartUsdNote) cartUsdNote.textContent = `Total PayPal: USD $${totalUSD}`;
   }
 
   btnWhatsapp?.addEventListener('click', () => {
@@ -323,6 +358,8 @@
     });
   }
 
+  let lastProducts = [];
+
   // ─── Fetch & render ─────────────────────────────────────────────────────────
   async function fetchProducts(category = 'all', search = '', size = 'all') {
     grid.innerHTML = '<div class="loading">Cargando...</div>';
@@ -334,7 +371,8 @@
     try {
       const res = await fetch(`/api/products?${params}`);
       if (!res.ok) throw new Error();
-      renderProducts(await res.json());
+      lastProducts = await res.json();
+      renderProducts(lastProducts);
     } catch {
       grid.innerHTML = '<div class="empty-state"><span class="empty-state__icon">!</span>Error al cargar productos.</div>';
     }
@@ -376,7 +414,7 @@
             <button class="pc-fav-btn${fav ? ' active' : ''}" data-id="${p.id}" aria-label="Favorito" title="Favorito">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             </button>
-            <button class="pc-cart-btn" data-id="${p.id}" data-name="${escHtml(p.name)}" data-price="${p.price}" data-cover="${escHtml(p.cover || '')}" aria-label="Agregar al carrito">
+            <button class="pc-cart-btn" data-id="${p.id}" data-name="${escHtml(p.name)}" data-price="${p.price}" data-cover="${escHtml(p.cover || '')}" data-stock="${p.stock}" aria-label="Agregar al carrito">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
               Agregar
             </button>
@@ -406,7 +444,8 @@
     grid.querySelectorAll('.pc-cart-btn').forEach(btn => {
       btn.addEventListener('click', e => {
         e.preventDefault(); e.stopPropagation();
-        addToCart({ id: Number(btn.dataset.id), name: btn.dataset.name, price: Number(btn.dataset.price), cover: btn.dataset.cover, size: '' });
+        const stock = Number(btn.dataset.stock);
+        addToCart({ id: Number(btn.dataset.id), name: btn.dataset.name, price: Number(btn.dataset.price), cover: btn.dataset.cover, size: '', maxQty: stock > 0 ? stock : undefined });
       });
     });
   }
@@ -629,12 +668,25 @@
     checkGoogle();
   }
 
+  // ─── Favorites header count ───────────────────────────────────────────────────
+  function updateFavHeaderCount() {
+    const cnt = getFavs().length;
+    const el = document.getElementById('favHeaderCount');
+    if (!el) return;
+    el.textContent = cnt;
+    el.classList.toggle('hidden', cnt === 0);
+  }
+
   // ─── Init ─────────────────────────────────────────────────────────────────────
   renderSizeFilter(currentCategory);
-  fetchProducts();
+  loadCurrencyRates().then(() => {
+    fetchProducts();
+    updateCartUI();
+  });
+  initCurrencySelect();
   initAuth();
-  updateCartUI();
   loadPaymentConfig();
+  updateFavHeaderCount();
 
   // ─── Hide/show header on scroll ───────────────────────────────────────────────
   const header = document.querySelector('.header');

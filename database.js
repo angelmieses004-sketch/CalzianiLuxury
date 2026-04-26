@@ -91,6 +91,7 @@ try { db.exec(`ALTER TABLE products ADD COLUMN sizes TEXT DEFAULT '[]'`); } catc
 try { db.exec(`ALTER TABLE products ADD COLUMN shipping_days TEXT DEFAULT NULL`); } catch (_) {}
 try { db.exec(`ALTER TABLE products ADD COLUMN compare_price REAL DEFAULT NULL`); } catch (_) {}
 try { db.exec(`ALTER TABLE products ADD COLUMN image TEXT DEFAULT NULL`); } catch (_) {}
+try { db.exec(`ALTER TABLE products ADD COLUMN sizes_stock TEXT DEFAULT '{}'`); } catch (_) {}
 
 // Migrate old single `image` column into product_images table (run once)
 const productsWithLegacyImage = db.prepare(

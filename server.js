@@ -52,6 +52,7 @@ function attachImages(product) {
   return {
     ...product,
     sizes: JSON.parse(product.sizes || '[]'),
+    sizes_stock: JSON.parse(product.sizes_stock || '{}'),
     images: imgs.map(i => ({ id: i.id, filename: i.filename })),
   };
 }
@@ -254,6 +255,7 @@ app.get('/api/products', (req, res) => {
       return {
         ...p,
         sizes: JSON.parse(p.sizes || '[]'),
+        sizes_stock: JSON.parse(p.sizes_stock || '{}'),
         cover: firstImg ? firstImg.filename : null,
       };
     });
@@ -263,6 +265,28 @@ app.get('/api/products', (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener productos' });
   }
+});
+
+// ─── Bulk product fetch by IDs (for favorites page) ───────────────────────────
+app.get('/api/products/by-ids', (req, res) => {
+  const ids = (req.query.ids || '').split(',').map(Number).filter(Boolean);
+  if (!ids.length) return res.json([]);
+  const placeholders = ids.map(() => '?').join(',');
+  try {
+    let products = db.prepare(`SELECT * FROM products WHERE id IN (${placeholders})`).all(...ids);
+    products = products.map(p => {
+      const firstImg = db.prepare(
+        'SELECT filename FROM product_images WHERE product_id = ? ORDER BY position ASC, id ASC LIMIT 1'
+      ).get(p.id);
+      return {
+        ...p,
+        sizes: JSON.parse(p.sizes || '[]'),
+        sizes_stock: JSON.parse(p.sizes_stock || '{}'),
+        cover: firstImg ? firstImg.filename : null,
+      };
+    });
+    res.json(products);
+  } catch (e) { res.status(500).json({ error: 'Error' }); }
 });
 
 app.get('/api/products/:id', (req, res) => {
@@ -490,7 +514,7 @@ app.post('/api/admin/login', (req, res) => {
 });
 
 app.post('/api/admin/products', requireAuth, upload.array('images', 10), async (req, res) => {
-  const { name, description, price, category, stock, sizes, shipping_days, compare_price } = req.body || {};
+  const { name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price } = req.body || {};
 
   if (!name || !name.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
   if (price === undefined || price === null || isNaN(Number(price)) || Number(price) < 0)
@@ -500,16 +524,20 @@ app.post('/api/admin/products', requireAuth, upload.array('images', 10), async (
 
   let parsedSizes;
   try { parsedSizes = JSON.parse(sizes || '[]'); } catch { parsedSizes = []; }
+  let parsedSizesStock;
+  try { parsedSizesStock = JSON.parse(sizes_stock || '{}'); } catch { parsedSizesStock = {}; }
+  const totalStock = Object.values(parsedSizesStock).reduce((s, v) => s + Number(v || 0), 0) || Number(stock) || 0;
   const compPrice = compare_price && !isNaN(Number(compare_price)) && Number(compare_price) > 0 ? Number(compare_price) : null;
   const shipDays = shipping_days && String(shipping_days).trim() ? String(shipping_days).trim() : null;
 
   try {
     const result = db.prepare(
-      'INSERT INTO products (name, description, price, category, stock, sizes, shipping_days, compare_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO products (name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     ).run(
       name.trim(), (description || '').trim(), Number(price),
-      category, Number(stock) || 0,
+      category, totalStock,
       JSON.stringify(Array.isArray(parsedSizes) ? parsedSizes : []),
+      JSON.stringify(parsedSizesStock),
       shipDays, compPrice
     );
 
@@ -538,7 +566,7 @@ app.put('/api/admin/products/:id', requireAuth, upload.array('images', 10), asyn
   const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Producto no encontrado' });
 
-  const { name, description, price, category, stock, sizes, shipping_days, compare_price, remove_image_ids } = req.body || {};
+  const { name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price, remove_image_ids } = req.body || {};
 
   if (!name || !name.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
   if (price === undefined || price === null || isNaN(Number(price)) || Number(price) < 0)
@@ -548,6 +576,9 @@ app.put('/api/admin/products/:id', requireAuth, upload.array('images', 10), asyn
 
   let parsedSizes;
   try { parsedSizes = JSON.parse(sizes || '[]'); } catch { parsedSizes = []; }
+  let parsedSizesStock;
+  try { parsedSizesStock = JSON.parse(sizes_stock || '{}'); } catch { parsedSizesStock = {}; }
+  const totalStock = Object.values(parsedSizesStock).reduce((s, v) => s + Number(v || 0), 0) || Number(stock) || 0;
   const compPrice = compare_price && !isNaN(Number(compare_price)) && Number(compare_price) > 0 ? Number(compare_price) : null;
   const shipDays = shipping_days && String(shipping_days).trim() ? String(shipping_days).trim() : null;
 
@@ -580,11 +611,12 @@ app.put('/api/admin/products/:id', requireAuth, upload.array('images', 10), asyn
 
     db.prepare(
       `UPDATE products SET name = ?, description = ?, price = ?, category = ?, stock = ?, sizes = ?,
-       shipping_days = ?, compare_price = ?, updated_at = datetime('now') WHERE id = ?`
+       sizes_stock = ?, shipping_days = ?, compare_price = ?, updated_at = datetime('now') WHERE id = ?`
     ).run(
       name.trim(), (description || '').trim(), Number(price),
-      category, Number(stock) || 0,
+      category, totalStock,
       JSON.stringify(Array.isArray(parsedSizes) ? parsedSizes : []),
+      JSON.stringify(parsedSizesStock),
       shipDays, compPrice, req.params.id
     );
 
@@ -626,6 +658,15 @@ app.put('/api/admin/password', requireAuth, (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Error al actualizar contraseña' });
   }
+});
+
+// ─── Currency rates ───────────────────────────────────────────────────────────
+app.get('/api/currency-rates', (req, res) => {
+  res.json({
+    USD: 1,
+    EUR: Number(process.env.EUR_RATE) || 0.92,
+    DOP: Number(process.env.USD_RATE) || 59.48,
+  });
 });
 
 // ─── Payment config (public, for frontend) ────────────────────────────────────
@@ -745,6 +786,7 @@ app.use((err, req, res, next) => {
 // ─── Fallback SPA routes ───────────────────────────────────────────────────────
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/product/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'product.html')));
+app.get('/favoritos',        (req, res) => res.sendFile(path.join(__dirname, 'public', 'favoritos.html')));
 app.get('/reset-password',   (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
 app.get('/payment/success', (req, res) => res.sendFile(path.join(__dirname, 'public', 'payment-success.html')));
 app.get('/payment/cancel',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'payment-cancel.html')));

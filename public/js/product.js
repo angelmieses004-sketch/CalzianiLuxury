@@ -1,8 +1,37 @@
 (() => {
   const CATEGORY_LABELS = { calzado: 'Calzado', ropa: 'Ropa', accesorio: 'Accesorio' };
 
-  function formatPrice(price) {
-    return 'RD$' + new Intl.NumberFormat('es-DO', { maximumFractionDigits: 0 }).format(price);
+  // ─── Currency ────────────────────────────────────────────────────────────────
+  let currencyRates = { USD: 1, EUR: 0.92, DOP: 59.48 };
+  let activeCurrency = localStorage.getItem('calziani_currency') || 'USD';
+  const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', DOP: 'RD$' };
+  const CURRENCY_LOCALES  = { USD: 'en-US', EUR: 'de-DE', DOP: 'es-DO' };
+  const CURRENCY_DECIMALS = { USD: 2, EUR: 2, DOP: 0 };
+
+  function formatPrice(priceUSD) {
+    const converted = priceUSD * (currencyRates[activeCurrency] || 1);
+    const sym = CURRENCY_SYMBOLS[activeCurrency];
+    const loc = CURRENCY_LOCALES[activeCurrency];
+    const dec = CURRENCY_DECIMALS[activeCurrency];
+    return sym + new Intl.NumberFormat(loc, { maximumFractionDigits: dec, minimumFractionDigits: dec }).format(converted);
+  }
+
+  async function loadCurrencyRates() {
+    try {
+      const data = await (await fetch('/api/currency-rates')).json();
+      currencyRates = { ...currencyRates, ...data };
+    } catch { /* use defaults */ }
+  }
+
+  function initCurrencySelect() {
+    const sel = document.getElementById('currencySelect');
+    if (!sel) return;
+    sel.value = activeCurrency;
+    sel.addEventListener('change', () => {
+      activeCurrency = sel.value;
+      localStorage.setItem('calziani_currency', activeCurrency);
+      if (product) render(product);
+    });
   }
 
   function escHtml(str) {
@@ -23,11 +52,17 @@
   }
   function saveCart(cart) { localStorage.setItem('calziani_cart', JSON.stringify(cart)); }
 
-  function addToCart(product) {
+  function addToCart(productData) {
     const cart = getCart();
-    const key  = `${product.id}__${product.size || ''}`;
+    const key  = `${productData.id}__${productData.size || ''}`;
     const existing = cart.find(i => `${i.id}__${i.size || ''}` === key);
-    if (existing) { existing.qty += 1; } else { cart.push({ ...product, qty: 1 }); }
+    const maxQty = productData.maxQty ?? Infinity;
+    if (existing) {
+      existing.qty = Math.min(maxQty, existing.qty + 1);
+      if (productData.maxQty !== undefined) existing.maxQty = productData.maxQty;
+    } else {
+      cart.push({ ...productData, qty: 1 });
+    }
     saveCart(cart);
     updateCartBadge();
   }
@@ -183,6 +218,14 @@
         const label = document.getElementById('ppSizeSelected');
         if (label) label.textContent = `— ${selectedSize}`;
         document.getElementById('ppSizeErr')?.classList.add('hidden');
+        // Show stock for selected size
+        const sizeStock = p.sizes_stock?.[selectedSize];
+        const stockEl = document.querySelector('.pp-stock');
+        if (stockEl && sizeStock !== undefined) {
+          if (sizeStock === 0) { stockEl.textContent = 'Sin stock en este talle'; stockEl.className = 'pp-stock pp-stock--out'; }
+          else if (sizeStock <= 5) { stockEl.textContent = `Últimas ${sizeStock} unidades en este talle`; stockEl.className = 'pp-stock pp-stock--low'; }
+          else { stockEl.textContent = 'Disponible'; stockEl.className = 'pp-stock pp-stock--ok'; }
+        }
       });
     });
 
@@ -193,7 +236,9 @@
         document.getElementById('ppSizesList')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
-      addToCart({ id: p.id, name: p.name, price: p.price, cover: p.images?.[0]?.filename || '', size: selectedSize });
+      const sizeStock = selectedSize && p.sizes_stock ? p.sizes_stock[selectedSize] : p.stock;
+      const maxQty = sizeStock !== undefined && sizeStock > 0 ? sizeStock : (p.stock > 0 ? p.stock : undefined);
+      addToCart({ id: p.id, name: p.name, price: p.price, cover: p.images?.[0]?.filename || '', size: selectedSize, maxQty });
       const btn = document.getElementById('ppAddCart');
       if (btn) {
         btn.textContent = '¡Agregado! ✓';
@@ -209,7 +254,9 @@
         document.getElementById('ppSizesList')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
-      addToCart({ id: p.id, name: p.name, price: p.price, cover: p.images?.[0]?.filename || '', size: selectedSize });
+      const sizeStockBuy = selectedSize && p.sizes_stock ? p.sizes_stock[selectedSize] : p.stock;
+      const maxQtyBuy = sizeStockBuy !== undefined && sizeStockBuy > 0 ? sizeStockBuy : (p.stock > 0 ? p.stock : undefined);
+      addToCart({ id: p.id, name: p.name, price: p.price, cover: p.images?.[0]?.filename || '', size: selectedSize, maxQty: maxQtyBuy });
       window.location.href = '/?cart=open';
     });
 
@@ -245,7 +292,17 @@
     }
   }
 
-  loadProduct();
+  loadCurrencyRates().then(() => {
+    loadProduct();
+    initCurrencySelect();
+  });
+  updateCartBadge();
+  // Favorites count
+  (function updateFavCount() {
+    const cnt = (JSON.parse(localStorage.getItem('calziani_favs') || '[]')).length;
+    const el = document.getElementById('favHeaderCount');
+    if (el) { el.textContent = cnt; el.classList.toggle('hidden', cnt === 0); }
+  })();
 
   // ─── Hide/show header on scroll ───────────────────────────────────────────────
   const header = document.querySelector('.header');

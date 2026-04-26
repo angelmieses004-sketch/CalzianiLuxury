@@ -550,48 +550,49 @@ input:focus, textarea:focus, select:focus {
 .td-ship { font-size: 0.8rem; }
 
 /* ─── Size checkboxes ──────────────────────────────────────────────────────── */
-.sizes-grid {
+.sizes-stock-grid {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.4rem;
   margin-top: 0.25rem;
 }
 
-.size-checkbox {
+.size-stock-row {
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: 0.6rem;
   cursor: pointer;
 }
 
-.size-checkbox input[type=checkbox] {
-  display: none;
-  width: auto;
+.size-stock-row .size-cb {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
-.size-checkbox span {
-  display: inline-block;
-  padding: 0.35rem 0.75rem;
-  font-size: 0.8rem;
+.size-stock-label {
+  width: 48px;
+  font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.06em;
+  color: var(--black);
+}
+
+.size-stock-qty {
+  width: 72px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.82rem;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius);
-  background: var(--white);
-  color: var(--gray-600);
-  transition: background var(--transition), color var(--transition), border-color var(--transition);
-  user-select: none;
+  text-align: center;
 }
+.size-stock-qty:disabled { background: var(--gray-100); color: var(--gray-400); }
+.size-stock-qty:focus { border-color: var(--black); outline: none; }
 
-.size-checkbox input[type=checkbox]:checked + span {
-  background: var(--black);
-  color: var(--white);
-  border-color: var(--black);
-}
-
-.size-checkbox:hover span {
-  border-color: var(--gray-400);
-  color: var(--black);
+.size-stock-unit {
+  font-size: 0.75rem;
+  color: var(--gray-400);
 }
 
 .sizes-hint {

@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Calziani</title>
+  <title>Favoritos — Calziani</title>
   <link rel="stylesheet" href="/css/style.css" />
-  <link rel="stylesheet" href="/css/product.css" />
   <link rel="icon" href="/img/587730407_17843809347618797_3290323688225420457_n.jpg" />
 </head>
 <body>
@@ -15,16 +14,13 @@
     <div class="header__inner">
       <a href="/" class="header__logo">CALZIANI</a>
       <nav class="header__nav">
-        <button class="nav-btn" data-cat="all" onclick="location.href='/'">Todo</button>
-        <button class="nav-btn" data-cat="calzado" onclick="location.href='/?cat=calzado'">Calzado</button>
-        <button class="nav-btn" data-cat="ropa" onclick="location.href='/?cat=ropa'">Ropa</button>
-        <button class="nav-btn" data-cat="accesorio" onclick="location.href='/?cat=accesorio'">Accesorios</button>
+        <button class="nav-btn" onclick="location.href='/'">Todo</button>
+        <button class="nav-btn" onclick="location.href='/?cat=calzado'">Calzado</button>
+        <button class="nav-btn" onclick="location.href='/?cat=ropa'">Ropa</button>
+        <button class="nav-btn" onclick="location.href='/?cat=accesorio'">Accesorios</button>
       </nav>
-      <div class="header__user" id="headerUser">
-        <button class="user-btn" id="loginTrigger">Iniciar sesión</button>
-      </div>
-      <a href="/favoritos" class="fav-header-btn" aria-label="Favoritos" title="Mis favoritos">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      <a href="/favoritos" class="fav-header-btn active" aria-label="Favoritos" title="Mis favoritos">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         <span class="fav-header-count hidden" id="favHeaderCount">0</span>
       </a>
       <select class="currency-select" id="currencySelect" aria-label="Moneda">
@@ -32,16 +28,22 @@
         <option value="EUR">€ EUR</option>
         <option value="DOP">RD$ DOP</option>
       </select>
-      <a href="/?cart=open" class="cart-btn" id="cartBtnProduct" aria-label="Carrito">
+      <button class="cart-btn" id="cartBtnFav" aria-label="Carrito" onclick="location.href='/?cart=open'">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        <span class="cart-badge hidden" id="cartBadgeProduct">0</span>
-      </a>
+        <span class="cart-badge hidden" id="cartBadgeFav">0</span>
+      </button>
     </div>
   </header>
 
-  <!-- PRODUCT PAGE -->
-  <main class="product-page" id="productPage">
-    <div class="product-page__loading">Cargando...</div>
+  <!-- FAVORITES CONTENT -->
+  <main class="main">
+    <div class="section-header">
+      <h2>Mis favoritos</h2>
+      <span id="favCount" class="product-count"></span>
+    </div>
+    <div id="favGrid" class="product-grid">
+      <div class="loading">Cargando...</div>
+    </div>
   </main>
 
   <!-- FOOTER -->
@@ -62,6 +64,6 @@
     </div>
   </footer>
 
-  <script src="/js/product.js"></script>
+  <script src="/js/favoritos.js"></script>
 </body>
 </html>
