@@ -11,9 +11,114 @@
   let currentSize     = 'all';
   let searchTimer     = null;
 
-  const CATEGORY_LABELS = { calzado: 'Calzado', ropa: 'Ropa', accesorio: 'Accesorio' };
+  // ─── Translations ─────────────────────────────────────────────────────────────
+  const T = {
+    es: {
+      announcement:       'ENVÍO MUNDIAL GRATUITO EN PEDIDOS +$150',
+      cat_all:            'Todo',
+      cat_calzado:        'Calzado',
+      cat_ropa:           'Ropa',
+      cat_accesorio:      'Accesorios',
+      search_placeholder: 'Buscar...',
+      sign_in:            'Iniciar sesión',
+      hero_eyebrow:       'NUEVA COLECCIÓN',
+      hero_sub:           'LUXURY IN EACH STEP.',
+      hero_cta:           'Explorar colección',
+      sale_title:         'OFERTAS DE TEMPORADA',
+      sale_sub:           'Aprovecha los mejores precios en productos seleccionados',
+      sale_cta:           'Ver ofertas',
+      sale_products_title:'— OFERTAS —',
+      all_products:       'Todos los productos',
+      size_label:         'Talle',
+      loading:            'Cargando...',
+      footer_copy:        '© 2026 Todos los derechos reservados.',
+      available:          'Disponible',
+      last_units:         'Últimas',
+      units:              'unidades',
+      out_of_stock:       'Sin stock',
+      add_to_cart:        'Agregar',
+      cat_label_calzado:  'Calzado',
+      cat_label_ropa:     'Ropa',
+      cat_label_accesorio:'Accesorio',
+      title_all:          'Todos los productos',
+      title_calzado:      'Calzado',
+      title_ropa:         'Ropa',
+      title_accesorio:    'Accesorios',
+    },
+    en: {
+      announcement:       'FREE WORLDWIDE SHIPPING ON ORDERS +$150',
+      cat_all:            'All',
+      cat_calzado:        'Footwear',
+      cat_ropa:           'Clothing',
+      cat_accesorio:      'Accessories',
+      search_placeholder: 'Search...',
+      sign_in:            'Sign in',
+      hero_eyebrow:       'NEW COLLECTION',
+      hero_sub:           'LUXURY IN EACH STEP.',
+      hero_cta:           'Shop collection',
+      sale_title:         'SEASONAL SALE',
+      sale_sub:           'Get the best prices on selected products',
+      sale_cta:           'View sale',
+      sale_products_title:'— SALE —',
+      all_products:       'All products',
+      size_label:         'Size',
+      loading:            'Loading...',
+      footer_copy:        '© 2026 All rights reserved.',
+      available:          'Available',
+      last_units:         'Last',
+      units:              'units',
+      out_of_stock:       'Out of stock',
+      add_to_cart:        'Add',
+      cat_label_calzado:  'Footwear',
+      cat_label_ropa:     'Clothing',
+      cat_label_accesorio:'Accessory',
+      title_all:          'All products',
+      title_calzado:      'Footwear',
+      title_ropa:         'Clothing',
+      title_accesorio:    'Accessories',
+    },
+  };
+
+  let activeLang = localStorage.getItem('calziani_lang') || 'es';
+
+  function t(key) { return T[activeLang]?.[key] || T.es[key] || key; }
+
+  function applyTranslations() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.dataset.i18n;
+      el.textContent = t(key);
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      el.placeholder = t(el.dataset.i18nPlaceholder);
+    });
+    document.documentElement.lang = activeLang;
+    const langLabel = document.getElementById('langLabel');
+    if (langLabel) langLabel.textContent = activeLang.toUpperCase();
+    // Update section title based on current category
+    if (sectionTitle) sectionTitle.textContent = t(`title_${currentCategory}`);
+  }
+
+  function initLangBtn() {
+    const btn = document.getElementById('langBtn');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      activeLang = activeLang === 'es' ? 'en' : 'es';
+      localStorage.setItem('calziani_lang', activeLang);
+      applyTranslations();
+      renderProducts(lastProducts);
+    });
+  }
+
+  const CATEGORY_LABELS = {
+    get calzado()   { return t('cat_label_calzado'); },
+    get ropa()      { return t('cat_label_ropa'); },
+    get accesorio() { return t('cat_label_accesorio'); },
+  };
   const TITLE_MAP = {
-    all: 'Todos los productos', calzado: 'Calzado', ropa: 'Ropa', accesorio: 'Accesorios',
+    get all()       { return t('title_all'); },
+    get calzado()   { return t('title_calzado'); },
+    get ropa()      { return t('title_ropa'); },
+    get accesorio() { return t('title_accesorio'); },
   };
   const SIZES_BY_CATEGORY = {
     calzado:   ['35','36','37','38','39','40','41','42','43','44','45'],
@@ -57,9 +162,9 @@
   }
 
   function stockLabel(stock) {
-    if (stock === 0) return { text: 'Sin stock', cls: 'out' };
-    if (stock <= 5)  return { text: `Últimas ${stock} unidades`, cls: 'low' };
-    return { text: 'Disponible', cls: '' };
+    if (stock === 0) return { text: t('out_of_stock'), cls: 'out' };
+    if (stock <= 5)  return { text: `${t('last_units')} ${stock} ${t('units')}`, cls: 'low' };
+    return { text: t('available'), cls: '' };
   }
 
   function escHtml(str) {
@@ -697,10 +802,85 @@
     el.classList.toggle('hidden', cnt === 0);
   }
 
+  // ─── Sale section ─────────────────────────────────────────────────────────────
+  async function loadSaleProducts() {
+    try {
+      const res  = await fetch('/api/products');
+      const all  = await res.json();
+      const sale = all.filter(p => p.compare_price && p.compare_price > p.price);
+      const saleSection = document.getElementById('saleSection');
+      const saleBanner  = document.getElementById('saleBanner');
+      if (!sale.length) {
+        if (saleBanner) saleBanner.style.display = 'none';
+        return;
+      }
+      // Wire banner button
+      document.getElementById('saleBannerBtn')?.addEventListener('click', () => {
+        saleSection?.classList.remove('hidden');
+        saleSection?.scrollIntoView({ behavior: 'smooth' });
+      });
+      // Render sale grid
+      const saleGrid = document.getElementById('saleGrid');
+      if (!saleGrid) return;
+      saleGrid.innerHTML = sale.map(p => {
+        const discount = Math.round((1 - p.price / p.compare_price) * 100);
+        const imgHtml = p.cover
+          ? `<img src="/img/products/${escHtml(p.cover)}" alt="${escHtml(p.name)}" class="product-card__img" loading="lazy" />`
+          : `<div class="product-card__img-empty"><span>CALZIANI</span></div>`;
+        const fav = isFav(p.id);
+        return `<div class="product-card-wrap">
+          <a class="product-card" href="/product/${p.id}">
+            <div class="product-card__media">
+              ${imgHtml}
+              <span class="product-card__sale-badge">−${discount}%</span>
+              <button class="pc-fav-btn${fav ? ' active' : ''}" data-id="${p.id}" aria-label="Favorito">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </button>
+              <button class="pc-cart-btn" data-id="${p.id}" data-name="${escHtml(p.name)}" data-price="${p.price}" data-cover="${escHtml(p.cover || '')}" data-stock="${p.stock}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                ${t('add_to_cart')}
+              </button>
+            </div>
+            <div class="product-card__info">
+              <p class="pc-category">${CATEGORY_LABELS[p.category] || p.category}</p>
+              <h3 class="pc-name">${escHtml(p.name)}</h3>
+              <div class="pc-pricing">
+                <span class="pc-price pc-price--sale">${formatPrice(p.price)}</span>
+                <span class="pc-price-orig">${formatPrice(p.compare_price)}</span>
+              </div>
+            </div>
+          </a>
+        </div>`;
+      }).join('');
+
+      // Wire fav + cart buttons in sale grid
+      saleGrid.querySelectorAll('.pc-fav-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.preventDefault(); e.stopPropagation();
+          const id = btn.dataset.id;
+          const now = toggleFav(id);
+          btn.classList.toggle('active', now);
+          btn.querySelector('svg').setAttribute('fill', now ? 'currentColor' : 'none');
+          updateFavHeaderCount();
+        });
+      });
+      saleGrid.querySelectorAll('.pc-cart-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.preventDefault(); e.stopPropagation();
+          const stock = Number(btn.dataset.stock);
+          addToCart({ id: Number(btn.dataset.id), name: btn.dataset.name, price: Number(btn.dataset.price), cover: btn.dataset.cover, size: '', maxQty: stock > 0 ? stock : undefined });
+        });
+      });
+    } catch { /* ignore */ }
+  }
+
   // ─── Init ─────────────────────────────────────────────────────────────────────
+  applyTranslations();
+  initLangBtn();
   renderSizeFilter(currentCategory);
   loadCurrencyRates().then(() => {
     fetchProducts();
+    loadSaleProducts();
     updateCartUI();
   });
   initCurrencySelect();

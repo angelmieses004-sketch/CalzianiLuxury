@@ -58,6 +58,10 @@ input, textarea, select {
 input:focus, textarea:focus, select:focus { border-color: var(--black); }
 
 /* ─── Header ───────────────────────────────────────────────────────────────── */
+.announcement-bar + .header {
+  position: sticky;
+  top: 0;
+}
 .header {
   position: sticky;
   top: 0;
@@ -127,6 +131,38 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 }
 .currency-select:hover { border-color: var(--gray-400); }
 .currency-select:focus { outline: none; border-color: var(--black); }
+
+/* ─── Language button ───────────────────────────────────────────────────────── */
+.lang-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 0.55rem;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--black);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color var(--transition), background var(--transition);
+}
+.lang-btn:hover { border-color: var(--black); background: var(--gray-100); }
+
+/* ─── Announcement bar ──────────────────────────────────────────────────────── */
+.announcement-bar {
+  background: var(--black);
+  color: var(--white);
+  text-align: center;
+  padding: 0.55rem 1rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
 
 /* ─── Favorites header button ───────────────────────────────────────────────── */
 .fav-header-btn {
@@ -615,9 +651,18 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 /* ─── Hero ─────────────────────────────────────────────────────────────────── */
 .hero {
   border-bottom: 1px solid var(--gray-200);
-  padding: 6rem 2rem;
+  padding: 7rem 2rem 6rem;
   text-align: center;
   background: var(--white);
+}
+
+.hero__eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--gray-600);
+  margin-bottom: 1.2rem;
+  font-weight: 500;
 }
 
 .hero__title {
@@ -628,13 +673,109 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 }
 
 .hero__sub {
-  margin-top: 1rem;
-  font-size: 0.85rem;
-  letter-spacing: 0.2em;
+  margin-top: 0.8rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--gray-600);
 }
 
+.hero__cta {
+  display: inline-block;
+  margin-top: 2rem;
+  padding: 0.8rem 2.2rem;
+  background: var(--black);
+  color: var(--white);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: var(--radius);
+  transition: background var(--transition);
+}
+.hero__cta:hover { background: #333; }
+
+/* ─── Sale Banner ───────────────────────────────────────────────────────────── */
+.sale-banner {
+  background: var(--black);
+  color: var(--white);
+  padding: 2.5rem 2rem;
+}
+.sale-banner__inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+.sale-banner__text {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+.sale-badge-big {
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  line-height: 1;
+}
+.sale-banner__title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+}
+.sale-banner__sub {
+  font-size: 0.78rem;
+  opacity: 0.7;
+  letter-spacing: 0.02em;
+}
+.sale-banner__btn {
+  flex-shrink: 0;
+  padding: 0.75rem 2rem;
+  background: var(--white);
+  color: var(--black);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: var(--radius);
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.2s;
+}
+.sale-banner__btn:hover { opacity: 0.85; }
+
+/* ─── Sale section ───────────────────────────────────────────────────────────── */
+.sale-section {
+  background: var(--gray-100);
+  padding: 0;
+}
+.sale-section .main { padding-top: 2.5rem; padding-bottom: 3rem; }
+.sale-section .section-header h2 {
+  font-size: 0.85rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--black);
+}
+.product-card__sale-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: var(--black);
+  color: var(--white);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius);
+  z-index: 2;
+  pointer-events: none;
+}
 /* ─── Main / Products ──────────────────────────────────────────────────────── */
 .main {
   flex: 1;

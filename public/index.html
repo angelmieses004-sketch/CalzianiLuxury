@@ -9,21 +9,26 @@
 </head>
 <body>
 
+  <!-- ANNOUNCEMENT BAR -->
+  <div class="announcement-bar">
+    <span data-i18n="announcement">ENVÍO MUNDIAL GRATUITO EN PEDIDOS +$150</span>
+  </div>
+
   <!-- HEADER -->
   <header class="header">
     <div class="header__inner">
       <a href="/" class="header__logo">CALZIANI</a>
       <nav class="header__nav">
-        <button class="nav-btn active" data-cat="all">Todo</button>
-        <button class="nav-btn" data-cat="calzado">Calzado</button>
-        <button class="nav-btn" data-cat="ropa">Ropa</button>
-        <button class="nav-btn" data-cat="accesorio">Accesorios</button>
+        <button class="nav-btn active" data-cat="all" data-i18n="cat_all">Todo</button>
+        <button class="nav-btn" data-cat="calzado" data-i18n="cat_calzado">Calzado</button>
+        <button class="nav-btn" data-cat="ropa" data-i18n="cat_ropa">Ropa</button>
+        <button class="nav-btn" data-cat="accesorio" data-i18n="cat_accesorio">Accesorios</button>
       </nav>
       <div class="header__search">
-        <input type="text" id="searchInput" placeholder="Buscar..." autocomplete="off" />
+        <input type="text" id="searchInput" placeholder="Buscar..." autocomplete="off" data-i18n-placeholder="search_placeholder" />
       </div>
       <div class="header__user" id="headerUser">
-        <button class="user-btn" id="loginTrigger">Iniciar sesión</button>
+        <button class="user-btn" id="loginTrigger" data-i18n="sign_in">Iniciar sesión</button>
       </div>
       <a href="/favoritos" class="fav-header-btn" aria-label="Favoritos" title="Mis favoritos">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
@@ -34,6 +39,10 @@
         <option value="EUR">€ EUR</option>
         <option value="DOP">RD$ DOP</option>
       </select>
+      <!-- Language toggle -->
+      <button class="lang-btn" id="langBtn" aria-label="Cambiar idioma">
+        <span id="langLabel">ES</span>
+      </button>
       <button class="cart-btn" id="cartBtn" aria-label="Carrito">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
         <span class="cart-badge hidden" id="cartBadge">0</span>
@@ -248,26 +257,54 @@
   <!-- HERO -->
   <section class="hero">
     <div class="hero__content">
+      <p class="hero__eyebrow" data-i18n="hero_eyebrow">NUEVA COLECCIÓN</p>
       <h1 class="hero__title">CALZIANI</h1>
-      <p class="hero__sub">LUXURY IN EACH STEP.</p>
+      <p class="hero__sub" data-i18n="hero_sub">LUXURY IN EACH STEP.</p>
+      <a href="#products" class="hero__cta" data-i18n="hero_cta">Explorar colección</a>
+    </div>
+  </section>
+
+  <!-- SALE BANNER -->
+  <section class="sale-banner" id="saleBanner">
+    <div class="sale-banner__inner">
+      <div class="sale-banner__text">
+        <span class="sale-badge-big">50% OFF</span>
+        <div>
+          <p class="sale-banner__title" data-i18n="sale_title">OFERTAS DE TEMPORADA</p>
+          <p class="sale-banner__sub" data-i18n="sale_sub">Aprovecha los mejores precios en productos seleccionados</p>
+        </div>
+      </div>
+      <button class="sale-banner__btn" id="saleBannerBtn" data-i18n="sale_cta">Ver ofertas</button>
+    </div>
+  </section>
+
+  <!-- SALE PRODUCTS SECTION -->
+  <section class="sale-section hidden" id="saleSection">
+    <div class="main">
+      <div class="section-header">
+        <h2 data-i18n="sale_products_title">— OFERTAS —</h2>
+      </div>
+      <div id="saleGrid" class="product-grid">
+        <div class="loading" data-i18n="loading">Cargando...</div>
+      </div>
     </div>
   </section>
 
   <!-- PRODUCTS -->
-  <main class="main">
+  <main class="main" id="products">
     <div class="section-header">
-      <h2 id="sectionTitle">Todos los productos</h2>
+      <h2 id="sectionTitle" data-i18n="all_products">Todos los productos</h2>
       <span id="productCount" class="product-count"></span>
     </div>
 
     <!-- SIZE FILTER -->
     <div id="sizeFilterBar" class="size-filter-bar hidden">
-      <span class="size-filter-label">Talle</span>
+      <span class="size-filter-label" data-i18n="size_label">Talle</span>
       <div id="sizeFilterBtns" class="size-filter-btns"></div>
     </div>
 
     <div id="productGrid" class="product-grid">
-      <div class="loading">Cargando productos...</div>
+      <div class="loading" data-i18n="loading">Cargando productos...</div>
     </div>
   </main>
 
@@ -285,7 +322,7 @@
           +1 809 307-6122
         </a>
       </div>
-      <span class="footer__copy">&copy; 2026 Todos los derechos reservados.</span>
+      <span class="footer__copy" data-i18n="footer_copy">&copy; 2026 All rights reserved.</span>
     </div>
   </footer>
 
