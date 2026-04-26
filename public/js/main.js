@@ -134,7 +134,6 @@
   const cartEmpty   = document.getElementById('cartEmpty');
   const cartFoot    = document.getElementById('cartFoot');
   const cartSubtotal= document.getElementById('cartSubtotal');
-  const cartItbis   = document.getElementById('cartItbis');
   const cartTotal   = document.getElementById('cartTotal');
   const checkoutBtn = document.getElementById('checkoutBtn');
 
@@ -194,11 +193,8 @@
 
     // Totals
     const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-    const itbis    = Math.round(subtotal * 0.18 * 100) / 100;
-    const total    = Math.round((subtotal + itbis) * 100) / 100;
     cartSubtotal.textContent = formatPrice(subtotal);
-    cartItbis.textContent    = formatPrice(itbis);
-    cartTotal.textContent    = formatPrice(total);
+    cartTotal.textContent    = formatPrice(subtotal);
 
     // Qty buttons
     cartItems.querySelectorAll('.qty-btn').forEach(btn => {
@@ -277,9 +273,8 @@
   function cartTotals() {
     const cart        = getCart();
     const subtotalUSD = cart.reduce((s, i) => s + i.price * i.qty, 0);
-    const itbisUSD    = Math.round(subtotalUSD * 0.18 * 100) / 100;
-    const totalUSD    = Math.round((subtotalUSD + itbisUSD) * 100) / 100;
-    return { subtotal: subtotalUSD, itbis: itbisUSD, total: totalUSD, totalUSD: totalUSD.toFixed(2) };
+    const total       = Math.round(subtotalUSD * 100) / 100;
+    return { subtotal: total, total, totalUSD: total.toFixed(2) };
   }
 
   function renderPayPalButtons() {

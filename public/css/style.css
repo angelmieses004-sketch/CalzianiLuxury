@@ -352,7 +352,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   font-size: 0.85rem;
   color: var(--gray-600);
 }
-.cart-totals__itbis { font-size: 0.8rem; color: var(--gray-400); }
 .cart-totals__total {
   font-size: 1rem;
   font-weight: 700;
