@@ -38,6 +38,9 @@
         <button class="sidebar__link active" data-view="products">
           <span class="sidebar__icon">▤</span> Productos
         </button>
+        <button class="sidebar__link" data-view="orders">
+          <span class="sidebar__icon">◈</span> Pedidos
+        </button>
         <button class="sidebar__link" data-view="new">
           <span class="sidebar__icon">＋</span> Nuevo producto
         </button>
@@ -73,6 +76,16 @@
         </div>
       </section>
 
+      <!-- VIEW: Orders -->
+      <section id="viewOrders" class="view">
+        <div class="view__header">
+          <h2 class="view__title">Pedidos</h2>
+        </div>
+        <div id="ordersList" class="orders-list">
+          <div class="table-loading">Cargando...</div>
+        </div>
+      </section>
+
       <!-- VIEW: New / Edit product -->
       <section id="viewNew" class="view">
         <div class="view__header">
@@ -93,6 +106,16 @@
                 <option value="calzado">Calzado</option>
                 <option value="ropa">Ropa</option>
                 <option value="accesorio">Accesorio</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="fGender">Género <span class="required">*</span></label>
+              <select id="fGender">
+                <option value="">Seleccionar…</option>
+                <option value="hombre">Hombre</option>
+                <option value="mujer">Mujer</option>
+                <option value="unisex">Unisex</option>
+                <option value="ninos">Niños / niñas</option>
               </select>
             </div>
           </div>
@@ -131,6 +154,8 @@
 
           <div class="field" id="sizesField">
             <label>Talles y stock</label>
+            <p class="field-hint admin-sold-hint">Si vendiste el artículo (en tienda u otro canal), podés poner todo el stock en 0 y guardar.</p>
+            <button type="button" class="btn btn-ghost admin-mark-sold" id="btnMarkSoldOut">Marcar como agotado (stock 0 en todos los talles)</button>
             <div id="sizesContainer" class="sizes-stock-grid"></div>
             <p class="sizes-hint" id="sizesHint">Seleccioná una categoría para ver los talles.</p>
           </div>

@@ -42,7 +42,7 @@
 
   function stockLabel(stock) {
     if (stock === 0) return { text: 'Sin stock', cls: 'out' };
-    if (stock <= 5)  return { text: `Últimas ${stock} unidades`, cls: 'low' };
+    if (stock > 0 && stock < 5)  return { text: 'Quedan pocas unidades', cls: 'low' };
     return { text: 'En stock', cls: '' };
   }
 
@@ -223,7 +223,7 @@
         const stockEl = document.querySelector('.pp-stock');
         if (stockEl && sizeStock !== undefined) {
           if (sizeStock === 0) { stockEl.textContent = 'Sin stock en este talle'; stockEl.className = 'pp-stock pp-stock--out'; }
-          else if (sizeStock <= 5) { stockEl.textContent = `Últimas ${sizeStock} unidades en este talle`; stockEl.className = 'pp-stock pp-stock--low'; }
+          else if (sizeStock > 0 && sizeStock < 5) { stockEl.textContent = 'Quedan pocas unidades'; stockEl.className = 'pp-stock pp-stock--low'; }
           else { stockEl.textContent = 'Disponible'; stockEl.className = 'pp-stock pp-stock--ok'; }
         }
       });

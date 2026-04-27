@@ -5,6 +5,16 @@
   let searchTimer = null;
 
   const CAT_LABELS = { calzado: 'Calzado', ropa: 'Ropa', accesorio: 'Accesorio' };
+  const GENDER_LABELS = { hombre: 'Hombre', mujer: 'Mujer', unisex: 'Unisex', ninos: 'Niños/as' };
+
+  const ORDER_STATUS_LABEL = {
+    pending_transfer: 'Pendiente (transferencia / WhatsApp)',
+    pending_azul: 'Pendiente (tarjeta AZUL)',
+    pending_paypal: 'Pendiente (PayPal)',
+    paid_paypal: 'Pagado (PayPal)',
+    paid: 'Pagado',
+    cancelled: 'Cancelado',
+  };
 
   const SIZES_BY_CATEGORY = {
     calzado:   ['35','36','37','38','39','40','41','42','43','44','45'],
@@ -25,12 +35,14 @@
   const adminSearch    = document.getElementById('adminSearch');
   const adminCatFilter = document.getElementById('adminCatFilter');
   const adminList      = document.getElementById('adminProductList');
+  const ordersList     = document.getElementById('ordersList');
 
   const productForm    = document.getElementById('productForm');
   const formTitle      = document.getElementById('formTitle');
   const editId         = document.getElementById('editId');
   const fName          = document.getElementById('fName');
   const fCategory      = document.getElementById('fCategory');
+  const fGender         = document.getElementById('fGender');
   const fPrice         = document.getElementById('fPrice');
   const fDesc          = document.getElementById('fDesc');
   const formError          = document.getElementById('formError');
@@ -130,6 +142,23 @@
 
   fCategory.addEventListener('change', () => {
     renderSizeStockInputs(fCategory.value, [], {});
+  });
+
+  document.getElementById('btnMarkSoldOut')?.addEventListener('click', () => {
+    const inputs = sizesContainer.querySelectorAll('.size-stock-qty');
+    if (!inputs.length) {
+      showToast('Elegí categoría y talles en el formulario primero.', true);
+      return;
+    }
+    let any = false;
+    inputs.forEach(inp => {
+      if (!inp.disabled) {
+        inp.value = '0';
+        any = true;
+      }
+    });
+    if (any) showToast('Stock puesto en 0. Guardá el producto para aplicar.');
+    else showToast('No hay campos de stock editables.', true);
   });
 
   // ─── Multi-image management ─────────────────────────────────────────────────
@@ -251,6 +280,7 @@
     views.forEach(v => v.classList.toggle('active', v.id === `view${capitalize(name)}`));
     sidebarLinks.forEach(l => l.classList.toggle('active', l.dataset.view === name));
     if (name === 'products') loadProducts();
+    if (name === 'orders') loadOrders();
   }
 
   function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -292,6 +322,7 @@
           <th></th>
           <th>Nombre</th>
           <th>Categoría</th>
+          <th>Género</th>
           <th>Talles</th>
           <th>Precio</th>
           <th>Envío</th>
@@ -328,6 +359,7 @@
             <td class="td-img">${thumbHtml}</td>
             <td class="td-name"><span title="${escHtml(p.name)}">${escHtml(p.name)}</span></td>
             <td class="td-category"><span class="badge">${CAT_LABELS[p.category] || p.category}</span></td>
+            <td class="td-gender"><span class="badge badge--muted">${GENDER_LABELS[p.gender] || '—'}</span></td>
             <td class="td-sizes">${sizesHtml}</td>
             <td class="td-price">${priceHtml}</td>
             <td class="td-shipping">${shipHtml}</td>
@@ -355,10 +387,104 @@
   });
   adminCatFilter.addEventListener('change', loadProducts);
 
+  function statusSlug(s) {
+    return String(s || 'pending').replace(/[^a-z0-9_-]/gi, '') || 'pending';
+  }
+
+  function orderChannelLabel(o, data) {
+    if (data.paymentMethod === 'whatsapp') return 'WhatsApp / transferencia';
+    const st = String(o.status || '');
+    if (st.includes('paypal')) return 'PayPal';
+    if (st.includes('azul')) return 'Tarjeta AZUL';
+    if (data.paymentMethod) return escHtml(String(data.paymentMethod));
+    return '—';
+  }
+
+  function statusLabel(status) {
+    return ORDER_STATUS_LABEL[status] || escHtml(status || '—');
+  }
+
+  async function loadOrders() {
+    if (!token || !ordersList) return;
+    ordersList.innerHTML = '<div class="table-loading">Cargando pedidos...</div>';
+    try {
+      const res = await fetch('/api/admin/orders', { headers: authHeaders() });
+      if (!res.ok) {
+        ordersList.innerHTML = '<div class="table-empty">No se pudieron cargar los pedidos.</div>';
+        return;
+      }
+      const orders = await res.json();
+      renderOrders(orders);
+    } catch {
+      ordersList.innerHTML = '<div class="table-empty">Error de conexión.</div>';
+    }
+  }
+
+  function renderOrders(orders) {
+    if (!orders.length) {
+      ordersList.innerHTML = '<div class="table-empty">No hay pedidos registrados.</div>';
+      return;
+    }
+    ordersList.innerHTML = orders.map(renderOrderCard).join('');
+  }
+
+  function renderOrderCard(o) {
+    let data = {};
+    try { data = JSON.parse(o.items_json || '{}'); } catch { /* ignore */ }
+    const ship = data.shipping || {};
+    const cart = Array.isArray(data.cart) ? data.cart : [];
+    const channel = orderChannelLabel(o, data);
+    const subNum = Number.isFinite(Number(data.subtotal)) ? Number(data.subtotal) : Number(o.subtotal);
+    const shipFee = Number.isFinite(Number(data.shippingFee))
+      ? Number(data.shippingFee)
+      : Math.max(0, Math.round((Number(o.total) - subNum) * 100) / 100);
+
+    const shipBlock = ship.name
+      ? `<div class="order-card__section">
+          <h4 class="order-card__h">Envío</h4>
+          <p>${escHtml(ship.name)} · ${escHtml(ship.phone)}</p>
+          <p>${escHtml(ship.country)} — ${escHtml(ship.province)}</p>
+          <p>${escHtml(ship.address)}</p>
+        </div>`
+      : '<div class="order-card__section"><p class="order-muted">Sin datos de envío en el pedido.</p></div>';
+
+    const itemsHtml = cart.length
+      ? `<ul class="order-card__items">${cart.map(i => {
+          const line = Number(i.price) * Number(i.qty);
+          const sz = i.size ? ` <small>(${escHtml(i.size)})</small>` : '';
+          return `<li><span class="order-card__iname">${escHtml(i.name)}${sz}</span> <span class="order-card__iqty">×${i.qty}</span> <span class="order-card__iprice">${formatPrice(line)}</span></li>`;
+        }).join('')}</ul>`
+      : '<p class="order-muted">Sin detalle de productos en JSON.</p>';
+
+    const st = o.status || '';
+    return `
+      <article class="order-card">
+        <header class="order-card__head">
+          <span class="order-card__num">${escHtml(o.order_number)}</span>
+          <span class="order-card__status order-card__status--${statusSlug(st)}">${statusLabel(st)}</span>
+        </header>
+        <p class="order-card__meta"><time>${escHtml(o.created_at || '')}</time> · Cliente: ${escHtml(o.customer_name || '—')}</p>
+        ${shipBlock}
+        <div class="order-card__section">
+          <h4 class="order-card__h">Productos</h4>
+          ${itemsHtml}
+        </div>
+        <footer class="order-card__foot">
+          <div class="order-card__totals">
+            <span>Subtotal ${formatPrice(subNum)}</span>
+            <span>Envío ${formatPrice(shipFee)}</span>
+            <strong>Total ${formatPrice(o.total)}</strong>
+          </div>
+          <span class="order-card__channel">${channel}</span>
+        </footer>
+      </article>`;
+  }
+
   // ─── Product Form ────────────────────────────────────────────────────────────
   function resetForm() {
     editId.value = '';
     productForm.reset();
+    if (fGender) fGender.value = '';
     hideError(formError);
     formTitle.textContent = 'Nuevo producto';
     formSubmitBtn.textContent = 'Guardar producto';
@@ -381,6 +507,7 @@
       editId.value = p.id;
       fName.value = p.name;
       fCategory.value = p.category;
+      if (fGender) fGender.value = (p.gender && GENDER_LABELS[p.gender]) ? p.gender : '';
       fPrice.value = p.price;
       fDesc.value = p.description || '';
       fComparePrice.value = p.compare_price || '';
@@ -411,6 +538,7 @@
 
     const name = fName.value.trim();
     const category = fCategory.value;
+    const gender = fGender?.value || '';
     const price = fPrice.value;
     const description = fDesc.value.trim();
     const sizes = getSelectedSizes();
@@ -421,6 +549,7 @@
 
     if (!name) { showError(formError, 'El nombre del producto es obligatorio.'); return; }
     if (!category) { showError(formError, 'Seleccioná una categoría.'); return; }
+    if (!gender) { showError(formError, 'Seleccioná un género.'); return; }
     if (price === '' || isNaN(Number(price)) || Number(price) < 0) {
       showError(formError, 'Ingresá un precio válido (mayor o igual a 0).'); return;
     }
@@ -433,6 +562,7 @@
     const formData = new FormData();
     formData.append('name', name);
     formData.append('category', category);
+    formData.append('gender', gender);
     formData.append('price', price);
     formData.append('description', description);
     formData.append('sizes', JSON.stringify(sizes));

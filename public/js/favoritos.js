@@ -52,23 +52,7 @@
   function getCart() {
     try { return JSON.parse(localStorage.getItem('calziani_cart') || '[]'); } catch { return []; }
   }
-  function saveCart(cart) { localStorage.setItem('calziani_cart', JSON.stringify(cart)); }
   function cartCount() { return getCart().reduce((s, i) => s + i.qty, 0); }
-
-  function addToCart(product) {
-    const cart = getCart();
-    const key = `${product.id}__${product.size || ''}`;
-    const existing = cart.find(i => `${i.id}__${i.size || ''}` === key);
-    const maxQty = product.maxQty ?? Infinity;
-    if (existing) {
-      existing.qty = Math.min(maxQty, existing.qty + 1);
-      if (product.maxQty !== undefined) existing.maxQty = product.maxQty;
-    } else {
-      cart.push({ ...product, qty: 1 });
-    }
-    saveCart(cart);
-    updateCartBadge();
-  }
 
   function updateCartBadge() {
     const cnt = cartCount();
@@ -107,7 +91,6 @@
     grid.innerHTML = products.map(p => {
       const isOffer  = p.compare_price && p.compare_price > p.price;
       const discount = isOffer ? Math.round((1 - p.price / p.compare_price) * 100) : 0;
-
       const imgHtml = p.cover
         ? `<img src="/img/products/${escHtml(p.cover)}" alt="${escHtml(p.name)}" class="product-card__img" loading="lazy" />`
         : `<div class="product-card__img-empty"><span>CALZIANI</span></div>`;
@@ -125,10 +108,6 @@
             ${badgeHtml}
             <button class="pc-fav-btn active" data-id="${p.id}" aria-label="Quitar de favoritos" title="Quitar de favoritos">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            </button>
-            <button class="pc-cart-btn" data-id="${p.id}" data-name="${escHtml(p.name)}" data-price="${p.price}" data-cover="${escHtml(p.cover || '')}" data-stock="${p.stock}" aria-label="Agregar al carrito">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-              Agregar
             </button>
           </div>
           <div class="product-card__info">
@@ -154,19 +133,6 @@
         updateFavHeaderCount();
         if (!allProducts.length) renderFavs([]);
         if (favCount) favCount.textContent = allProducts.length ? `${allProducts.length} producto${allProducts.length !== 1 ? 's' : ''}` : '';
-      });
-    });
-
-    // Add to cart buttons
-    grid.querySelectorAll('.pc-cart-btn').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.preventDefault(); e.stopPropagation();
-        const stock = Number(btn.dataset.stock);
-        addToCart({ id: Number(btn.dataset.id), name: btn.dataset.name, price: Number(btn.dataset.price), cover: btn.dataset.cover, size: '', maxQty: stock > 0 ? stock : undefined });
-        btn.textContent = '✓';
-        setTimeout(() => {
-          btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> Agregar`;
-        }, 1500);
       });
     });
   }

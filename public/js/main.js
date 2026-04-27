@@ -33,8 +33,7 @@
       loading:            'Cargando...',
       footer_copy:        '© 2026 Todos los derechos reservados.',
       available:          'Disponible',
-      last_units:         'Últimas',
-      units:              'unidades',
+      stock_low_hint:     'Quedan pocas unidades',
       out_of_stock:       'Sin stock',
       add_to_cart:        'Agregar',
       cat_label_calzado:  'Calzado',
@@ -48,6 +47,8 @@
       terms_read:         'Ver términos completos',
       terms_err:          'Debés aceptar los términos para continuar.',
       terms_modal_title:  'Términos y condiciones',
+      size_pick_title:    'Elegí talle',
+      size_pick_sub:      'Tocá un talle para agregarlo al carrito.',
     },
     en: {
       announcement:       'FREE WORLDWIDE SHIPPING ON ORDERS +$150',
@@ -69,8 +70,7 @@
       loading:            'Loading...',
       footer_copy:        '© 2026 All rights reserved.',
       available:          'Available',
-      last_units:         'Last',
-      units:              'units',
+      stock_low_hint:     'Few units left',
       out_of_stock:       'Out of stock',
       add_to_cart:        'Add',
       cat_label_calzado:  'Footwear',
@@ -84,6 +84,8 @@
       terms_read:         'Read full terms',
       terms_err:          'You must accept the terms to continue.',
       terms_modal_title:  'Terms and conditions',
+      size_pick_title:    'Choose size',
+      size_pick_sub:      'Tap a size to add to cart.',
     },
   };
 
@@ -212,8 +214,19 @@
 
   function stockLabel(stock) {
     if (stock === 0) return { text: t('out_of_stock'), cls: 'out' };
-    if (stock <= 5)  return { text: `${t('last_units')} ${stock} ${t('units')}`, cls: 'low' };
+    if (stock > 0 && stock < 5)  return { text: t('stock_low_hint'), cls: 'low' };
     return { text: t('available'), cls: '' };
+  }
+
+  function aggregateStock(p) {
+    if (p.sizes?.length && p.sizes_stock && typeof p.sizes_stock === 'object') {
+      return p.sizes.reduce((sum, sz) => sum + (Number(p.sizes_stock[sz]) || 0), 0);
+    }
+    return Number(p.stock) || 0;
+  }
+
+  function productHasPickableStock(p) {
+    return aggregateStock(p) > 0;
   }
 
   function escHtml(str) {
@@ -258,6 +271,74 @@
     updateCartUI();
     openCart();
   }
+
+  const sizePickModal    = document.getElementById('sizePickModal');
+  const sizePickBackdrop = document.getElementById('sizePickBackdrop');
+  const sizePickClose    = document.getElementById('sizePickClose');
+  const sizePickName     = document.getElementById('sizePickProductName');
+  const sizePickList     = document.getElementById('sizePickList');
+  const sizePickErr      = document.getElementById('sizePickErr');
+
+  function closeSizePickModal() {
+    sizePickModal?.classList.remove('open');
+    sizePickModal?.setAttribute('aria-hidden', 'true');
+    if (sizePickList) sizePickList.innerHTML = '';
+    sizePickErr?.classList.add('hidden');
+  }
+
+  function openSizePickModal(product) {
+    if (!sizePickModal || !sizePickList || !sizePickName) return;
+    sizePickName.textContent = product.name;
+    sizePickErr?.classList.add('hidden');
+    const ss = product.sizes_stock || {};
+    sizePickList.innerHTML = '';
+    (product.sizes || []).forEach(sz => {
+      const q = Number(ss[sz]) || 0;
+      const disabled = q <= 0;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `size-pick-btn${disabled ? ' disabled' : ''}`;
+      b.disabled = disabled;
+      b.textContent = disabled ? `${sz} (${t('out_of_stock')})` : String(sz);
+      if (!disabled) {
+        b.addEventListener('click', () => {
+          const maxQty = Number((product.sizes_stock || {})[sz]) || 0;
+          addToCart({
+            id: product.id,
+            name: product.name,
+            price: Number(product.price),
+            cover: product.cover || '',
+            size: sz,
+            maxQty: maxQty > 0 ? maxQty : undefined,
+          });
+          closeSizePickModal();
+        });
+      }
+      sizePickList.appendChild(b);
+    });
+    sizePickModal.classList.add('open');
+    sizePickModal.setAttribute('aria-hidden', 'false');
+  }
+
+  function beginAddToCart(product) {
+    if (!product || !productHasPickableStock(product)) return;
+    if (product.sizes?.length) {
+      openSizePickModal(product);
+      return;
+    }
+    const maxQty = Number(product.stock) > 0 ? Number(product.stock) : undefined;
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: Number(product.price),
+      cover: product.cover || '',
+      size: '',
+      maxQty,
+    });
+  }
+
+  sizePickBackdrop?.addEventListener('click', closeSizePickModal);
+  sizePickClose?.addEventListener('click', closeSizePickModal);
 
   function removeFromCart(id, size) {
     const key  = `${id}__${size || ''}`;
@@ -309,6 +390,10 @@
     if (termsModal?.classList.contains('open')) {
       termsModal.classList.remove('open');
       termsModal.setAttribute('aria-hidden', 'true');
+      return;
+    }
+    if (sizePickModal?.classList.contains('open')) {
+      closeSizePickModal();
       return;
     }
     if (cartDrawer?.classList.contains('open')) closeCart();
@@ -550,16 +635,53 @@
     }
   });
 
-  btnWhatsapp?.addEventListener('click', () => {
+  btnWhatsapp?.addEventListener('click', async () => {
     const cart = getCart();
     if (!cart.length) return;
     if (!validateShipping()) return;
     if (!validateTerms()) return;
     const ship = getShippingInfo();
     const { subtotal, total } = cartTotals();
+    const btn = btnWhatsapp;
+    const prevHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Guardando pedido...';
+
+    let orderNumber = '';
+    try {
+      const saveRes = await fetch('/api/orders/whatsapp-submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          cart,
+          shipping: ship,
+          subtotal,
+          shippingFee: SHIPPING_USD,
+          total,
+        }),
+      });
+      const saveData = await saveRes.json().catch(() => ({}));
+      if (!saveRes.ok) {
+        alert(saveData.error || 'No se pudo guardar el pedido.');
+        btn.disabled = false;
+        btn.innerHTML = prevHtml;
+        updateCheckoutTermsGate();
+        return;
+      }
+      orderNumber = saveData.orderNumber || '';
+    } catch {
+      alert('Error de conexión.');
+      btn.disabled = false;
+      btn.innerHTML = prevHtml;
+      updateCheckoutTermsGate();
+      return;
+    }
+
     const items = cart.map(i => `• ${i.name}${i.size ? ` (${i.size})` : ''} x${i.qty} — ${formatUsdCheckout(i.price * i.qty)} / ${formatDopCheckout(i.price * i.qty)}`).join('\n');
     const msg = [
       `Hola! Quiero confirmar mi pedido en Calziani 🛍️`,
+      orderNumber ? `Pedido: *${orderNumber}*` : '',
       ``,
       items,
       ``,
@@ -579,9 +701,12 @@
       activeLang === 'en'
         ? '✓ I confirm that I accepted Calziani\'s terms and conditions.'
         : '✓ Confirmo que acepté los términos y condiciones de Calziani.',
-    ].join('\n');
+    ].filter(Boolean).join('\n');
     const phone = (payConfig.whatsapp || '18093076122').replace(/\D/g, '');
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    btn.disabled = false;
+    btn.innerHTML = prevHtml;
+    updateCheckoutTermsGate();
   });
 
   // ─── Size filter bar ────────────────────────────────────────────────────────
@@ -605,6 +730,7 @@
   }
 
   let lastProducts = [];
+  let lastSaleProducts = [];
 
   // ─── Fetch & render ─────────────────────────────────────────────────────────
   async function fetchProducts(category = 'all', search = '', size = 'all') {
@@ -637,7 +763,8 @@
     grid.innerHTML = products.map(p => {
       const isOffer  = p.compare_price && p.compare_price > p.price;
       const discount = isOffer ? Math.round((1 - p.price / p.compare_price) * 100) : 0;
-      const sl       = stockLabel(p.stock);
+      const avail    = aggregateStock(p);
+      const sl       = stockLabel(avail);
       const fav      = isFav(p.id);
 
       const imgHtml = p.cover
@@ -646,7 +773,7 @@
 
       const badgeHtml = isOffer
         ? `<span class="product-card__sale-badge">−${discount}%</span>`
-        : (sl.cls === 'out' ? `<span class="product-card__stock-badge out">Sin stock</span>` : '');
+        : (sl.cls === 'out' ? `<span class="product-card__stock-badge out">${t('out_of_stock')}</span>` : '');
 
       const priceHtml = isOffer
         ? `<span class="pc-price pc-price--sale">${formatPrice(p.price)}</span><span class="pc-price-orig">${formatPrice(p.compare_price)}</span>`
@@ -659,10 +786,6 @@
             ${badgeHtml}
             <button class="pc-fav-btn${fav ? ' active' : ''}" data-id="${p.id}" aria-label="Favorito" title="Favorito">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            </button>
-            <button class="pc-cart-btn" data-id="${p.id}" data-name="${escHtml(p.name)}" data-price="${p.price}" data-cover="${escHtml(p.cover || '')}" data-stock="${p.stock}" aria-label="Agregar al carrito">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-              Agregar
             </button>
           </div>
           <div class="product-card__info">
@@ -683,15 +806,6 @@
         const now = toggleFav(id);
         btn.classList.toggle('active', now);
         btn.querySelector('svg').setAttribute('fill', now ? 'currentColor' : 'none');
-      });
-    });
-
-    // Add to cart buttons
-    grid.querySelectorAll('.pc-cart-btn').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.preventDefault(); e.stopPropagation();
-        const stock = Number(btn.dataset.stock);
-        addToCart({ id: Number(btn.dataset.id), name: btn.dataset.name, price: Number(btn.dataset.price), cover: btn.dataset.cover, size: '', maxQty: stock > 0 ? stock : undefined });
       });
     });
   }
@@ -929,9 +1043,11 @@
       const res  = await fetch('/api/products');
       const all  = await res.json();
       const sale = all.filter(p => p.compare_price && p.compare_price > p.price);
+      lastSaleProducts = sale;
       const saleSection = document.getElementById('saleSection');
       const saleBanner  = document.getElementById('saleBanner');
       if (!sale.length) {
+        lastSaleProducts = [];
         if (saleBanner) saleBanner.style.display = 'none';
         return;
       }
@@ -957,10 +1073,6 @@
               <button class="pc-fav-btn${fav ? ' active' : ''}" data-id="${p.id}" aria-label="Favorito">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
               </button>
-              <button class="pc-cart-btn" data-id="${p.id}" data-name="${escHtml(p.name)}" data-price="${p.price}" data-cover="${escHtml(p.cover || '')}" data-stock="${p.stock}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                ${t('add_to_cart')}
-              </button>
             </div>
             <div class="product-card__info">
               <p class="pc-category">${CATEGORY_LABELS[p.category] || p.category}</p>
@@ -983,13 +1095,6 @@
           btn.classList.toggle('active', now);
           btn.querySelector('svg').setAttribute('fill', now ? 'currentColor' : 'none');
           updateFavHeaderCount();
-        });
-      });
-      saleGrid.querySelectorAll('.pc-cart-btn').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.preventDefault(); e.stopPropagation();
-          const stock = Number(btn.dataset.stock);
-          addToCart({ id: Number(btn.dataset.id), name: btn.dataset.name, price: Number(btn.dataset.price), cover: btn.dataset.cover, size: '', maxQty: stock > 0 ? stock : undefined });
         });
       });
     } catch { /* ignore */ }

@@ -47,6 +47,45 @@ function getProductImages(productId) {
   ).all(productId);
 }
 
+/** Stock check for checkout (sizes required when product has talles). */
+function availabilityForCartLine(productRow, lineSize) {
+  let sizes;
+  let sizes_stock;
+  try { sizes = JSON.parse(productRow.sizes || '[]'); } catch { sizes = []; }
+  try { sizes_stock = JSON.parse(productRow.sizes_stock || '{}'); } catch { sizes_stock = {}; }
+  const sz = lineSize != null && String(lineSize).trim() !== '' ? String(lineSize).trim() : '';
+  if (Array.isArray(sizes) && sizes.length > 0) {
+    if (!sz) return { ok: false, code: 'size_required', available: 0, name: productRow.name };
+    if (!sizes.includes(sz)) return { ok: false, code: 'bad_size', available: 0, name: productRow.name };
+    const v = sizes_stock[sz];
+    return { ok: true, available: Math.max(0, Math.floor(Number(v) || 0)), name: productRow.name };
+  }
+  return { ok: true, available: Math.max(0, Math.floor(Number(productRow.stock) || 0)), name: productRow.name };
+}
+
+function validateCartStock(cart) {
+  if (!Array.isArray(cart) || !cart.length) return { ok: false, error: 'Carrito vacío.' };
+  for (const line of cart) {
+    const id = Number(line.id);
+    if (!Number.isFinite(id) || id <= 0) return { ok: false, error: 'Carrito inválido.' };
+    const p = db.prepare('SELECT id, name, stock, sizes, sizes_stock FROM products WHERE id = ?').get(id);
+    if (!p) return { ok: false, error: 'Hay productos en el carrito que ya no están disponibles.' };
+    const res = availabilityForCartLine(p, line.size);
+    if (!res.ok) {
+      return { ok: false, error: `Tenés que elegir un talle para: ${p.name}` };
+    }
+    const qty = Math.floor(Number(line.qty));
+    if (!Number.isFinite(qty) || qty < 1) return { ok: false, error: 'Cantidad inválida en el carrito.' };
+    if (qty > res.available) {
+      return {
+        ok: false,
+        error: `Stock insuficiente: "${p.name}"${line.size ? ` (talle ${line.size})` : ''}. Disponible: ${res.available}. Actualizá el carrito.`,
+      };
+    }
+  }
+  return { ok: true };
+}
+
 function attachImages(product) {
   const imgs = getProductImages(product.id);
   return {
@@ -513,14 +552,18 @@ app.post('/api/admin/login', (req, res) => {
   res.json({ token, message: 'Login exitoso' });
 });
 
+const GENDERS = ['hombre', 'mujer', 'unisex', 'ninos'];
+
 app.post('/api/admin/products', requireAuth, upload.array('images', 10), async (req, res) => {
-  const { name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price } = req.body || {};
+  const { name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price, gender } = req.body || {};
 
   if (!name || !name.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
   if (price === undefined || price === null || isNaN(Number(price)) || Number(price) < 0)
     return res.status(400).json({ error: 'El precio debe ser un número válido' });
   if (!['calzado', 'ropa', 'accesorio'].includes(category))
     return res.status(400).json({ error: 'Categoría inválida' });
+  const genderVal = String(gender || '').trim();
+  if (!GENDERS.includes(genderVal)) return res.status(400).json({ error: 'Seleccioná un género válido.' });
 
   let parsedSizes;
   try { parsedSizes = JSON.parse(sizes || '[]'); } catch { parsedSizes = []; }
@@ -566,13 +609,15 @@ app.put('/api/admin/products/:id', requireAuth, upload.array('images', 10), asyn
   const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Producto no encontrado' });
 
-  const { name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price, remove_image_ids } = req.body || {};
+  const { name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price, gender, remove_image_ids } = req.body || {};
 
   if (!name || !name.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
   if (price === undefined || price === null || isNaN(Number(price)) || Number(price) < 0)
     return res.status(400).json({ error: 'El precio debe ser un número válido' });
   if (!['calzado', 'ropa', 'accesorio'].includes(category))
     return res.status(400).json({ error: 'Categoría inválida' });
+  const genderVal = String(gender || '').trim();
+  if (!GENDERS.includes(genderVal)) return res.status(400).json({ error: 'Seleccioná un género válido.' });
 
   let parsedSizes;
   try { parsedSizes = JSON.parse(sizes || '[]'); } catch { parsedSizes = []; }
@@ -611,13 +656,15 @@ app.put('/api/admin/products/:id', requireAuth, upload.array('images', 10), asyn
 
     db.prepare(
       `UPDATE products SET name = ?, description = ?, price = ?, category = ?, stock = ?, sizes = ?,
-       sizes_stock = ?, shipping_days = ?, compare_price = ?, updated_at = datetime('now') WHERE id = ?`
+       sizes_stock = ?, shipping_days = ?, compare_price = ?, gender = ?, updated_at = datetime('now') WHERE id = ?`
     ).run(
       name.trim(), (description || '').trim(), Number(price),
       category, totalStock,
       JSON.stringify(Array.isArray(parsedSizes) ? parsedSizes : []),
       JSON.stringify(parsedSizesStock),
-      shipDays, compPrice, req.params.id
+      shipDays, compPrice,
+      genderVal,
+      req.params.id,
     );
 
     const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
@@ -682,6 +729,76 @@ app.get('/api/payment-config', (req, res) => {
   });
 });
 
+const CHECKOUT_SHIPPING_USD = 5;
+
+app.post('/api/orders/whatsapp-submit', (req, res) => {
+  try {
+    const { cart, shipping, subtotal, shippingFee, total } = req.body || {};
+    if (!Array.isArray(cart) || !cart.length) {
+      return res.status(400).json({ error: 'Carrito vacío.' });
+    }
+    const s = shipping || {};
+    if (!String(s.name || '').trim() || !String(s.phone || '').trim() || !String(s.country || '').trim()
+        || !String(s.province || '').trim() || !String(s.address || '').trim()) {
+      return res.status(400).json({ error: 'Datos de envío incompletos.' });
+    }
+    const subtotalCheck = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
+    const fee = Number(shippingFee);
+    const shipFee = Number.isFinite(fee) && fee >= 0 ? fee : CHECKOUT_SHIPPING_USD;
+    if (Math.abs(shipFee - CHECKOUT_SHIPPING_USD) > 0.02) {
+      return res.status(400).json({ error: 'Costo de envío no válido.' });
+    }
+    const totalCheck = Math.round((subtotalCheck + shipFee) * 100) / 100;
+    const clientTotal = Number(total);
+    const clientSub = Number(subtotal);
+    if (!Number.isFinite(clientTotal) || Math.abs(totalCheck - clientTotal) > 0.02) {
+      return res.status(400).json({ error: 'Total no coincide.' });
+    }
+    if (!Number.isFinite(clientSub) || Math.abs(subtotalCheck - clientSub) > 0.02) {
+      return res.status(400).json({ error: 'Subtotal no coincide.' });
+    }
+
+    const stockCheck = validateCartStock(cart);
+    if (!stockCheck.ok) return res.status(400).json({ error: stockCheck.error });
+
+    const orderNum = `CAL-W${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.toUpperCase();
+    const payload = {
+      cart,
+      shipping: {
+        name: String(s.name).trim(),
+        phone: String(s.phone).trim(),
+        country: String(s.country).trim(),
+        province: String(s.province).trim(),
+        address: String(s.address).trim(),
+      },
+      subtotal: subtotalCheck,
+      shippingFee: shipFee,
+      total: totalCheck,
+      paymentMethod: 'whatsapp',
+    };
+    const userId = req.user?.id || null;
+    db.prepare(`
+      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, customer_name, customer_email)
+      VALUES (?, ?, ?, ?, 0, ?, 'pending_transfer', ?, ?)
+    `).run(
+      orderNum,
+      userId,
+      JSON.stringify(payload),
+      subtotalCheck,
+      totalCheck,
+      payload.shipping.name,
+      null,
+    );
+    res.json({ ok: true, orderNumber: orderNum });
+  } catch (e) {
+    console.error('whatsapp-submit:', e);
+    if (String(e.message).includes('UNIQUE')) {
+      return res.status(409).json({ error: 'Reintentá en un momento.' });
+    }
+    res.status(500).json({ error: 'Error al guardar el pedido.' });
+  }
+});
+
 // ─── AZUL Payment Page ────────────────────────────────────────────────────────
 const AZUL_ENV  = process.env.AZUL_ENV === 'production' ? 'production' : 'sandbox';
 const AZUL_URL  = AZUL_ENV === 'production'
@@ -697,6 +814,9 @@ app.post('/api/azul/checkout', (req, res) => {
 
   const { cart, total, shipping } = req.body || {};
   if (!cart?.length || !total) return res.status(400).json({ error: 'Carrito vacío.' });
+
+  const stockAzul = validateCartStock(cart);
+  if (!stockAzul.ok) return res.status(400).json({ error: stockAzul.error });
 
   const dopRate    = Number(process.env.USD_RATE) || 59.48;
   const totalDOP   = Math.round(total * dopRate * 100); // last 2 digits = cents, e.g. 5000 = RD$50.00
@@ -781,6 +901,9 @@ app.post('/api/paypal/create-order', async (req, res) => {
   if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_SECRET)
     return res.status(503).json({ error: 'PayPal no configurado.' });
 
+  const stockPp = validateCartStock(cart);
+  if (!stockPp.ok) return res.status(400).json({ error: stockPp.error });
+
   const subtotal  = cart.reduce((s, i) => s + Number(i.price) * Number(i.qty), 0);
   const totalUSD  = (Math.round((subtotal + Number(shippingFee || 5)) * 100) / 100).toFixed(2);
 
@@ -851,7 +974,7 @@ app.post('/api/paypal/capture-order/:orderId', async (req, res) => {
 // Order status (for admin)
 app.get('/api/admin/orders', requireAuth, (req, res) => {
   const orders = db.prepare(
-    `SELECT id, order_number, customer_name, customer_email, subtotal, itbis, total, status, created_at
+    `SELECT id, order_number, customer_name, customer_email, subtotal, itbis, total, status, created_at, items_json
      FROM orders ORDER BY created_at DESC LIMIT 100`
   ).all();
   res.json(orders);

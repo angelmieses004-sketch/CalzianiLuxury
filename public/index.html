@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Calziani</title>
-  <link rel="stylesheet" href="/css/style.css?v=20260426f" />
+  <link rel="stylesheet" href="/css/style.css?v=20260426g" />
   <link rel="icon" href="/img/587730407_17843809347618797_3290323688225420457_n.jpg" />
 </head>
 <body>
@@ -363,6 +363,19 @@
       <span class="footer__copy" data-i18n="footer_copy">&copy; 2026 All rights reserved.</span>
     </div>
   </footer>
+
+  <!-- SIZE PICK (before add to cart from grid) -->
+  <div id="sizePickModal" class="modal size-pick-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal__backdrop" id="sizePickBackdrop"></div>
+    <div class="size-pick-modal__box">
+      <button type="button" class="auth-modal-close" id="sizePickClose" aria-label="Cerrar">&times;</button>
+      <h2 class="size-pick-modal__title" data-i18n="size_pick_title">Elegí talle</h2>
+      <p class="size-pick-modal__name" id="sizePickProductName"></p>
+      <p class="size-pick-modal__sub" data-i18n="size_pick_sub">Tocá un talle para agregarlo al carrito.</p>
+      <div class="size-pick-modal__list" id="sizePickList"></div>
+      <p class="size-pick-modal__err hidden" id="sizePickErr"></p>
+    </div>
+  </div>
 
   <!-- TERMS MODAL (above cart drawer z-index) -->
   <div id="termsModal" class="modal modal--terms" role="dialog" aria-modal="true" aria-hidden="true">
