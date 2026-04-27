@@ -552,18 +552,14 @@ app.post('/api/admin/login', (req, res) => {
   res.json({ token, message: 'Login exitoso' });
 });
 
-const GENDERS = ['hombre', 'mujer', 'unisex', 'ninos'];
-
 app.post('/api/admin/products', requireAuth, upload.array('images', 10), async (req, res) => {
-  const { name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price, gender } = req.body || {};
+  const { name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price } = req.body || {};
 
   if (!name || !name.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
   if (price === undefined || price === null || isNaN(Number(price)) || Number(price) < 0)
     return res.status(400).json({ error: 'El precio debe ser un número válido' });
   if (!['calzado', 'ropa', 'accesorio'].includes(category))
     return res.status(400).json({ error: 'Categoría inválida' });
-  const genderVal = String(gender || '').trim();
-  if (!GENDERS.includes(genderVal)) return res.status(400).json({ error: 'Seleccioná un género válido.' });
 
   let parsedSizes;
   try { parsedSizes = JSON.parse(sizes || '[]'); } catch { parsedSizes = []; }
@@ -609,15 +605,13 @@ app.put('/api/admin/products/:id', requireAuth, upload.array('images', 10), asyn
   const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Producto no encontrado' });
 
-  const { name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price, gender, remove_image_ids } = req.body || {};
+  const { name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price, remove_image_ids } = req.body || {};
 
   if (!name || !name.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
   if (price === undefined || price === null || isNaN(Number(price)) || Number(price) < 0)
     return res.status(400).json({ error: 'El precio debe ser un número válido' });
   if (!['calzado', 'ropa', 'accesorio'].includes(category))
     return res.status(400).json({ error: 'Categoría inválida' });
-  const genderVal = String(gender || '').trim();
-  if (!GENDERS.includes(genderVal)) return res.status(400).json({ error: 'Seleccioná un género válido.' });
 
   let parsedSizes;
   try { parsedSizes = JSON.parse(sizes || '[]'); } catch { parsedSizes = []; }
@@ -656,14 +650,13 @@ app.put('/api/admin/products/:id', requireAuth, upload.array('images', 10), asyn
 
     db.prepare(
       `UPDATE products SET name = ?, description = ?, price = ?, category = ?, stock = ?, sizes = ?,
-       sizes_stock = ?, shipping_days = ?, compare_price = ?, gender = ?, updated_at = datetime('now') WHERE id = ?`
+       sizes_stock = ?, shipping_days = ?, compare_price = ?, updated_at = datetime('now') WHERE id = ?`
     ).run(
       name.trim(), (description || '').trim(), Number(price),
       category, totalStock,
       JSON.stringify(Array.isArray(parsedSizes) ? parsedSizes : []),
       JSON.stringify(parsedSizesStock),
       shipDays, compPrice,
-      genderVal,
       req.params.id,
     );
 

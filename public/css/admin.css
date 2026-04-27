@@ -337,14 +337,6 @@ input:focus, textarea:focus, select:focus {
   background: var(--gray-100);
 }
 
-.td-gender .badge--muted {
-  text-transform: none;
-  letter-spacing: 0.04em;
-  font-weight: 500;
-  color: var(--gray-600);
-  background: var(--gray-50);
-}
-
 .td-price { font-weight: 700; white-space: nowrap; }
 
 .td-stock .stock-ok { color: var(--gray-600); }
