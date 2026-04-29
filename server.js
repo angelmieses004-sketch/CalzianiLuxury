@@ -724,9 +724,44 @@ app.get('/api/payment-config', (req, res) => {
 
 const CHECKOUT_SHIPPING_USD = 5;
 
+const PROMO_CALZIANI_CODE = 'CALZIANI';
+const PROMO_CALZIANI_PERCENT = 20;
+
+function normalizePromoCode(code) {
+  return String(code || '').trim().toUpperCase();
+}
+
+/** Solo dígitos, mínimo 8 para considerar teléfono válido */
+function normalizePhoneKey(phone) {
+  const d = String(phone || '').replace(/\D/g, '');
+  return d.length >= 8 ? d : '';
+}
+
+/**
+ * Descuento sobre subtotal de líneas (sin envío). Una vez por teléfono en BD.
+ */
+function applyPromoCalziani(lineSubtotal, promoCodeRaw, phone) {
+  const code = normalizePromoCode(promoCodeRaw);
+  if (code !== PROMO_CALZIANI_CODE) {
+    return { ok: true, discountedSubtotal: lineSubtotal, redeem: false };
+  }
+  const phoneKey = normalizePhoneKey(phone);
+  if (!phoneKey) {
+    return { ok: false, error: 'Completá un teléfono válido para usar el código CALZIANI.' };
+  }
+  const taken = db.prepare(
+    'SELECT 1 FROM promo_redemptions WHERE promo_code = ? AND phone_key = ?'
+  ).get(PROMO_CALZIANI_CODE, phoneKey);
+  if (taken) {
+    return { ok: false, error: 'Este código ya fue utilizado con este número de teléfono.' };
+  }
+  const discountedSubtotal = Math.round(lineSubtotal * (100 - PROMO_CALZIANI_PERCENT)) / 100;
+  return { ok: true, discountedSubtotal, redeem: true, phoneKey };
+}
+
 app.post('/api/orders/whatsapp-submit', (req, res) => {
   try {
-    const { cart, shipping, subtotal, shippingFee, total } = req.body || {};
+    const { cart, shipping, subtotal, shippingFee, total, promoCode } = req.body || {};
     if (!Array.isArray(cart) || !cart.length) {
       return res.status(400).json({ error: 'Carrito vacío.' });
     }
@@ -735,24 +770,29 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
         || !String(s.province || '').trim() || !String(s.address || '').trim()) {
       return res.status(400).json({ error: 'Datos de envío incompletos.' });
     }
-    const subtotalCheck = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
+    const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
     const fee = Number(shippingFee);
     const shipFee = Number.isFinite(fee) && fee >= 0 ? fee : CHECKOUT_SHIPPING_USD;
     if (Math.abs(shipFee - CHECKOUT_SHIPPING_USD) > 0.02) {
       return res.status(400).json({ error: 'Costo de envío no válido.' });
     }
-    const totalCheck = Math.round((subtotalCheck + shipFee) * 100) / 100;
+
+    const stockCheck = validateCartStock(cart);
+    if (!stockCheck.ok) return res.status(400).json({ error: stockCheck.error });
+
+    const promoRes = applyPromoCalziani(lineSubtotal, promoCode, s.phone);
+    if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
+
+    const discountedSubtotal = promoRes.discountedSubtotal;
+    const totalCheck = Math.round((discountedSubtotal + shipFee) * 100) / 100;
     const clientTotal = Number(total);
     const clientSub = Number(subtotal);
     if (!Number.isFinite(clientTotal) || Math.abs(totalCheck - clientTotal) > 0.02) {
       return res.status(400).json({ error: 'Total no coincide.' });
     }
-    if (!Number.isFinite(clientSub) || Math.abs(subtotalCheck - clientSub) > 0.02) {
+    if (!Number.isFinite(clientSub) || Math.abs(discountedSubtotal - clientSub) > 0.02) {
       return res.status(400).json({ error: 'Subtotal no coincide.' });
     }
-
-    const stockCheck = validateCartStock(cart);
-    if (!stockCheck.ok) return res.status(400).json({ error: stockCheck.error });
 
     const orderNum = `CAL-W${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.toUpperCase();
     const payload = {
@@ -764,24 +804,40 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
         province: String(s.province).trim(),
         address: String(s.address).trim(),
       },
-      subtotal: subtotalCheck,
+      subtotal: discountedSubtotal,
+      subtotalBeforeDiscount: promoRes.redeem ? lineSubtotal : undefined,
+      promoCode: promoRes.redeem ? PROMO_CALZIANI_CODE : undefined,
+      promoPercent: promoRes.redeem ? PROMO_CALZIANI_PERCENT : undefined,
       shippingFee: shipFee,
       total: totalCheck,
       paymentMethod: 'whatsapp',
     };
     const userId = req.user?.id || null;
-    db.prepare(`
+
+    const insertOrder = db.prepare(`
       INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, customer_name, customer_email)
       VALUES (?, ?, ?, ?, 0, ?, 'pending_transfer', ?, ?)
-    `).run(
-      orderNum,
-      userId,
-      JSON.stringify(payload),
-      subtotalCheck,
-      totalCheck,
-      payload.shipping.name,
-      null,
-    );
+    `);
+    const insertPromo = db.prepare(`
+      INSERT INTO promo_redemptions (promo_code, phone_key, order_number) VALUES (?, ?, ?)
+    `);
+
+    const tx = db.transaction(() => {
+      insertOrder.run(
+        orderNum,
+        userId,
+        JSON.stringify(payload),
+        discountedSubtotal,
+        totalCheck,
+        payload.shipping.name,
+        null,
+      );
+      if (promoRes.redeem && promoRes.phoneKey) {
+        insertPromo.run(PROMO_CALZIANI_CODE, promoRes.phoneKey, orderNum);
+      }
+    });
+    tx();
+
     res.json({ ok: true, orderNumber: orderNum });
   } catch (e) {
     console.error('whatsapp-submit:', e);
@@ -805,14 +861,23 @@ app.post('/api/azul/checkout', (req, res) => {
     return res.status(503).json({ error: 'AZUL no está configurado. Configure las credenciales en las variables de entorno.' });
   }
 
-  const { cart, total, shipping } = req.body || {};
-  if (!cart?.length || !total) return res.status(400).json({ error: 'Carrito vacío.' });
+  const { cart, total, shipping, promoCode } = req.body || {};
+  if (!cart?.length || total == null || total === '') return res.status(400).json({ error: 'Carrito vacío.' });
 
   const stockAzul = validateCartStock(cart);
   if (!stockAzul.ok) return res.status(400).json({ error: stockAzul.error });
 
+  const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
+  const promoRes = applyPromoCalziani(lineSubtotal, promoCode, shipping?.phone);
+  if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
+
+  const totalUSDCheck = Math.round((promoRes.discountedSubtotal + CHECKOUT_SHIPPING_USD) * 100) / 100;
+  if (!Number.isFinite(Number(total)) || Math.abs(Number(total) - totalUSDCheck) > 0.02) {
+    return res.status(400).json({ error: 'Total no coincide.' });
+  }
+
   const dopRate    = Number(process.env.USD_RATE) || 59.48;
-  const totalDOP   = Math.round(total * dopRate * 100); // last 2 digits = cents, e.g. 5000 = RD$50.00
+  const totalDOP   = Math.round(totalUSDCheck * dopRate * 100); // last 2 digits = cents, e.g. 5000 = RD$50.00
   const amountStr  = String(totalDOP);
   const itbisStr   = '000'; // No ITBIS
 
@@ -838,13 +903,43 @@ app.post('/api/azul/checkout', (req, res) => {
 
   const authHash = crypto.createHash('sha512').update(hashInput).digest('hex').toUpperCase();
 
-  // Save pending order
+  const itemsPayload = {
+    cart,
+    shipping,
+    promoCode: promoRes.redeem ? PROMO_CALZIANI_CODE : undefined,
+    subtotalBeforeDiscount: promoRes.redeem ? lineSubtotal : undefined,
+    promoPercent: promoRes.redeem ? PROMO_CALZIANI_PERCENT : undefined,
+  };
+
+  const insertAzulOrder = db.prepare(`
+    INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, customer_name, customer_email)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending_azul', ?, ?)
+  `);
+  const insertPromoAzul = db.prepare(`
+    INSERT INTO promo_redemptions (promo_code, phone_key, order_number) VALUES (?, ?, ?)
+  `);
+
   try {
-    db.prepare(`
-      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, customer_name, customer_email)
-      VALUES (?, ?, ?, ?, ?, ?, 'pending_azul', ?, ?)
-    `).run(orderNum, req.user?.id || null, JSON.stringify({ cart, shipping }), total, 0, total, shipping?.name || null, null);
-  } catch (e) { console.error('AZUL DB save:', e.message); }
+    const tx = db.transaction(() => {
+      insertAzulOrder.run(
+        orderNum,
+        req.user?.id || null,
+        JSON.stringify(itemsPayload),
+        promoRes.discountedSubtotal,
+        0,
+        totalUSDCheck,
+        shipping?.name || null,
+        null,
+      );
+      if (promoRes.redeem && promoRes.phoneKey) {
+        insertPromoAzul.run(PROMO_CALZIANI_CODE, promoRes.phoneKey, orderNum);
+      }
+    });
+    tx();
+  } catch (e) {
+    console.error('AZUL DB save:', e.message);
+    return res.status(500).json({ error: 'No se pudo crear el pedido.' });
+  }
 
   res.json({
     azulUrl: AZUL_URL,
@@ -889,7 +984,7 @@ async function getPayPalToken() {
 }
 
 app.post('/api/paypal/create-order', async (req, res) => {
-  const { cart, shippingFee = 5, shipping } = req.body || {};
+  const { cart, shippingFee = 5, shipping, promoCode } = req.body || {};
   if (!cart?.length) return res.status(400).json({ error: 'Carrito vacío.' });
   if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_SECRET)
     return res.status(503).json({ error: 'PayPal no configurado.' });
@@ -897,8 +992,13 @@ app.post('/api/paypal/create-order', async (req, res) => {
   const stockPp = validateCartStock(cart);
   if (!stockPp.ok) return res.status(400).json({ error: stockPp.error });
 
-  const subtotal  = cart.reduce((s, i) => s + Number(i.price) * Number(i.qty), 0);
-  const totalUSD  = (Math.round((subtotal + Number(shippingFee || 5)) * 100) / 100).toFixed(2);
+  const lineSubtotal = cart.reduce((s, i) => s + Number(i.price) * Number(i.qty), 0);
+  const promoRes = applyPromoCalziani(lineSubtotal, promoCode, shipping?.phone);
+  if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
+
+  const shipFee = Number(shippingFee || 5);
+  const totalUSDNum = Math.round((promoRes.discountedSubtotal + shipFee) * 100) / 100;
+  const totalUSD = totalUSDNum.toFixed(2);
 
   if (isNaN(Number(totalUSD)) || Number(totalUSD) <= 0) {
     return res.status(400).json({ error: 'Total inválido: ' + totalUSD });
@@ -926,14 +1026,42 @@ app.post('/api/paypal/create-order', async (req, res) => {
       return res.status(502).json({ error: 'PayPal error: ' + (ppData.message || JSON.stringify(ppData)) });
     }
 
-    // Save order
+    const ppPayloadItems = {
+      cart,
+      shipping,
+      promoCode: promoRes.redeem ? PROMO_CALZIANI_CODE : undefined,
+      subtotalBeforeDiscount: promoRes.redeem ? lineSubtotal : undefined,
+      promoPercent: promoRes.redeem ? PROMO_CALZIANI_PERCENT : undefined,
+    };
+
+    const insertPp = db.prepare(`
+      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, cardnet_session, customer_email)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending_paypal', ?, ?)
+    `);
+    const insertPromoPp = db.prepare(`
+      INSERT INTO promo_redemptions (promo_code, phone_key, order_number) VALUES (?, ?, ?)
+    `);
+
     try {
-      db.prepare(`
-        INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, cardnet_session, customer_email)
-        VALUES (?, ?, ?, ?, ?, ?, 'pending_paypal', ?, ?)
-      `).run(orderNum, req.user?.id || null, JSON.stringify({ cart, shipping }), subtotal, 0, Number(totalUSD), ppData.id, shipping?.name || null);
+      const tx = db.transaction(() => {
+        insertPp.run(
+          orderNum,
+          req.user?.id || null,
+          JSON.stringify(ppPayloadItems),
+          promoRes.discountedSubtotal,
+          0,
+          totalUSDNum,
+          ppData.id,
+          shipping?.name || null,
+        );
+        if (promoRes.redeem && promoRes.phoneKey) {
+          insertPromoPp.run(PROMO_CALZIANI_CODE, promoRes.phoneKey, orderNum);
+        }
+      });
+      tx();
     } catch (dbErr) {
-      console.error('[PayPal] DB save error (non-fatal):', dbErr.message);
+      console.error('[PayPal] DB save error:', dbErr.message);
+      return res.status(500).json({ error: 'No se pudo guardar el pedido.' });
     }
 
     res.json({ orderId: ppData.id, orderNumber: orderNum });

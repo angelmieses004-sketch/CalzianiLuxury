@@ -111,6 +111,18 @@ const migrateMany = db.transaction(() => {
 });
 migrateMany();
 
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS promo_redemptions (
+      promo_code TEXT NOT NULL,
+      phone_key TEXT NOT NULL,
+      order_number TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      PRIMARY KEY (promo_code, phone_key)
+    );
+  `);
+} catch (_) {}
+
 const existingAdmin = db.prepare('SELECT id FROM admin WHERE id = 1').get();
 if (!existingAdmin) {
   db.prepare("INSERT INTO admin (id, username, password) VALUES (1, 'admin', 'calziani2024')").run();

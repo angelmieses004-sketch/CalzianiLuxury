@@ -120,12 +120,29 @@
           <p class="shipping-err hidden" id="shippingErr">Por favor completa todos los datos de envío.</p>
         </div>
 
+        <div class="cart-promo" id="cartPromoBlock">
+          <label class="cart-promo__label" for="promoCodeInput" data-i18n="promo_label">Código de descuento</label>
+          <div class="cart-promo__row">
+            <input type="text" id="promoCodeInput" class="cart-promo__input" placeholder="" maxlength="32" autocomplete="off" />
+            <button type="button" class="cart-promo__btn" id="promoApplyBtn" data-i18n="promo_apply">Aplicar</button>
+          </div>
+          <button type="button" class="cart-promo__clear hidden" id="promoClearBtn" data-i18n="promo_remove">Quitar código</button>
+          <p class="cart-promo__msg hidden" id="promoMsg" role="status"></p>
+        </div>
+
         <div class="cart-totals">
           <div class="cart-totals__row">
             <span>Subtotal</span>
             <div class="cart-totals__dual">
               <span id="cartSubtotalUsd" class="cart-totals__usd-line"></span>
               <span id="cartSubtotalDop" class="cart-totals__dop-line"></span>
+            </div>
+          </div>
+          <div class="cart-totals__row cart-totals__discount hidden" id="cartDiscountRow">
+            <span data-i18n="promo_discount_label">Descuento (−20%)</span>
+            <div class="cart-totals__dual">
+              <span id="cartDiscountUsd" class="cart-totals__usd-line cart-totals__discount-val"></span>
+              <span id="cartDiscountDop" class="cart-totals__dop-line cart-totals__discount-val"></span>
             </div>
           </div>
           <div class="cart-totals__row cart-totals__shipping">
