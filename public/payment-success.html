@@ -37,6 +37,7 @@
   src="https://www.facebook.com/tr?id=1453546619905126&ev=PageView&noscript=1"
   /></noscript>
   <!-- End Meta Pixel Code -->
+  <script src="/js/pixel.js"></script>
 </head>
 <body>
   <div class="pay-page">
@@ -52,10 +53,37 @@
     </div>
   </div>
   <script>
-    const order = new URLSearchParams(location.search).get('order');
-    if (order) document.getElementById('orderRef').textContent = 'Número de orden: ' + order;
-    // Clear cart on successful payment
-    localStorage.removeItem('calziani_cart');
+    (async () => {
+      // Resolve order ID: URL param → pending_purchase → pending_order
+      const params       = new URLSearchParams(location.search);
+      const orderFromUrl = params.get('order');
+      const purchaseRaw  = JSON.parse(localStorage.getItem('calziani_pending_purchase') || 'null');
+      const orderId      = orderFromUrl
+        || (purchaseRaw && purchaseRaw.orderId)
+        || localStorage.getItem('calziani_pending_order')
+        || '';
+
+      if (orderId) document.getElementById('orderRef').textContent = 'Número de orden: ' + orderId;
+
+      // Clear cart
+      localStorage.removeItem('calziani_cart');
+
+      // Fire Purchase exactly once per session
+      if (purchaseRaw && !sessionStorage.getItem('fbq_purchase_fired')) {
+        sessionStorage.setItem('fbq_purchase_fired', '1');
+        const userData = {
+          name:    purchaseRaw.name    || '',
+          phone:   purchaseRaw.phone   || '',
+          country: purchaseRaw.country || '',
+        };
+        await window.CalzianiPixel?.trackPurchase(
+          { total: purchaseRaw.total, numItems: purchaseRaw.numItems, orderId },
+          (userData.name || userData.phone) ? userData : null
+        );
+        localStorage.removeItem('calziani_pending_purchase');
+        localStorage.removeItem('calziani_pending_order');
+      }
+    })();
   </script>
 </body>
 </html>

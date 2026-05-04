@@ -282,6 +282,11 @@
     saveCart(cart);
     updateCartUI();
     openCart();
+    window.CalzianiPixel?.trackAddToCart({
+      id:    product.id,
+      name:  product.name,
+      price: product.price,
+    });
   }
 
   const sizePickModal    = document.getElementById('sizePickModal');
@@ -452,7 +457,16 @@
   function openCart()  { cartDrawer.classList.add('open'); cartDrawer.setAttribute('aria-hidden','false'); document.body.style.overflow = 'hidden'; }
   function closeCart() { cartDrawer.classList.remove('open'); cartDrawer.setAttribute('aria-hidden','true'); document.body.style.overflow = ''; }
 
-  cartBtn?.addEventListener('click', openCart);
+  function fireInitiateCheckout() {
+    const cart = getCart();
+    if (!cart.length) return;
+    const { total } = cartTotals();
+    const s = getShippingInfo();
+    const userData = (s.name || s.phone) ? { name: s.name, phone: s.phone, country: s.country } : null;
+    window.CalzianiPixel?.trackInitiateCheckout(cart, total, userData);
+  }
+
+  cartBtn?.addEventListener('click', () => { openCart(); fireInitiateCheckout(); });
   cartClose?.addEventListener('click', closeCart);
   cartBackdrop?.addEventListener('click', closeCart);
   document.addEventListener('keydown', e => {
@@ -723,6 +737,19 @@
       });
       document.body.appendChild(form);
       localStorage.setItem('calziani_pending_order', data.orderNumber);
+      // Store purchase context for the success page Purchase event
+      localStorage.setItem('calziani_pending_purchase', JSON.stringify({
+        total,
+        numItems: cart.reduce((s, i) => s + i.qty, 0),
+        orderId:  data.orderNumber,
+        name:     shipping.name,
+        phone:    shipping.phone,
+        country:  shipping.country,
+      }));
+      // Ensure InitiateCheckout fires before leaving (checkout button path)
+      await window.CalzianiPixel?.trackInitiateCheckout(cart, total,
+        shipping.name ? { name: shipping.name, phone: shipping.phone, country: shipping.country } : null
+      );
       form.submit();
     } catch (e) {
       alert('Error de conexión. Intentá nuevamente.');
@@ -767,6 +794,10 @@
         return;
       }
       orderNumber = saveData.orderNumber || '';
+      // InitiateCheckout for WhatsApp checkout path
+      window.CalzianiPixel?.trackInitiateCheckout(cart, ct.total,
+        ship.name ? { name: ship.name, phone: ship.phone, country: ship.country } : null
+      );
       setPromoCalziani(false);
       if (promoCodeInput) promoCodeInput.value = '';
       promoClearBtn?.classList.add('hidden');
@@ -1119,7 +1150,7 @@
   // Open cart if redirected from product page with ?cart=open
   if (new URLSearchParams(window.location.search).get('cart') === 'open') {
     history.replaceState(null, '', '/');
-    setTimeout(openCart, 300);
+    setTimeout(() => { openCart(); fireInitiateCheckout(); }, 300);
   }
 
   async function initAuth() {

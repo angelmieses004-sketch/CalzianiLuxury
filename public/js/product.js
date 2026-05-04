@@ -65,6 +65,11 @@
     }
     saveCart(cart);
     updateCartBadge();
+    window.CalzianiPixel?.trackAddToCart({
+      id:    productData.id,
+      name:  productData.name,
+      price: productData.price,
+    });
   }
 
   function updateCartBadge() {
@@ -101,6 +106,7 @@
       product = await res.json();
       render(product);
       updateCartBadge();
+      window.CalzianiPixel?.trackViewContent({ id: product.id, name: product.name, price: product.price });
     } catch {
       page.innerHTML = `
         <div class="pp-error">
