@@ -282,11 +282,16 @@
     saveCart(cart);
     updateCartUI();
     openCart();
-    window.CalzianiPixel?.trackAddToCart({
-      id:    product.id,
-      name:  product.name,
-      price: product.price,
-    });
+    console.log('[main.js] addToCart llamado →', product.name);
+    if (window.CalzianiPixel) {
+      window.CalzianiPixel.trackAddToCart({
+        id:    product.id,
+        name:  product.name,
+        price: product.price,
+      });
+    } else {
+      console.warn('[main.js] CalzianiPixel no disponible — AddToCart no se disparó');
+    }
   }
 
   const sizePickModal    = document.getElementById('sizePickModal');
@@ -459,11 +464,19 @@
 
   function fireInitiateCheckout() {
     const cart = getCart();
-    if (!cart.length) return;
+    if (!cart.length) {
+      console.log('[main.js] fireInitiateCheckout: carrito vacío, ignorado');
+      return;
+    }
     const { total } = cartTotals();
     const s = getShippingInfo();
     const userData = (s.name || s.phone) ? { name: s.name, phone: s.phone, country: s.country } : null;
-    window.CalzianiPixel?.trackInitiateCheckout(cart, total, userData);
+    console.log('[main.js] fireInitiateCheckout → total:', total, '| items:', cart.length);
+    if (window.CalzianiPixel) {
+      window.CalzianiPixel.trackInitiateCheckout(cart, total, userData);
+    } else {
+      console.warn('[main.js] CalzianiPixel no disponible — InitiateCheckout no se disparó');
+    }
   }
 
   cartBtn?.addEventListener('click', () => { openCart(); fireInitiateCheckout(); });

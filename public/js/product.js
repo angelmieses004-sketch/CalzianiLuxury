@@ -65,11 +65,16 @@
     }
     saveCart(cart);
     updateCartBadge();
-    window.CalzianiPixel?.trackAddToCart({
-      id:    productData.id,
-      name:  productData.name,
-      price: productData.price,
-    });
+    console.log('[product.js] addToCart llamado →', productData.name);
+    if (window.CalzianiPixel) {
+      window.CalzianiPixel.trackAddToCart({
+        id:    productData.id,
+        name:  productData.name,
+        price: productData.price,
+      });
+    } else {
+      console.warn('[product.js] CalzianiPixel no disponible — AddToCart no se disparó');
+    }
   }
 
   function updateCartBadge() {
@@ -106,7 +111,12 @@
       product = await res.json();
       render(product);
       updateCartBadge();
-      window.CalzianiPixel?.trackViewContent({ id: product.id, name: product.name, price: product.price });
+      console.log('[product.js] producto cargado →', product.name);
+      if (window.CalzianiPixel) {
+        window.CalzianiPixel.trackViewContent({ id: product.id, name: product.name, price: product.price });
+      } else {
+        console.warn('[product.js] CalzianiPixel no disponible — ViewContent no se disparó');
+      }
     } catch {
       page.innerHTML = `
         <div class="pp-error">
