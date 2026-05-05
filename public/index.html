@@ -337,6 +337,45 @@
     </div>
   </section>
 
+  <!-- TRACKING SECTION -->
+  <section class="trk-home-section" id="trkHomeSection">
+    <div class="trk-home-inner">
+      <div class="trk-home-left">
+        <p class="trk-home-eyebrow">SEGUIMIENTO DE PEDIDO</p>
+        <h2 class="trk-home-title">¿Dónde está tu pedido?</h2>
+        <p class="trk-home-sub">Ingresá tu código de tracking para ver el estado de tu envío en tiempo real.</p>
+      </div>
+      <div class="trk-home-right">
+        <div class="trk-home-form">
+          <input
+            type="text"
+            id="trkHomeInput"
+            class="trk-home-input"
+            placeholder="Ej: CLZ-A1B2C3"
+            maxlength="20"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button type="button" id="trkHomeBtn" class="trk-home-btn">Rastrear</button>
+        </div>
+        <p class="trk-home-error hidden" id="trkHomeError"></p>
+
+        <!-- Inline result -->
+        <div class="trk-home-result hidden" id="trkHomeResult">
+          <div class="trk-home-result__head">
+            <div>
+              <span class="trk-home-result__label">Pedido</span>
+              <span class="trk-home-result__num" id="thrOrderNum"></span>
+            </div>
+            <a class="trk-home-result__link" id="thrFullLink" href="#" target="_blank" rel="noopener">Ver detalle completo →</a>
+          </div>
+          <div class="trk-home-steps" id="thrSteps"></div>
+          <div class="trk-home-notes hidden" id="thrNotes"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- SALE BANNER -->
   <section class="sale-banner" id="saleBanner">
     <div class="sale-banner__inner">
@@ -432,6 +471,251 @@
       </div>
     </div>
   </div>
+
+  <style>
+    /* ── Tracking home section ── */
+    .trk-home-section {
+      background: #111;
+      color: #fff;
+      padding: 56px 32px;
+    }
+    .trk-home-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      display: flex;
+      align-items: flex-start;
+      gap: 48px;
+      flex-wrap: wrap;
+    }
+    .trk-home-left { flex: 1 1 260px; }
+    .trk-home-right { flex: 2 1 340px; }
+    .trk-home-eyebrow {
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #aaa;
+      margin-bottom: 10px;
+    }
+    .trk-home-title {
+      font-size: 1.55rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      margin-bottom: 10px;
+      line-height: 1.2;
+    }
+    .trk-home-sub {
+      font-size: 0.85rem;
+      color: #bbb;
+      line-height: 1.6;
+    }
+    .trk-home-form {
+      display: flex;
+      gap: 0;
+      margin-bottom: 10px;
+    }
+    .trk-home-input {
+      flex: 1;
+      padding: 13px 16px;
+      font-size: 0.95rem;
+      font-family: monospace;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border: 1px solid #444;
+      border-right: none;
+      border-radius: 4px 0 0 4px;
+      background: #1e1e1e;
+      color: #fff;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .trk-home-input::placeholder { text-transform: none; letter-spacing: 0; color: #666; }
+    .trk-home-input:focus { border-color: #fff; }
+    .trk-home-btn {
+      padding: 13px 22px;
+      background: #fff;
+      color: #111;
+      border: none;
+      border-radius: 0 4px 4px 0;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity .15s;
+    }
+    .trk-home-btn:hover { opacity: .85; }
+    .trk-home-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .trk-home-error {
+      font-size: 0.8rem;
+      color: #f87171;
+      margin-bottom: 8px;
+    }
+    .trk-home-error.hidden { display: none; }
+
+    /* result card */
+    .trk-home-result {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 18px 20px;
+      margin-top: 4px;
+    }
+    .trk-home-result.hidden { display: none; }
+    .trk-home-result__head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 18px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .trk-home-result__label { font-size: 0.68rem; color: #888; text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 2px; }
+    .trk-home-result__num { font-size: 0.9rem; font-weight: 700; font-family: monospace; letter-spacing: 0.06em; color: #fff; }
+    .trk-home-result__link { font-size: 0.75rem; color: #aaa; text-decoration: underline; white-space: nowrap; align-self: center; }
+    .trk-home-result__link:hover { color: #fff; }
+
+    /* mini timeline */
+    .trk-home-steps {
+      display: flex;
+      gap: 0;
+      position: relative;
+    }
+    .trk-home-steps::before {
+      content: '';
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      height: 2px;
+      background: #333;
+      z-index: 0;
+    }
+    .trk-home-step {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+      z-index: 1;
+    }
+    .trk-home-step__dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #333;
+      border: 2px solid #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .trk-home-step--done .trk-home-step__dot  { background: #16a34a; }
+    .trk-home-step--current .trk-home-step__dot {
+      background: #fff;
+      color: #111;
+      box-shadow: 0 0 0 3px #ffffff30;
+      animation: trk-pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes trk-pulse {
+      0%,100% { box-shadow: 0 0 0 3px #ffffff30; }
+      50%      { box-shadow: 0 0 0 6px #ffffff10; }
+    }
+    .trk-home-step__label {
+      font-size: 0.6rem;
+      text-align: center;
+      color: #555;
+      line-height: 1.3;
+      max-width: 64px;
+    }
+    .trk-home-step--done .trk-home-step__label    { color: #4ade80; }
+    .trk-home-step--current .trk-home-step__label { color: #fff; font-weight: 700; }
+
+    .trk-home-notes {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: #0f2e1a;
+      border-left: 3px solid #16a34a;
+      border-radius: 4px;
+      font-size: 0.78rem;
+      color: #86efac;
+      line-height: 1.5;
+    }
+    .trk-home-notes.hidden { display: none; }
+
+    @media (max-width: 600px) {
+      .trk-home-section { padding: 40px 20px; }
+      .trk-home-inner { gap: 24px; }
+      .trk-home-step__label { font-size: 0.52rem; }
+      .trk-home-title { font-size: 1.2rem; }
+    }
+  </style>
+
+  <script>
+    (function () {
+      const STAGES = [
+        { key: 'received',              label: 'Recibido' },
+        { key: 'in_europe',             label: 'En Europa' },
+        { key: 'in_usa',                label: 'En EE.UU.' },
+        { key: 'in_dominican_republic', label: 'En RD' },
+        { key: 'delivered',             label: 'Entregado' },
+      ];
+
+      const input   = document.getElementById('trkHomeInput');
+      const btn     = document.getElementById('trkHomeBtn');
+      const errEl   = document.getElementById('trkHomeError');
+      const result  = document.getElementById('trkHomeResult');
+
+      function showErr(msg) { errEl.textContent = msg; errEl.classList.remove('hidden'); result.classList.add('hidden'); }
+      function clearErr()   { errEl.classList.add('hidden'); }
+
+      async function doSearch() {
+        const code = (input.value || '').trim().toUpperCase();
+        if (!code) { showErr('Ingresá tu código de tracking.'); return; }
+        clearErr();
+        btn.disabled = true;
+        btn.textContent = '...';
+        try {
+          const res  = await fetch('/api/tracking/' + encodeURIComponent(code));
+          const data = await res.json();
+          if (!res.ok) { showErr(data.error || 'Código no encontrado.'); return; }
+
+          document.getElementById('thrOrderNum').textContent = data.order_number || '—';
+          const link = document.getElementById('thrFullLink');
+          link.href = '/tracking?code=' + encodeURIComponent(code);
+
+          const curIdx  = STAGES.findIndex(s => s.key === data.tracking_stage);
+          const stepsEl = document.getElementById('thrSteps');
+          stepsEl.innerHTML = STAGES.map((s, i) => {
+            const done    = i < curIdx;
+            const current = i === curIdx;
+            const cls     = done ? 'trk-home-step--done' : current ? 'trk-home-step--current' : '';
+            const dot     = done ? '✓' : current ? '●' : '';
+            return `<div class="trk-home-step ${cls}">
+              <div class="trk-home-step__dot">${dot}</div>
+              <span class="trk-home-step__label">${s.label}</span>
+            </div>`;
+          }).join('');
+
+          const notesEl = document.getElementById('thrNotes');
+          if (data.tracking_notes && data.tracking_notes.trim()) {
+            notesEl.textContent = '📋 ' + data.tracking_notes.trim();
+            notesEl.classList.remove('hidden');
+          } else {
+            notesEl.classList.add('hidden');
+          }
+
+          result.classList.remove('hidden');
+        } catch { showErr('Error de conexión. Intentá nuevamente.'); }
+        finally { btn.disabled = false; btn.textContent = 'Rastrear'; }
+      }
+
+      btn.addEventListener('click', doSearch);
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+    })();
+  </script>
 
   <script src="/js/pixel.js"></script>
   <script src="/js/main.js"></script>
