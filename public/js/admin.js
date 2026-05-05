@@ -15,6 +15,15 @@
     cancelled: 'Cancelado',
   };
 
+  const TRACKING_STAGE_LABEL = {
+    received:             '📦 Pedido recibido',
+    in_europe:            '✈️ En Europa',
+    in_usa:               '🇺🇸 En EE.UU.',
+    in_dominican_republic:'🇩🇴 En Rep. Dominicana',
+    delivered:            '✅ Entregado',
+  };
+  const TRACKING_STAGES = ['received', 'in_europe', 'in_usa', 'in_dominican_republic', 'delivered'];
+
   const SIZES_BY_CATEGORY = {
     calzado:   ['35','36','37','38','39','40','41','42','43','44','45'],
     ropa:      ['XS','S','M','L','XL','XXL'],
@@ -453,11 +462,47 @@
       : '<p class="order-muted">Sin detalle de productos en JSON.</p>';
 
     const st = o.status || '';
+    const currentStage = o.tracking_stage || 'received';
+    const tCode = o.tracking_code || '—';
+
+    const stageOptions = TRACKING_STAGES.map(s =>
+      `<option value="${s}" ${s === currentStage ? 'selected' : ''}>${TRACKING_STAGE_LABEL[s] || s}</option>`
+    ).join('');
+
+    const trackingBlock = `
+      <div class="order-card__section order-card__tracking">
+        <h4 class="order-card__h">Tracking</h4>
+        <div class="tracking-admin-row">
+          <div class="tracking-code-display">
+            <span class="tracking-code-label">Código del cliente:</span>
+            <code class="tracking-code-val" id="tcode-${o.id}">${escHtml(tCode)}</code>
+            ${tCode !== '—'
+              ? `<button type="button" class="btn-copy-code" data-code="${escHtml(tCode)}" title="Copiar código">⎘</button>`
+              : ''}
+          </div>
+          <div class="tracking-stage-select-wrap">
+            <label class="tracking-stage-label-text" for="stage-${o.id}">Etapa:</label>
+            <select class="tracking-stage-select" id="stage-${o.id}" data-order-id="${o.id}">
+              ${stageOptions}
+            </select>
+          </div>
+        </div>
+        <textarea class="tracking-notes-input" id="notes-${o.id}" data-order-id="${o.id}"
+          placeholder="Notas internas del tracking (ej: número de guía, transportista, fecha estimada...)" rows="2">${escHtml(o.tracking_notes || '')}</textarea>
+        <button type="button" class="btn btn-primary btn-sm tracking-save-btn" data-order-id="${o.id}">
+          Guardar tracking
+        </button>
+        <span class="tracking-save-feedback hidden" id="tsave-${o.id}">✓ Guardado</span>
+      </div>`;
+
     return `
-      <article class="order-card">
+      <article class="order-card" data-order-id="${o.id}">
         <header class="order-card__head">
           <span class="order-card__num">${escHtml(o.order_number)}</span>
           <span class="order-card__status order-card__status--${statusSlug(st)}">${statusLabel(st)}</span>
+          <span class="order-card__tracking-badge order-card__tracking-badge--${escHtml(currentStage)}">
+            ${TRACKING_STAGE_LABEL[currentStage] || currentStage}
+          </span>
         </header>
         <p class="order-card__meta"><time>${escHtml(o.created_at || '')}</time> · Cliente: ${escHtml(o.customer_name || '—')}</p>
         ${shipBlock}
@@ -465,6 +510,7 @@
           <h4 class="order-card__h">Productos</h4>
           ${itemsHtml}
         </div>
+        ${trackingBlock}
         <footer class="order-card__foot">
           <div class="order-card__totals">
             <span>Subtotal ${formatPrice(subNum)}</span>
@@ -475,6 +521,65 @@
         </footer>
       </article>`;
   }
+
+  // ─── Tracking save handler (delegated) ──────────────────────────────────────
+  document.addEventListener('click', async (e) => {
+    // Save tracking button
+    const saveBtn = e.target.closest('.tracking-save-btn');
+    if (saveBtn) {
+      const orderId = saveBtn.dataset.orderId;
+      const stageEl = document.getElementById(`stage-${orderId}`);
+      const notesEl = document.getElementById(`notes-${orderId}`);
+      const feedback = document.getElementById(`tsave-${orderId}`);
+      if (!stageEl) return;
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Guardando...';
+      try {
+        const res = await fetch(`/api/admin/orders/${orderId}/tracking`, {
+          method: 'PUT',
+          headers: authHeaders(),
+          body: JSON.stringify({
+            tracking_stage: stageEl.value,
+            tracking_notes: notesEl?.value || '',
+          }),
+        });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          showToast(d.error || 'Error al guardar.', true);
+        } else {
+          feedback?.classList.remove('hidden');
+          setTimeout(() => feedback?.classList.add('hidden'), 2500);
+          // Update the badge in the card header
+          const card = saveBtn.closest('.order-card');
+          const badge = card?.querySelector('.order-card__tracking-badge');
+          if (badge) {
+            badge.textContent = TRACKING_STAGE_LABEL[stageEl.value] || stageEl.value;
+            badge.className = `order-card__tracking-badge order-card__tracking-badge--${stageEl.value}`;
+          }
+          showToast('Tracking actualizado correctamente.');
+        }
+      } catch {
+        showToast('Error de conexión.', true);
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Guardar tracking';
+      }
+    }
+
+    // Copy tracking code button
+    const copyBtn = e.target.closest('.btn-copy-code');
+    if (copyBtn) {
+      const code = copyBtn.dataset.code;
+      try {
+        await navigator.clipboard.writeText(code);
+        copyBtn.textContent = '✓';
+        setTimeout(() => { copyBtn.textContent = '⎘'; }, 1500);
+      } catch {
+        showToast('No se pudo copiar al portapapeles.', true);
+      }
+    }
+  });
 
   // ─── Product Form ────────────────────────────────────────────────────────────
   function resetForm() {

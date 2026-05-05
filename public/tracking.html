@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seguimiento de pedido — Calziani</title>
+  <link rel="icon" href="/img/587730407_17843809347618797_3290323688225420457_n.jpg" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; background: #f9f9f9; color: #111; min-height: 100vh; }
+
+    /* ── Header ── */
+    .trk-header { background: #111; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .trk-header__logo { color: #fff; font-size: 1.2rem; font-weight: 800; letter-spacing: 0.15em; text-decoration: none; }
+    .trk-header__back { color: #aaa; font-size: 0.78rem; text-decoration: none; letter-spacing: 0.06em; }
+    .trk-header__back:hover { color: #fff; }
+
+    /* ── Main container ── */
+    .trk-wrap { max-width: 680px; margin: 0 auto; padding: 40px 20px 80px; }
+
+    /* ── Search box ── */
+    .trk-search-card { background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; padding: 32px 28px; margin-bottom: 32px; }
+    .trk-search-card h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .trk-search-card p { font-size: 0.85rem; color: #666; margin-bottom: 20px; }
+    .trk-input-row { display: flex; gap: 10px; }
+    .trk-input { flex: 1; padding: 12px 14px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 1rem; font-family: monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+    .trk-input:focus { outline: none; border-color: #111; }
+    .trk-input::placeholder { text-transform: none; letter-spacing: 0; }
+    .trk-btn { padding: 12px 24px; background: #111; color: #fff; border: none; border-radius: 4px; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.08em; cursor: pointer; white-space: nowrap; }
+    .trk-btn:hover { opacity: 0.85; }
+    .trk-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .trk-error { margin-top: 12px; font-size: 0.85rem; color: #dc2626; display: none; }
+
+    /* ── Result card ── */
+    .trk-result { display: none; background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden; }
+    .trk-result.visible { display: block; }
+    .trk-result__head { background: #111; color: #fff; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    .trk-result__order { font-size: 0.82rem; opacity: 0.7; letter-spacing: 0.06em; }
+    .trk-result__num { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.08em; }
+    .trk-result__date { font-size: 0.78rem; opacity: 0.6; }
+
+    /* ── Timeline ── */
+    .trk-timeline { padding: 28px 24px; }
+    .trk-timeline h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: #888; margin-bottom: 20px; }
+
+    .trk-steps { position: relative; padding-left: 36px; }
+    .trk-steps::before {
+      content: '';
+      position: absolute;
+      left: 13px;
+      top: 12px;
+      bottom: 12px;
+      width: 2px;
+      background: #e5e5e5;
+    }
+
+    .trk-step { position: relative; padding: 0 0 26px 0; }
+    .trk-step:last-child { padding-bottom: 0; }
+
+    .trk-step__dot {
+      position: absolute;
+      left: -24px;
+      top: 2px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #e5e5e5;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 2px #e5e5e5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+    }
+    .trk-step--done .trk-step__dot { background: #16a34a; box-shadow: 0 0 0 2px #16a34a; color: #fff; }
+    .trk-step--current .trk-step__dot { background: #111; box-shadow: 0 0 0 3px #111, 0 0 0 5px #d1fae5; color: #fff; animation: pulse-dot 1.8s ease-in-out infinite; }
+
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 0 3px #111, 0 0 0 5px #d1fae5; }
+      50%       { box-shadow: 0 0 0 3px #111, 0 0 0 8px #d1fae540; }
+    }
+
+    .trk-step__title { font-size: 0.92rem; font-weight: 600; color: #aaa; }
+    .trk-step--done .trk-step__title { color: #16a34a; }
+    .trk-step--current .trk-step__title { color: #111; font-size: 1rem; }
+    .trk-step__sub { font-size: 0.78rem; color: #aaa; margin-top: 2px; }
+    .trk-step--current .trk-step__sub { color: #555; }
+
+    /* ── Notes ── */
+    .trk-notes { margin: 0 24px 24px; padding: 14px 16px; background: #f0fdf4; border-radius: 6px; border-left: 3px solid #16a34a; font-size: 0.84rem; color: #166534; display: none; }
+    .trk-notes.visible { display: block; }
+    .trk-notes__label { font-weight: 700; margin-bottom: 4px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* ── Footer info ── */
+    .trk-result__info { padding: 16px 24px 24px; border-top: 1px solid #f3f4f6; display: flex; gap: 24px; flex-wrap: wrap; }
+    .trk-info-item { font-size: 0.8rem; color: #666; }
+    .trk-info-item strong { display: block; font-size: 0.9rem; color: #111; }
+
+    @media (max-width: 480px) {
+      .trk-input-row { flex-direction: column; }
+      .trk-btn { width: 100%; }
+      .trk-result__head { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="trk-header">
+    <a href="/" class="trk-header__logo">CALZIANI</a>
+    <a href="/" class="trk-header__back">← Volver a la tienda</a>
+  </header>
+
+  <div class="trk-wrap">
+
+    <!-- Search box -->
+    <div class="trk-search-card">
+      <h1>Seguimiento de pedido</h1>
+      <p>Ingresá el código de tracking que te enviamos junto a la confirmación de tu pedido.</p>
+      <div class="trk-input-row">
+        <input
+          type="text"
+          id="trkInput"
+          class="trk-input"
+          placeholder="Ej: CLZ-A1B2C3"
+          maxlength="20"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button type="button" id="trkBtn" class="trk-btn">Rastrear</button>
+      </div>
+      <p id="trkError" class="trk-error"></p>
+    </div>
+
+    <!-- Result -->
+    <div id="trkResult" class="trk-result">
+      <div class="trk-result__head">
+        <div>
+          <p class="trk-result__order">Número de pedido</p>
+          <p class="trk-result__num" id="rOrderNum"></p>
+        </div>
+        <p class="trk-result__date" id="rDate"></p>
+      </div>
+
+      <div class="trk-timeline">
+        <h3>Estado del envío</h3>
+        <div class="trk-steps" id="trkSteps"></div>
+      </div>
+
+      <div id="trkNotes" class="trk-notes">
+        <p class="trk-notes__label">📋 Nota del equipo Calziani</p>
+        <p id="trkNotesText"></p>
+      </div>
+
+      <div class="trk-result__info">
+        <div class="trk-info-item">
+          <span>Cliente</span>
+          <strong id="rCustomer"></strong>
+        </div>
+        <div class="trk-info-item">
+          <span>Total del pedido</span>
+          <strong id="rTotal"></strong>
+        </div>
+        <div class="trk-info-item">
+          <span>Productos</span>
+          <strong id="rItems"></strong>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const STAGES = [
+      { key: 'received',              label: 'Pedido recibido',       sub: 'Confirmamos tu compra y estamos preparando tu pedido.' },
+      { key: 'in_europe',             label: 'En Europa',             sub: 'Tu pedido está siendo procesado en nuestro centro en Europa.' },
+      { key: 'in_usa',                label: 'En EE.UU.',             sub: 'El paquete está en tránsito a través de los Estados Unidos.' },
+      { key: 'in_dominican_republic', label: 'En República Dominicana', sub: 'Tu paquete llegó a República Dominicana y está en camino.' },
+      { key: 'delivered',             label: 'Entregado',             sub: '¡Tu pedido fue entregado con éxito! Gracias por comprar en Calziani.' },
+    ];
+
+    const input  = document.getElementById('trkInput');
+    const btn    = document.getElementById('trkBtn');
+    const errEl  = document.getElementById('trkError');
+    const result = document.getElementById('trkResult');
+
+    function showError(msg) {
+      errEl.textContent = msg;
+      errEl.style.display = 'block';
+      result.classList.remove('visible');
+    }
+
+    function hideError() { errEl.style.display = 'none'; }
+
+    function formatDate(raw) {
+      if (!raw) return '—';
+      const d = new Date(raw);
+      if (isNaN(d)) return raw;
+      return d.toLocaleDateString('es-DO', { day: '2-digit', month: 'long', year: 'numeric' });
+    }
+
+    function renderResult(data) {
+      document.getElementById('rOrderNum').textContent  = data.order_number || '—';
+      document.getElementById('rDate').textContent      = formatDate(data.created_at);
+      document.getElementById('rCustomer').textContent  = data.customer_name || '—';
+      document.getElementById('rTotal').textContent     = data.total != null
+        ? '$' + Number(data.total).toFixed(2) + ' USD' : '—';
+      document.getElementById('rItems').textContent     = data.num_items > 0
+        ? `${data.num_items} artículo${data.num_items !== 1 ? 's' : ''}` : '—';
+
+      const currentIdx = STAGES.findIndex(s => s.key === data.tracking_stage);
+      const steps = document.getElementById('trkSteps');
+      steps.innerHTML = STAGES.map((stage, i) => {
+        const isDone    = i < currentIdx;
+        const isCurrent = i === currentIdx;
+        const cls = isDone ? 'trk-step--done' : isCurrent ? 'trk-step--current' : '';
+        const dotContent = isDone ? '✓' : isCurrent ? '●' : '';
+        return `
+          <div class="trk-step ${cls}">
+            <div class="trk-step__dot">${dotContent}</div>
+            <p class="trk-step__title">${stage.label}</p>
+            ${isCurrent ? `<p class="trk-step__sub">${stage.sub}</p>` : ''}
+          </div>`;
+      }).join('');
+
+      const notesBox  = document.getElementById('trkNotes');
+      const notesText = document.getElementById('trkNotesText');
+      if (data.tracking_notes && data.tracking_notes.trim()) {
+        notesText.textContent = data.tracking_notes.trim();
+        notesBox.classList.add('visible');
+      } else {
+        notesBox.classList.remove('visible');
+      }
+
+      result.classList.add('visible');
+    }
+
+    async function doSearch() {
+      const code = input.value.trim().toUpperCase();
+      if (!code) { showError('Por favor ingresá tu código de tracking.'); return; }
+
+      hideError();
+      btn.disabled = true;
+      btn.textContent = 'Buscando...';
+
+      try {
+        const res = await fetch(`/api/tracking/${encodeURIComponent(code)}`);
+        const data = await res.json();
+        if (!res.ok) {
+          showError(data.error || 'Código no encontrado.');
+        } else {
+          renderResult(data);
+        }
+      } catch {
+        showError('Error de conexión. Intentá nuevamente.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Rastrear';
+      }
+    }
+
+    btn.addEventListener('click', doSearch);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+    // Pre-fill from URL param: /tracking?code=CLZ-XXXXXX
+    const urlCode = new URLSearchParams(location.search).get('code');
+    if (urlCode) {
+      input.value = urlCode.toUpperCase();
+      doSearch();
+    }
+  </script>
+
+</body>
+</html>

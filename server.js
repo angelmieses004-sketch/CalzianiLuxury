@@ -724,6 +724,25 @@ app.get('/api/payment-config', (req, res) => {
 
 const CHECKOUT_SHIPPING_USD = 5;
 
+// ─── Tracking ──────────────────────────────────────────────────────────────────
+const TRACKING_STAGES = ['received', 'in_europe', 'in_usa', 'in_dominican_republic', 'delivered'];
+
+function generateTrackingCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'CLZ-';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+function uniqueTrackingCode() {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const code = generateTrackingCode();
+    const exists = db.prepare('SELECT 1 FROM orders WHERE tracking_code = ?').get(code);
+    if (!exists) return code;
+  }
+  return `CLZ-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+}
+
 const PROMO_CALZIANI_CODE = 'CALZIANI';
 const PROMO_CALZIANI_PERCENT = 20;
 
@@ -815,12 +834,14 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
     const userId = req.user?.id || null;
 
     const insertOrder = db.prepare(`
-      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, customer_name, customer_email)
-      VALUES (?, ?, ?, ?, 0, ?, 'pending_transfer', ?, ?)
+      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, customer_name, customer_email, tracking_code, tracking_stage)
+      VALUES (?, ?, ?, ?, 0, ?, 'pending_transfer', ?, ?, ?, 'received')
     `);
     const insertPromo = db.prepare(`
       INSERT INTO promo_redemptions (promo_code, phone_key, order_number) VALUES (?, ?, ?)
     `);
+
+    const trackingCode = uniqueTrackingCode();
 
     const tx = db.transaction(() => {
       insertOrder.run(
@@ -831,6 +852,7 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
         totalCheck,
         payload.shipping.name,
         null,
+        trackingCode,
       );
       if (promoRes.redeem && promoRes.phoneKey) {
         insertPromo.run(PROMO_CALZIANI_CODE, promoRes.phoneKey, orderNum);
@@ -838,7 +860,7 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
     });
     tx();
 
-    res.json({ ok: true, orderNumber: orderNum });
+    res.json({ ok: true, orderNumber: orderNum, trackingCode });
   } catch (e) {
     console.error('whatsapp-submit:', e);
     if (String(e.message).includes('UNIQUE')) {
@@ -912,12 +934,14 @@ app.post('/api/azul/checkout', (req, res) => {
   };
 
   const insertAzulOrder = db.prepare(`
-    INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, customer_name, customer_email)
-    VALUES (?, ?, ?, ?, ?, ?, 'pending_azul', ?, ?)
+    INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, customer_name, customer_email, tracking_code, tracking_stage)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending_azul', ?, ?, ?, 'received')
   `);
   const insertPromoAzul = db.prepare(`
     INSERT INTO promo_redemptions (promo_code, phone_key, order_number) VALUES (?, ?, ?)
   `);
+
+  const azulTrackingCode = uniqueTrackingCode();
 
   try {
     const tx = db.transaction(() => {
@@ -930,6 +954,7 @@ app.post('/api/azul/checkout', (req, res) => {
         totalUSDCheck,
         shipping?.name || null,
         null,
+        azulTrackingCode,
       );
       if (promoRes.redeem && promoRes.phoneKey) {
         insertPromoAzul.run(PROMO_CALZIANI_CODE, promoRes.phoneKey, orderNum);
@@ -944,6 +969,7 @@ app.post('/api/azul/checkout', (req, res) => {
   res.json({
     azulUrl: AZUL_URL,
     orderNumber: orderNum,
+    trackingCode: azulTrackingCode,
     fields: {
       MerchantId:        merchantId,
       MerchantName:      merchantName,
@@ -1092,13 +1118,66 @@ app.post('/api/paypal/capture-order/:orderId', async (req, res) => {
 });
 
 
-// Order status (for admin)
+// ─── Order tracking endpoints ──────────────────────────────────────────────────
+
+// Admin: list orders (includes tracking fields)
 app.get('/api/admin/orders', requireAuth, (req, res) => {
   const orders = db.prepare(
-    `SELECT id, order_number, customer_name, customer_email, subtotal, itbis, total, status, created_at, items_json
-     FROM orders ORDER BY created_at DESC LIMIT 100`
+    `SELECT id, order_number, customer_name, customer_email, subtotal, itbis, total,
+            status, created_at, items_json, tracking_code, tracking_stage, tracking_notes
+     FROM orders ORDER BY created_at DESC LIMIT 200`
   ).all();
   res.json(orders);
+});
+
+// Admin: update tracking stage + notes for an order
+app.put('/api/admin/orders/:id/tracking', requireAuth, (req, res) => {
+  const { tracking_stage, tracking_notes } = req.body || {};
+  if (!TRACKING_STAGES.includes(tracking_stage)) {
+    return res.status(400).json({ error: 'Etapa de tracking inválida.' });
+  }
+  const order = db.prepare('SELECT id FROM orders WHERE id = ?').get(req.params.id);
+  if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+
+  db.prepare(
+    `UPDATE orders SET tracking_stage = ?, tracking_notes = ? WHERE id = ?`
+  ).run(tracking_stage, String(tracking_notes || '').trim(), req.params.id);
+
+  const updated = db.prepare(
+    `SELECT id, order_number, tracking_code, tracking_stage, tracking_notes FROM orders WHERE id = ?`
+  ).get(req.params.id);
+  res.json(updated);
+});
+
+// Public: look up order by tracking code (no auth required)
+app.get('/api/tracking/:code', (req, res) => {
+  const code = String(req.params.code || '').trim().toUpperCase();
+  if (!code) return res.status(400).json({ error: 'Código requerido.' });
+
+  const order = db.prepare(
+    `SELECT order_number, customer_name, total, status, created_at,
+            tracking_code, tracking_stage, tracking_notes, items_json
+     FROM orders WHERE tracking_code = ?`
+  ).get(code);
+
+  if (!order) return res.status(404).json({ error: 'Código no encontrado. Verificá que sea correcto.' });
+
+  // Return limited info to the public
+  let cart = [];
+  try { const d = JSON.parse(order.items_json || '{}'); cart = Array.isArray(d.cart) ? d.cart : []; } catch { /* */ }
+  const numItems = cart.reduce((s, i) => s + Number(i.qty || 1), 0);
+
+  res.json({
+    order_number:    order.order_number,
+    customer_name:   order.customer_name || '',
+    total:           order.total,
+    status:          order.status,
+    created_at:      order.created_at,
+    tracking_code:   order.tracking_code,
+    tracking_stage:  order.tracking_stage || 'received',
+    tracking_notes:  order.tracking_notes || '',
+    num_items:       numItems,
+  });
 });
 
 // ─── Global error handler (returns JSON, never HTML) ──────────────────────────
@@ -1110,7 +1189,8 @@ app.use((err, req, res, next) => {
 });
 
 // ─── Fallback SPA routes ───────────────────────────────────────────────────────
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/admin',    (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/tracking', (req, res) => res.sendFile(path.join(__dirname, 'public', 'tracking.html')));
 app.get('/product/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'product.html')));
 app.get('/favoritos',        (req, res) => res.sendFile(path.join(__dirname, 'public', 'favoritos.html')));
 app.get('/reset-password',   (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));

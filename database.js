@@ -87,6 +87,10 @@ db.exec(`
 
 // Migrations
 try { db.exec(`ALTER TABLE users ADD COLUMN verified INTEGER DEFAULT 0`); } catch (_) {}
+try { db.exec(`ALTER TABLE orders ADD COLUMN tracking_code TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE orders ADD COLUMN tracking_stage TEXT DEFAULT 'received'`); } catch (_) {}
+try { db.exec(`ALTER TABLE orders ADD COLUMN tracking_notes TEXT DEFAULT ''`); } catch (_) {}
+try { db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_tracking_code ON orders(tracking_code) WHERE tracking_code IS NOT NULL`); } catch (_) {}
 try { db.exec(`ALTER TABLE products ADD COLUMN sizes TEXT DEFAULT '[]'`); } catch (_) {}
 try { db.exec(`ALTER TABLE products ADD COLUMN shipping_days TEXT DEFAULT NULL`); } catch (_) {}
 try { db.exec(`ALTER TABLE products ADD COLUMN compare_price REAL DEFAULT NULL`); } catch (_) {}
