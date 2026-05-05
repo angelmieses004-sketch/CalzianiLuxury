@@ -755,6 +755,8 @@
         total,
         numItems: cart.reduce((s, i) => s + i.qty, 0),
         orderId:  data.orderNumber,
+        trackingCode: data.trackingCode || '',
+        trackingUrl: data.trackingUrl || '',
         name:     shipping.name,
         phone:    shipping.phone,
         country:  shipping.country,
@@ -784,6 +786,8 @@
     btn.textContent = 'Guardando pedido...';
 
     let orderNumber = '';
+    let trackingCode = '';
+    let trackingUrl = '';
     try {
       const saveRes = await fetch('/api/orders/whatsapp-submit', {
         method: 'POST',
@@ -807,6 +811,8 @@
         return;
       }
       orderNumber = saveData.orderNumber || '';
+      trackingCode = saveData.trackingCode || '';
+      trackingUrl = saveData.trackingUrl || (trackingCode ? `${location.origin}/tracking?code=${encodeURIComponent(trackingCode)}` : '');
       // InitiateCheckout for WhatsApp checkout path
       window.CalzianiPixel?.trackInitiateCheckout(cart, ct.total,
         ship.name ? { name: ship.name, phone: ship.phone, country: ship.country } : null
@@ -826,6 +832,8 @@
     const msg = [
       `Hola! Quiero confirmar mi pedido en Calziani 🛍️`,
       orderNumber ? `Pedido: *${orderNumber}*` : '',
+      trackingCode ? `Código de tracking: *${trackingCode}*` : '',
+      trackingUrl ? `Link de tracking: ${trackingUrl}` : '',
       ``,
       items,
       ``,

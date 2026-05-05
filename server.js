@@ -743,6 +743,14 @@ function uniqueTrackingCode() {
   return `CLZ-${Date.now().toString(36).toUpperCase().slice(-6)}`;
 }
 
+function trackingUrlFromCode(req, trackingCode) {
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const proto = forwardedProto || req.protocol || 'http';
+  const host = req.get('host');
+  const base = host ? `${proto}://${host}` : (process.env.BASE_URL || 'http://localhost:3000');
+  return `${base}/tracking?code=${encodeURIComponent(trackingCode)}`;
+}
+
 const PROMO_CALZIANI_CODE = 'CALZIANI';
 const PROMO_CALZIANI_PERCENT = 20;
 
@@ -860,7 +868,12 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
     });
     tx();
 
-    res.json({ ok: true, orderNumber: orderNum, trackingCode });
+    res.json({
+      ok: true,
+      orderNumber: orderNum,
+      trackingCode,
+      trackingUrl: trackingUrlFromCode(req, trackingCode),
+    });
   } catch (e) {
     console.error('whatsapp-submit:', e);
     if (String(e.message).includes('UNIQUE')) {
@@ -970,6 +983,7 @@ app.post('/api/azul/checkout', (req, res) => {
     azulUrl: AZUL_URL,
     orderNumber: orderNum,
     trackingCode: azulTrackingCode,
+    trackingUrl: trackingUrlFromCode(req, azulTrackingCode),
     fields: {
       MerchantId:        merchantId,
       MerchantName:      merchantName,
@@ -1060,9 +1074,10 @@ app.post('/api/paypal/create-order', async (req, res) => {
       promoPercent: promoRes.redeem ? PROMO_CALZIANI_PERCENT : undefined,
     };
 
+    const paypalTrackingCode = uniqueTrackingCode();
     const insertPp = db.prepare(`
-      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, cardnet_session, customer_email)
-      VALUES (?, ?, ?, ?, ?, ?, 'pending_paypal', ?, ?)
+      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, cardnet_session, customer_email, tracking_code, tracking_stage)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending_paypal', ?, ?, ?, 'received')
     `);
     const insertPromoPp = db.prepare(`
       INSERT INTO promo_redemptions (promo_code, phone_key, order_number) VALUES (?, ?, ?)
@@ -1079,6 +1094,7 @@ app.post('/api/paypal/create-order', async (req, res) => {
           totalUSDNum,
           ppData.id,
           shipping?.name || null,
+          paypalTrackingCode,
         );
         if (promoRes.redeem && promoRes.phoneKey) {
           insertPromoPp.run(PROMO_CALZIANI_CODE, promoRes.phoneKey, orderNum);
@@ -1090,7 +1106,12 @@ app.post('/api/paypal/create-order', async (req, res) => {
       return res.status(500).json({ error: 'No se pudo guardar el pedido.' });
     }
 
-    res.json({ orderId: ppData.id, orderNumber: orderNum });
+    res.json({
+      orderId: ppData.id,
+      orderNumber: orderNum,
+      trackingCode: paypalTrackingCode,
+      trackingUrl: trackingUrlFromCode(req, paypalTrackingCode),
+    });
   } catch (e) {
     console.error('[PayPal] create-order error:', e);
     res.status(500).json({ error: 'Error al conectar con PayPal.' });
@@ -1119,6 +1140,89 @@ app.post('/api/paypal/capture-order/:orderId', async (req, res) => {
 
 
 // ─── Order tracking endpoints ──────────────────────────────────────────────────
+
+// Admin: manually create an order
+app.post('/api/admin/orders', requireAuth, (req, res) => {
+  const {
+    customer_name, customer_phone, country, province, address,
+    items, shipping_fee, payment_method, tracking_stage, tracking_notes,
+  } = req.body || {};
+
+  if (!String(customer_name || '').trim()) {
+    return res.status(400).json({ error: 'El nombre del cliente es obligatorio.' });
+  }
+  if (!Array.isArray(items) || !items.length) {
+    return res.status(400).json({ error: 'Agregá al menos un producto.' });
+  }
+
+  const cartLines = items
+    .map(i => ({
+      name:  String(i.name  || '').trim(),
+      qty:   Math.max(1, Math.floor(Number(i.qty)  || 1)),
+      price: Math.max(0, Number(i.price) || 0),
+      size:  String(i.size  || '').trim(),
+    }))
+    .filter(i => i.name);
+
+  if (!cartLines.length) {
+    return res.status(400).json({ error: 'Todos los productos deben tener nombre.' });
+  }
+
+  const subtotal   = Math.round(cartLines.reduce((s, i) => s + i.price * i.qty, 0) * 100) / 100;
+  const shipFee    = Math.max(0, Number(shipping_fee) || 0);
+  const total      = Math.round((subtotal + shipFee) * 100) / 100;
+  const stage      = TRACKING_STAGES.includes(tracking_stage) ? tracking_stage : 'received';
+  const payMethod  = String(payment_method || 'manual').trim();
+
+  const orderNum   = `CAL-M${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`.toUpperCase();
+  const trackingCode = uniqueTrackingCode();
+
+  const payload = {
+    cart: cartLines,
+    shipping: {
+      name:     String(customer_name || '').trim(),
+      phone:    String(customer_phone || '').trim(),
+      country:  String(country  || '').trim(),
+      province: String(province || '').trim(),
+      address:  String(address  || '').trim(),
+    },
+    subtotal,
+    shippingFee: shipFee,
+    total,
+    paymentMethod: payMethod,
+  };
+
+  try {
+    db.prepare(`
+      INSERT INTO orders
+        (order_number, user_id, items_json, subtotal, itbis, total, status,
+         customer_name, customer_email, tracking_code, tracking_stage, tracking_notes)
+      VALUES (?, NULL, ?, ?, 0, ?, 'manual', ?, NULL, ?, ?, ?)
+    `).run(
+      orderNum,
+      JSON.stringify(payload),
+      subtotal,
+      total,
+      String(customer_name).trim(),
+      trackingCode,
+      stage,
+      String(tracking_notes || '').trim(),
+    );
+
+    res.status(201).json({
+      ok: true,
+      order_number:  orderNum,
+      tracking_code: trackingCode,
+      tracking_url:  trackingUrlFromCode(req, trackingCode),
+    });
+  } catch (e) {
+    console.error('manual-order:', e);
+    if (String(e.message).includes('UNIQUE')) {
+      return res.status(409).json({ error: 'Reintentá en un momento.' });
+    }
+    res.status(500).json({ error: 'Error al crear el pedido.' });
+  }
+});
 
 // Admin: list orders (includes tracking fields)
 app.get('/api/admin/orders', requireAuth, (req, res) => {

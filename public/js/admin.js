@@ -13,6 +13,7 @@
     paid_paypal: 'Pagado (PayPal)',
     paid: 'Pagado',
     cancelled: 'Cancelado',
+    manual: 'Creado manualmente',
   };
 
   const TRACKING_STAGE_LABEL = {
@@ -295,6 +296,7 @@
   sidebarLinks.forEach(btn => {
     btn.addEventListener('click', () => {
       if (btn.dataset.view === 'new') openNew();
+      else if (btn.dataset.view === 'neworder') openNewOrder();
       else switchView(btn.dataset.view);
     });
   });
@@ -464,6 +466,7 @@
     const st = o.status || '';
     const currentStage = o.tracking_stage || 'received';
     const tCode = o.tracking_code || '—';
+    const tLink = tCode !== '—' ? `${window.location.origin}/tracking?code=${encodeURIComponent(tCode)}` : '';
 
     const stageOptions = TRACKING_STAGES.map(s =>
       `<option value="${s}" ${s === currentStage ? 'selected' : ''}>${TRACKING_STAGE_LABEL[s] || s}</option>`
@@ -480,6 +483,12 @@
               ? `<button type="button" class="btn-copy-code" data-code="${escHtml(tCode)}" title="Copiar código">⎘</button>`
               : ''}
           </div>
+          ${tLink
+            ? `<div class="tracking-link-actions">
+                <a href="${escHtml(tLink)}" target="_blank" rel="noopener" class="btn-open-tracking">Ver tracking</a>
+                <button type="button" class="btn-copy-link" data-link="${escHtml(tLink)}" title="Copiar link de tracking">Copiar link</button>
+              </div>`
+            : ''}
           <div class="tracking-stage-select-wrap">
             <label class="tracking-stage-label-text" for="stage-${o.id}">Etapa:</label>
             <select class="tracking-stage-select" id="stage-${o.id}" data-order-id="${o.id}">
@@ -577,6 +586,19 @@
         setTimeout(() => { copyBtn.textContent = '⎘'; }, 1500);
       } catch {
         showToast('No se pudo copiar al portapapeles.', true);
+      }
+    }
+
+    // Copy tracking link
+    const copyLinkBtn = e.target.closest('.btn-copy-link');
+    if (copyLinkBtn) {
+      const link = copyLinkBtn.dataset.link;
+      try {
+        await navigator.clipboard.writeText(link);
+        copyLinkBtn.textContent = '✓ Link copiado';
+        setTimeout(() => { copyLinkBtn.textContent = 'Copiar link'; }, 1500);
+      } catch {
+        showToast('No se pudo copiar el link.', true);
       }
     }
   });
@@ -750,6 +772,127 @@
       showError(passError, 'Error de conexión.');
     }
   });
+
+  // ─── New Order (manual) ──────────────────────────────────────────────────────
+  const newOrderForm        = document.getElementById('newOrderForm');
+  const newOrderSuccess     = document.getElementById('newOrderSuccess');
+  const newOrderError       = document.getElementById('newOrderError');
+  const newOrderSubmitBtn   = document.getElementById('newOrderSubmitBtn');
+  const newOrderCancelBtn   = document.getElementById('newOrderCancelBtn');
+  const noItemsTable        = document.getElementById('noItemsTable');
+  const noAddRowBtn         = document.getElementById('noAddRow');
+  let noRowCount = 0;
+
+  function addOrderRow(name = '', size = '', qty = 1, price = '') {
+    noRowCount++;
+    const row = document.createElement('div');
+    row.className = 'no-item-row';
+    row.dataset.rowId = noRowCount;
+    row.innerHTML = `
+      <input type="text"   class="no-r-name"  placeholder="Nombre del producto" value="${escHtml(String(name))}" />
+      <input type="text"   class="no-r-size"  placeholder="—"                   value="${escHtml(String(size))}" />
+      <input type="number" class="no-r-qty"   placeholder="1"  min="1" step="1" value="${Number(qty) || 1}" />
+      <input type="number" class="no-r-price" placeholder="0.00" min="0" step="0.01" value="${price !== '' ? Number(price) : ''}" />
+      <button type="button" class="no-item-remove" title="Quitar">×</button>`;
+    row.querySelector('.no-item-remove').addEventListener('click', () => {
+      row.remove();
+      if (!noItemsTable.querySelectorAll('.no-item-row').length) addOrderRow();
+    });
+    noItemsTable.appendChild(row);
+  }
+
+  function getOrderItems() {
+    return [...noItemsTable.querySelectorAll('.no-item-row')].map(row => ({
+      name:  row.querySelector('.no-r-name').value.trim(),
+      size:  row.querySelector('.no-r-size').value.trim(),
+      qty:   Number(row.querySelector('.no-r-qty').value) || 1,
+      price: Number(row.querySelector('.no-r-price').value) || 0,
+    })).filter(i => i.name);
+  }
+
+  function resetNewOrderForm() {
+    newOrderForm.reset();
+    noItemsTable.querySelectorAll('.no-item-row').forEach(r => r.remove());
+    noRowCount = 0;
+    addOrderRow();
+    hideError(newOrderError);
+    newOrderSuccess.classList.add('hidden');
+    newOrderForm.classList.remove('hidden');
+    document.getElementById('noCountry').value = 'DO';
+    document.getElementById('noShipFee').value = '5';
+  }
+
+  function openNewOrder() {
+    resetNewOrderForm();
+    switchView('neworder');
+  }
+
+  noAddRowBtn?.addEventListener('click', () => addOrderRow());
+
+  newOrderCancelBtn?.addEventListener('click', () => switchView('orders'));
+
+  newOrderForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideError(newOrderError);
+
+    const customer_name = document.getElementById('noName').value.trim();
+    const customer_phone = document.getElementById('noPhone').value.trim();
+    const country  = document.getElementById('noCountry').value.trim();
+    const province = document.getElementById('noProvince').value.trim();
+    const address  = document.getElementById('noAddress').value.trim();
+    const shipping_fee   = document.getElementById('noShipFee').value;
+    const payment_method = document.getElementById('noPayMethod').value;
+    const tracking_stage = document.getElementById('noStage').value;
+    const tracking_notes = document.getElementById('noNotes').value.trim();
+    const items = getOrderItems();
+
+    if (!customer_name) { showError(newOrderError, 'El nombre del cliente es obligatorio.'); return; }
+    if (!items.length)  { showError(newOrderError, 'Agregá al menos un producto con nombre.'); return; }
+
+    newOrderSubmitBtn.disabled = true;
+    newOrderSubmitBtn.textContent = 'Creando...';
+
+    try {
+      const res = await fetch('/api/admin/orders', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          customer_name, customer_phone, country, province, address,
+          items, shipping_fee, payment_method, tracking_stage, tracking_notes,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) { showError(newOrderError, data.error || 'Error al crear el pedido.'); return; }
+
+      // Show success card
+      newOrderForm.classList.add('hidden');
+      newOrderSuccess.classList.remove('hidden');
+      document.getElementById('nosOrderNum').textContent = `Número de pedido: ${data.order_number}  ·  Código de tracking: ${data.tracking_code}`;
+      const urlInput = document.getElementById('nosTrackUrl');
+      urlInput.value = data.tracking_url;
+      document.getElementById('nosOpenBtn').href = data.tracking_url;
+      showToast('Pedido creado correctamente.');
+    } catch {
+      showError(newOrderError, 'Error de conexión.');
+    } finally {
+      newOrderSubmitBtn.disabled = false;
+      newOrderSubmitBtn.textContent = 'Crear pedido';
+    }
+  });
+
+  document.getElementById('nosCopyBtn')?.addEventListener('click', async () => {
+    const val = document.getElementById('nosTrackUrl').value;
+    try {
+      await navigator.clipboard.writeText(val);
+      const btn = document.getElementById('nosCopyBtn');
+      btn.textContent = '✓ Copiado';
+      setTimeout(() => { btn.textContent = 'Copiar'; }, 1600);
+    } catch { showToast('No se pudo copiar.', true); }
+  });
+
+  document.getElementById('nosNewBtn')?.addEventListener('click', resetNewOrderForm);
+  document.getElementById('nosOrdersBtn')?.addEventListener('click', () => switchView('orders'));
 
   // ─── Init ────────────────────────────────────────────────────────────────────
   checkAuth();

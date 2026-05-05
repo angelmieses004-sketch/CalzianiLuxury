@@ -30,12 +30,48 @@
     .tracking-code-val { font-family: monospace; font-size: 0.92rem; font-weight: 700; background: #111; color: #f0fdf4; padding: 3px 10px; border-radius: 4px; letter-spacing: 0.1em; }
     .btn-copy-code { background: none; border: 1px solid #d1d5db; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 1rem; color: #374151; transition: background 0.15s; }
     .btn-copy-code:hover { background: #f3f4f6; }
+    .tracking-link-actions { display: flex; align-items: center; gap: 8px; }
+    .btn-open-tracking, .btn-copy-link {
+      font-size: 0.75rem;
+      letter-spacing: 0.03em;
+      border-radius: 4px;
+      padding: 5px 8px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: #111;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn-open-tracking:hover, .btn-copy-link:hover { background: #f3f4f6; }
     .tracking-stage-select-wrap { display: flex; align-items: center; gap: 8px; }
     .tracking-stage-label-text { font-size: 0.78rem; color: #666; white-space: nowrap; }
     .tracking-stage-select { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.82rem; background: #fff; cursor: pointer; }
     .tracking-notes-input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.82rem; font-family: inherit; resize: vertical; margin-bottom: 8px; }
     .tracking-save-btn { margin-right: 10px; }
     .tracking-save-feedback { font-size: 0.8rem; color: #16a34a; font-weight: 600; }
+
+    /* ── New order form ── */
+    .no-fieldset { border: none; padding: 0; margin: 0 0 20px; }
+    .no-legend { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #888; font-weight: 700; margin-bottom: 12px; display: block; }
+    .no-items-table { margin-bottom: 10px; }
+    .no-items-head { display: grid; grid-template-columns: 2fr 1fr 0.7fr 1.2fr 36px; gap: 8px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: #aaa; font-weight: 600; padding: 0 0 6px 0; border-bottom: 1px solid #f0f0f0; margin-bottom: 6px; }
+    .no-item-row { display: grid; grid-template-columns: 2fr 1fr 0.7fr 1.2fr 36px; gap: 8px; align-items: center; margin-bottom: 6px; }
+    .no-item-row input { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.84rem; width: 100%; box-sizing: border-box; }
+    .no-item-row input:focus { outline: none; border-color: #111; }
+    .no-item-remove { background: none; border: 1px solid #e5e5e5; border-radius: 4px; width: 32px; height: 32px; cursor: pointer; font-size: 1rem; color: #999; display: flex; align-items: center; justify-content: center; }
+    .no-item-remove:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
+    .no-add-row { margin-top: 4px; }
+
+    /* ── Success card ── */
+    .new-order-success { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 32px 28px; margin-bottom: 24px; text-align: center; }
+    .nos-icon { width: 52px; height: 52px; background: #16a34a; border-radius: 50%; color: #fff; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
+    .nos-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+    .nos-order { font-size: 0.85rem; color: #555; margin-bottom: 20px; font-family: monospace; }
+    .nos-track-wrap { text-align: left; max-width: 520px; margin: 0 auto 20px; }
+    .nos-track-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.07em; color: #374151; font-weight: 600; display: block; margin-bottom: 6px; }
+    .nos-track-row { display: flex; gap: 8px; align-items: center; }
+    .nos-track-input { flex: 1; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.82rem; font-family: monospace; background: #fff; color: #111; }
+    .nos-actions { display: flex; gap: 12px; justify-content: center; }
   </style>
 
   <!-- Meta Pixel Code -->
@@ -93,6 +129,9 @@
         </button>
         <button class="sidebar__link" data-view="new">
           <span class="sidebar__icon">＋</span> Nuevo producto
+        </button>
+        <button class="sidebar__link" data-view="neworder">
+          <span class="sidebar__icon">✎</span> Nuevo pedido
         </button>
         <button class="sidebar__link" data-view="settings">
           <span class="sidebar__icon">⚙</span> Ajustes
@@ -210,6 +249,119 @@
           <div class="form-btns">
             <button type="submit" class="btn btn-primary" id="formSubmitBtn">Guardar producto</button>
             <button type="button" class="btn btn-ghost" id="formCancelBtn">Cancelar</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- VIEW: New Order (manual) -->
+      <section id="viewNeworder" class="view">
+        <div class="view__header">
+          <h2 class="view__title">Nuevo pedido manual</h2>
+        </div>
+
+        <!-- Success card shown after creation -->
+        <div id="newOrderSuccess" class="new-order-success hidden">
+          <div class="nos-icon">✓</div>
+          <h3 class="nos-title">Pedido creado</h3>
+          <p class="nos-order" id="nosOrderNum"></p>
+          <div class="nos-track-wrap">
+            <span class="nos-track-label">Link de tracking para el cliente:</span>
+            <div class="nos-track-row">
+              <input type="text" class="nos-track-input" id="nosTrackUrl" readonly />
+              <button type="button" class="btn btn-ghost btn-sm" id="nosCopyBtn">Copiar</button>
+              <a href="#" class="btn btn-ghost btn-sm" id="nosOpenBtn" target="_blank" rel="noopener">Abrir</a>
+            </div>
+          </div>
+          <div class="nos-actions">
+            <button type="button" class="btn btn-primary" id="nosNewBtn">Crear otro pedido</button>
+            <button type="button" class="btn btn-ghost" id="nosOrdersBtn">Ver pedidos</button>
+          </div>
+        </div>
+
+        <form id="newOrderForm" class="product-form" novalidate>
+
+          <!-- Customer -->
+          <fieldset class="no-fieldset">
+            <legend class="no-legend">Datos del cliente</legend>
+            <div class="form-row">
+              <div class="field">
+                <label for="noName">Nombre <span class="required">*</span></label>
+                <input type="text" id="noName" placeholder="Ej: María González" maxlength="120" />
+              </div>
+              <div class="field">
+                <label for="noPhone">Teléfono</label>
+                <input type="text" id="noPhone" placeholder="Ej: +1 809 555 0000" maxlength="30" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field">
+                <label for="noCountry">País</label>
+                <input type="text" id="noCountry" placeholder="Ej: DO" maxlength="60" value="DO" />
+              </div>
+              <div class="field">
+                <label for="noProvince">Provincia / Ciudad</label>
+                <input type="text" id="noProvince" placeholder="Ej: Distrito Nacional" maxlength="80" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="noAddress">Dirección</label>
+              <input type="text" id="noAddress" placeholder="Ej: Calle 1, Apto 2B" maxlength="200" />
+            </div>
+          </fieldset>
+
+          <!-- Products -->
+          <fieldset class="no-fieldset">
+            <legend class="no-legend">Productos</legend>
+            <div id="noItemsTable" class="no-items-table">
+              <div class="no-items-head">
+                <span>Producto</span><span>Talle</span><span>Cant.</span><span>Precio unit. (USD)</span><span></span>
+              </div>
+              <!-- rows injected by JS -->
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm no-add-row" id="noAddRow">＋ Agregar producto</button>
+          </fieldset>
+
+          <!-- Totals + payment -->
+          <div class="form-row">
+            <div class="field">
+              <label for="noShipFee">Costo de envío (USD)</label>
+              <input type="number" id="noShipFee" value="5" min="0" step="0.01" />
+            </div>
+            <div class="field">
+              <label for="noPayMethod">Método de pago</label>
+              <select id="noPayMethod">
+                <option value="whatsapp">WhatsApp / Transferencia</option>
+                <option value="cash">Efectivo</option>
+                <option value="card">Tarjeta</option>
+                <option value="paypal">PayPal</option>
+                <option value="other">Otro</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Tracking -->
+          <div class="form-row">
+            <div class="field">
+              <label for="noStage">Etapa de tracking inicial</label>
+              <select id="noStage">
+                <option value="received">📦 Pedido recibido</option>
+                <option value="in_europe">✈️ En Europa</option>
+                <option value="in_usa">🇺🇸 En EE.UU.</option>
+                <option value="in_dominican_republic">🇩🇴 En Rep. Dominicana</option>
+                <option value="delivered">✅ Entregado</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="noNotes">Notas internas (tracking)</label>
+            <textarea id="noNotes" rows="2" placeholder="Ej: número de guía, transportista, fecha estimada..."></textarea>
+          </div>
+
+          <div id="newOrderError" class="form-error hidden"></div>
+
+          <div class="form-btns">
+            <button type="submit" class="btn btn-primary" id="newOrderSubmitBtn">Crear pedido</button>
+            <button type="button" class="btn btn-ghost" id="newOrderCancelBtn">Cancelar</button>
           </div>
         </form>
       </section>

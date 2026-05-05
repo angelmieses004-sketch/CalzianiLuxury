@@ -12,6 +12,8 @@
     .pay-title { font-size: 1.5rem; font-weight: 700; letter-spacing: 0.06em; margin-bottom: 0.5rem; }
     .pay-sub { font-size: 0.9rem; color: #666; margin-bottom: 0.75rem; }
     .pay-order { font-size: 0.8rem; color: #999; margin-bottom: 2rem; font-family: monospace; }
+    .pay-track { margin: -0.75rem 0 1.5rem; font-size: 0.86rem; color: #374151; }
+    .pay-track a { color: #111; font-weight: 700; text-decoration: underline; }
     .pay-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
     .pay-btn { padding: 0.75rem 2rem; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 2px; }
     .pay-btn-primary { background: #111; color: #fff; }
@@ -47,6 +49,7 @@
     <h1 class="pay-title">¡Pago aprobado!</h1>
     <p class="pay-sub">Tu pedido fue procesado correctamente. Gracias por comprar en Calziani.</p>
     <p class="pay-order" id="orderRef"></p>
+    <p class="pay-track" id="trackRef" hidden></p>
     <div class="pay-actions">
       <a href="/" class="pay-btn pay-btn-primary">Seguir comprando</a>
       <a href="https://www.instagram.com/calziani.luxury" target="_blank" class="pay-btn pay-btn-secondary">Seguinos en Instagram</a>
@@ -62,8 +65,16 @@
         || (purchaseRaw && purchaseRaw.orderId)
         || localStorage.getItem('calziani_pending_order')
         || '';
+      const trackingCode = (purchaseRaw && purchaseRaw.trackingCode) || '';
+      const trackingUrl  = (purchaseRaw && purchaseRaw.trackingUrl)
+        || (trackingCode ? `${location.origin}/tracking?code=${encodeURIComponent(trackingCode)}` : '');
 
       if (orderId) document.getElementById('orderRef').textContent = 'Número de orden: ' + orderId;
+      if (trackingUrl) {
+        const trk = document.getElementById('trackRef');
+        trk.innerHTML = `Seguimiento de pedido: <a href="${trackingUrl}">${trackingCode || 'Ver tracking'}</a>`;
+        trk.hidden = false;
+      }
 
       // Clear cart
       localStorage.removeItem('calziani_cart');
