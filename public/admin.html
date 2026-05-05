@@ -72,6 +72,25 @@
     .nos-track-row { display: flex; gap: 8px; align-items: center; }
     .nos-track-input { flex: 1; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.82rem; font-family: monospace; background: #fff; color: #111; }
     .nos-actions { display: flex; gap: 12px; justify-content: center; }
+
+    /* ── Edit order modal ── */
+    .modal__box--md  { max-width: 560px; width: 100%; }
+    .modal__order-num { font-family: monospace; font-size: 0.8rem; color: #888; margin: -8px 0 16px; }
+    .edit-order-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .edit-order-full { grid-column: 1 / -1; }
+    @media (max-width: 480px) { .edit-order-grid { grid-template-columns: 1fr; } .edit-order-full { grid-column: 1; } }
+
+    /* ── Order card action buttons ── */
+    .order-card__actions { display: flex; gap: 8px; margin-left: auto; }
+    .order-card__tracking-code {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: monospace; font-size: 0.82rem; font-weight: 700;
+      background: #111; color: #f0fdf4;
+      padding: 3px 10px; border-radius: 4px; letter-spacing: 0.1em;
+    }
+    .order-card__tracking-code--empty {
+      background: #f3f4f6; color: #9ca3af; font-weight: 400; letter-spacing: 0;
+    }
   </style>
 
   <!-- Meta Pixel Code -->
@@ -390,6 +409,70 @@
         </div>
       </section>
 
+    </div>
+  </div>
+
+  <!-- EDIT ORDER MODAL -->
+  <div id="editOrderModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal__backdrop" id="editOrderBackdrop"></div>
+    <div class="modal__box modal__box--md">
+      <h3 class="modal__title">Editar pedido</h3>
+      <p class="modal__order-num" id="editOrderNum"></p>
+
+      <div class="edit-order-grid">
+        <div class="field">
+          <label for="eoName">Nombre del cliente</label>
+          <input type="text" id="eoName" maxlength="120" />
+        </div>
+        <div class="field">
+          <label for="eoPhone">Teléfono</label>
+          <input type="text" id="eoPhone" maxlength="40" />
+        </div>
+        <div class="field">
+          <label for="eoCountry">País</label>
+          <input type="text" id="eoCountry" maxlength="80" />
+        </div>
+        <div class="field">
+          <label for="eoProvince">Provincia / Ciudad</label>
+          <input type="text" id="eoProvince" maxlength="80" />
+        </div>
+        <div class="field edit-order-full">
+          <label for="eoAddress">Dirección</label>
+          <input type="text" id="eoAddress" maxlength="200" />
+        </div>
+        <div class="field">
+          <label for="eoStatus">Estado del pedido</label>
+          <select id="eoStatus">
+            <option value="pending_transfer">Pendiente (transferencia / WhatsApp)</option>
+            <option value="pending_azul">Pendiente (tarjeta AZUL)</option>
+            <option value="pending_paypal">Pendiente (PayPal)</option>
+            <option value="paid_paypal">Pagado (PayPal)</option>
+            <option value="paid">Pagado</option>
+            <option value="manual">Creado manualmente</option>
+            <option value="cancelled">Cancelado</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="editOrderError" class="form-error hidden" style="margin-top:12px"></div>
+
+      <div class="modal__actions">
+        <button class="btn btn-primary" id="confirmEditBtn">Guardar cambios</button>
+        <button class="btn btn-ghost"   id="cancelEditBtn">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE ORDER MODAL -->
+  <div id="deleteOrderModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal__backdrop" id="deleteOrderBackdrop"></div>
+    <div class="modal__box modal__box--sm">
+      <h3 class="modal__title">Eliminar pedido</h3>
+      <p class="modal__body" id="deleteOrderBody">¿Seguro que querés eliminar este pedido? Esta acción no se puede deshacer.</p>
+      <div class="modal__actions">
+        <button class="btn btn-danger" id="confirmDeleteOrderBtn">Eliminar</button>
+        <button class="btn btn-ghost"  id="cancelDeleteOrderBtn">Cancelar</button>
+      </div>
     </div>
   </div>
 

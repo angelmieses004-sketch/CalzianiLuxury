@@ -1234,6 +1234,49 @@ app.get('/api/admin/orders', requireAuth, (req, res) => {
   res.json(orders);
 });
 
+// Admin: edit order (customer info + status; generates tracking code if missing)
+app.put('/api/admin/orders/:id', requireAuth, (req, res) => {
+  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
+  if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+
+  const { customer_name, customer_phone, country, province, address, status } = req.body || {};
+
+  let payload = {};
+  try { payload = JSON.parse(order.items_json || '{}'); } catch {}
+  const prevShip = payload.shipping || {};
+
+  payload.shipping = {
+    name:     String(customer_name   ?? prevShip.name     ?? '').trim(),
+    phone:    String(customer_phone  ?? prevShip.phone    ?? '').trim(),
+    country:  String(country         ?? prevShip.country  ?? '').trim(),
+    province: String(province        ?? prevShip.province ?? '').trim(),
+    address:  String(address         ?? prevShip.address  ?? '').trim(),
+  };
+
+  const VALID_STATUSES = ['pending_transfer','pending_azul','pending_paypal','paid_paypal','paid','cancelled','manual'];
+  const newStatus = VALID_STATUSES.includes(status) ? status : order.status;
+
+  const newName = String(customer_name ?? '').trim() || order.customer_name;
+
+  let trackingCode = order.tracking_code;
+  if (!trackingCode) trackingCode = uniqueTrackingCode();
+
+  db.prepare(`
+    UPDATE orders SET customer_name = ?, status = ?, items_json = ?, tracking_code = ? WHERE id = ?
+  `).run(newName, newStatus, JSON.stringify(payload), trackingCode, req.params.id);
+
+  const updated = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
+  res.json({ ...updated, tracking_url: trackingUrlFromCode(req, trackingCode) });
+});
+
+// Admin: delete order
+app.delete('/api/admin/orders/:id', requireAuth, (req, res) => {
+  const order = db.prepare('SELECT id FROM orders WHERE id = ?').get(req.params.id);
+  if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+  db.prepare('DELETE FROM orders WHERE id = ?').run(req.params.id);
+  res.json({ message: 'Pedido eliminado.' });
+});
+
 // Admin: update tracking stage + notes for an order
 app.put('/api/admin/orders/:id/tracking', requireAuth, (req, res) => {
   const { tracking_stage, tracking_notes } = req.body || {};

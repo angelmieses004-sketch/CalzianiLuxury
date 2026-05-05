@@ -428,6 +428,7 @@
   }
 
   function renderOrders(orders) {
+    window._lastOrders = orders;
     if (!orders.length) {
       ordersList.innerHTML = '<div class="table-empty">No hay pedidos registrados.</div>';
       return;
@@ -449,9 +450,9 @@
     const shipBlock = ship.name
       ? `<div class="order-card__section">
           <h4 class="order-card__h">Envío</h4>
-          <p>${escHtml(ship.name)} · ${escHtml(ship.phone)}</p>
-          <p>${escHtml(ship.country)} — ${escHtml(ship.province)}</p>
-          <p>${escHtml(ship.address)}</p>
+          <p>${escHtml(ship.name)} · ${escHtml(ship.phone || '')}</p>
+          <p>${escHtml(ship.country || '')} — ${escHtml(ship.province || '')}</p>
+          <p>${escHtml(ship.address || '')}</p>
         </div>`
       : '<div class="order-card__section"><p class="order-muted">Sin datos de envío en el pedido.</p></div>';
 
@@ -465,12 +466,18 @@
 
     const st = o.status || '';
     const currentStage = o.tracking_stage || 'received';
-    const tCode = o.tracking_code || '—';
-    const tLink = tCode !== '—' ? `${window.location.origin}/tracking?code=${encodeURIComponent(tCode)}` : '';
+    const tCode = o.tracking_code || '';
+    const tLink = tCode ? `${window.location.origin}/tracking?code=${encodeURIComponent(tCode)}` : '';
 
     const stageOptions = TRACKING_STAGES.map(s =>
       `<option value="${s}" ${s === currentStage ? 'selected' : ''}>${TRACKING_STAGE_LABEL[s] || s}</option>`
     ).join('');
+
+    const trackingCodeHtml = tCode
+      ? `<span class="order-card__tracking-code">${escHtml(tCode)}
+           <button type="button" class="btn-copy-code" data-code="${escHtml(tCode)}" title="Copiar código">⎘</button>
+         </span>`
+      : `<span class="order-card__tracking-code order-card__tracking-code--empty">Sin código aún</span>`;
 
     const trackingBlock = `
       <div class="order-card__section order-card__tracking">
@@ -478,15 +485,12 @@
         <div class="tracking-admin-row">
           <div class="tracking-code-display">
             <span class="tracking-code-label">Código del cliente:</span>
-            <code class="tracking-code-val" id="tcode-${o.id}">${escHtml(tCode)}</code>
-            ${tCode !== '—'
-              ? `<button type="button" class="btn-copy-code" data-code="${escHtml(tCode)}" title="Copiar código">⎘</button>`
-              : ''}
+            ${trackingCodeHtml}
           </div>
           ${tLink
             ? `<div class="tracking-link-actions">
                 <a href="${escHtml(tLink)}" target="_blank" rel="noopener" class="btn-open-tracking">Ver tracking</a>
-                <button type="button" class="btn-copy-link" data-link="${escHtml(tLink)}" title="Copiar link de tracking">Copiar link</button>
+                <button type="button" class="btn-copy-link" data-link="${escHtml(tLink)}" title="Copiar link">Copiar link</button>
               </div>`
             : ''}
           <div class="tracking-stage-select-wrap">
@@ -512,6 +516,10 @@
           <span class="order-card__tracking-badge order-card__tracking-badge--${escHtml(currentStage)}">
             ${TRACKING_STAGE_LABEL[currentStage] || currentStage}
           </span>
+          <div class="order-card__actions">
+            <button class="btn btn-ghost btn-sm" data-edit-order="${o.id}" title="Editar pedido">Editar</button>
+            <button class="btn btn-danger btn-sm" data-delete-order="${o.id}" title="Eliminar pedido">Eliminar</button>
+          </div>
         </header>
         <p class="order-card__meta"><time>${escHtml(o.created_at || '')}</time> · Cliente: ${escHtml(o.customer_name || '—')}</p>
         ${shipBlock}
@@ -770,6 +778,151 @@
       passwordForm.reset();
     } catch {
       showError(passError, 'Error de conexión.');
+    }
+  });
+
+  // ─── Edit / Delete orders ────────────────────────────────────────────────────
+  let editingOrderId = null;
+  let deletingOrderId = null;
+
+  const editOrderModal      = document.getElementById('editOrderModal');
+  const editOrderBackdrop   = document.getElementById('editOrderBackdrop');
+  const cancelEditBtn       = document.getElementById('cancelEditBtn');
+  const confirmEditBtn      = document.getElementById('confirmEditBtn');
+  const editOrderError      = document.getElementById('editOrderError');
+
+  const deleteOrderModal    = document.getElementById('deleteOrderModal');
+  const deleteOrderBackdrop = document.getElementById('deleteOrderBackdrop');
+  const cancelDeleteOrderBtn  = document.getElementById('cancelDeleteOrderBtn');
+  const confirmDeleteOrderBtn = document.getElementById('confirmDeleteOrderBtn');
+
+  function openEditOrderModal(o) {
+    let data = {};
+    try { data = JSON.parse(o.items_json || '{}'); } catch {}
+    const ship = data.shipping || {};
+    editingOrderId = o.id;
+    document.getElementById('editOrderNum').textContent  = o.order_number;
+    document.getElementById('eoName').value     = ship.name     || o.customer_name || '';
+    document.getElementById('eoPhone').value    = ship.phone    || '';
+    document.getElementById('eoCountry').value  = ship.country  || '';
+    document.getElementById('eoProvince').value = ship.province || '';
+    document.getElementById('eoAddress').value  = ship.address  || '';
+    document.getElementById('eoStatus').value   = o.status      || 'pending_transfer';
+    hideError(editOrderError);
+    editOrderModal.classList.add('open');
+    editOrderModal.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeEditOrderModal() {
+    editingOrderId = null;
+    editOrderModal.classList.remove('open');
+    editOrderModal.setAttribute('aria-hidden', 'true');
+  }
+
+  function openDeleteOrderModal(id, orderNumber) {
+    deletingOrderId = id;
+    document.getElementById('deleteOrderBody').textContent =
+      `¿Seguro que querés eliminar el pedido ${orderNumber}? Esta acción no se puede deshacer.`;
+    deleteOrderModal.classList.add('open');
+    deleteOrderModal.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeDeleteOrderModal() {
+    deletingOrderId = null;
+    deleteOrderModal.classList.remove('open');
+    deleteOrderModal.setAttribute('aria-hidden', 'true');
+  }
+
+  cancelEditBtn?.addEventListener('click', closeEditOrderModal);
+  editOrderBackdrop?.addEventListener('click', closeEditOrderModal);
+  cancelDeleteOrderBtn?.addEventListener('click', closeDeleteOrderModal);
+  deleteOrderBackdrop?.addEventListener('click', closeDeleteOrderModal);
+
+  confirmEditBtn?.addEventListener('click', async () => {
+    if (!editingOrderId) return;
+    hideError(editOrderError);
+    const body = {
+      customer_name: document.getElementById('eoName').value.trim(),
+      customer_phone: document.getElementById('eoPhone').value.trim(),
+      country:  document.getElementById('eoCountry').value.trim(),
+      province: document.getElementById('eoProvince').value.trim(),
+      address:  document.getElementById('eoAddress').value.trim(),
+      status:   document.getElementById('eoStatus').value,
+    };
+    if (!body.customer_name) { showError(editOrderError, 'El nombre es obligatorio.'); return; }
+    confirmEditBtn.disabled = true;
+    confirmEditBtn.textContent = 'Guardando...';
+    try {
+      const res = await fetch(`/api/admin/orders/${editingOrderId}`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { showError(editOrderError, data.error || 'Error al guardar.'); return; }
+      showToast('Pedido actualizado correctamente.');
+      closeEditOrderModal();
+      loadOrders();
+    } catch {
+      showError(editOrderError, 'Error de conexión.');
+    } finally {
+      confirmEditBtn.disabled = false;
+      confirmEditBtn.textContent = 'Guardar cambios';
+    }
+  });
+
+  confirmDeleteOrderBtn?.addEventListener('click', async () => {
+    if (!deletingOrderId) return;
+    confirmDeleteOrderBtn.disabled = true;
+    confirmDeleteOrderBtn.textContent = 'Eliminando...';
+    try {
+      const res = await fetch(`/api/admin/orders/${deletingOrderId}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        showToast(d.error || 'Error al eliminar.', true);
+      } else {
+        showToast('Pedido eliminado.');
+        closeDeleteOrderModal();
+        loadOrders();
+      }
+    } catch {
+      showToast('Error de conexión.', true);
+    } finally {
+      confirmDeleteOrderBtn.disabled = false;
+      confirmDeleteOrderBtn.textContent = 'Eliminar';
+    }
+  });
+
+  // Wire edit/delete buttons on order cards (delegated)
+  ordersList?.addEventListener('click', e => {
+    const editBtn = e.target.closest('[data-edit-order]');
+    if (editBtn) {
+      const id = Number(editBtn.dataset.editOrder);
+      const card = editBtn.closest('.order-card');
+      // Reconstruct minimal order object from the DOM/loaded data or re-fetch
+      const orderNum = card?.querySelector('.order-card__num')?.textContent || '';
+      // Find in last loaded orders list
+      const cached = (window._lastOrders || []).find(o => o.id === id);
+      if (cached) { openEditOrderModal(cached); return; }
+      // fallback: reload
+      fetch('/api/admin/orders', { headers: authHeaders() })
+        .then(r => r.json())
+        .then(orders => {
+          window._lastOrders = orders;
+          const o = orders.find(x => x.id === id);
+          if (o) openEditOrderModal(o);
+        });
+      return;
+    }
+    const delBtn = e.target.closest('[data-delete-order]');
+    if (delBtn) {
+      const id = Number(delBtn.dataset.deleteOrder);
+      const card = delBtn.closest('.order-card');
+      const orderNum = card?.querySelector('.order-card__num')?.textContent || `#${id}`;
+      openDeleteOrderModal(id, orderNum);
     }
   });
 
