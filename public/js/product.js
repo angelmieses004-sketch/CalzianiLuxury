@@ -133,7 +133,79 @@
     const images   = p.images || [];
     const fav      = isFav(p.id);
 
-    document.title = `${p.name} — Calziani`;
+    // ── SEO dinámico ─────────────────────────────────────────────────────────
+    const BASE = 'https://calziani.com';
+    const productUrl  = `${BASE}/product/${p.id}`;
+    const imageUrl    = p.images?.[0]?.filename
+      ? `${BASE}/img/products/${p.images[0].filename}`
+      : `${BASE}/img/587730407_17843809347618797_3290323688225420457_n.jpg`;
+    const catLabel    = { calzado: 'Calzado', ropa: 'Ropa', accesorio: 'Accesorio' }[p.category] || p.category;
+    const priceUSD    = Number(p.price).toFixed(2);
+    const metaDesc    = p.description
+      ? `${p.description.slice(0, 130).trim()}… | Calziani`
+      : `Comprá ${p.name} en Calziani. ${catLabel} de lujo con envío mundial. Precio: $${priceUSD} USD.`;
+
+    document.title = `${p.name} — Calziani | ${catLabel} Luxury`;
+    document.getElementById('canonicalTag')?.setAttribute('href', productUrl);
+
+    // Open Graph
+    document.getElementById('ogTitle')?.setAttribute('content', `${p.name} — Calziani`);
+    document.getElementById('ogDesc')?.setAttribute('content', metaDesc);
+    document.getElementById('ogUrl')?.setAttribute('content', productUrl);
+    document.getElementById('ogImage')?.setAttribute('content', imageUrl);
+    document.getElementById('ogImageAlt')?.setAttribute('content', p.name);
+    document.getElementById('ogPrice')?.setAttribute('content', priceUSD);
+
+    // Twitter Card
+    document.getElementById('twTitle')?.setAttribute('content', `${p.name} — Calziani`);
+    document.getElementById('twDesc')?.setAttribute('content', metaDesc);
+    document.getElementById('twImage')?.setAttribute('content', imageUrl);
+
+    // Meta description
+    let metaDescEl = document.querySelector('meta[name="description"]');
+    if (!metaDescEl) { metaDescEl = document.createElement('meta'); metaDescEl.name = 'description'; document.head.appendChild(metaDescEl); }
+    metaDescEl.setAttribute('content', metaDesc);
+
+    // JSON-LD Product
+    const availability = p.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock';
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Product",
+          "@id": productUrl,
+          "name": p.name,
+          "description": p.description || `${p.name} — ${catLabel} de lujo disponible en Calziani.`,
+          "url": productUrl,
+          "image": p.images?.map(img => `${BASE}/img/products/${img.filename}`) || [imageUrl],
+          "brand": { "@type": "Brand", "name": "Calziani" },
+          "category": catLabel,
+          "sku": `CLZ-${p.id}`,
+          "offers": {
+            "@type": "Offer",
+            "url": productUrl,
+            "priceCurrency": "USD",
+            "price": priceUSD,
+            "availability": availability,
+            "seller": { "@type": "Organization", "name": "Calziani" },
+            "shippingDetails": {
+              "@type": "OfferShippingDetails",
+              "shippingDestination": { "@type": "DefinedRegion", "addressCountry": ["DO", "US", "PR", "ES"] }
+            }
+          }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Inicio", "item": BASE },
+            { "@type": "ListItem", "position": 2, "name": catLabel, "item": `${BASE}/?category=${p.category}` },
+            { "@type": "ListItem", "position": 3, "name": p.name, "item": productUrl }
+          ]
+        }
+      ]
+    };
+    const ldEl = document.getElementById('productJsonLd');
+    if (ldEl) ldEl.textContent = JSON.stringify(jsonLd);
 
     // ── Gallery HTML ──────────────────────────────────────────────────────────
     let galleryHtml = '';

@@ -1338,6 +1338,47 @@ app.get('/api/tracking/:code', (req, res) => {
   });
 });
 
+// ─── Sitemap.xml dinámico ─────────────────────────────────────────────────────
+app.get('/sitemap.xml', (req, res) => {
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const proto = forwardedProto || req.protocol || 'https';
+  const host  = req.get('host');
+  const base  = host ? `${proto}://${host}` : (process.env.BASE_URL || 'https://calziani.com');
+
+  const now = new Date().toISOString().slice(0, 10);
+
+  const products = db.prepare(
+    'SELECT id, updated_at, created_at FROM products ORDER BY id ASC'
+  ).all();
+
+  const staticUrls = [
+    { loc: `${base}/`,        priority: '1.0', changefreq: 'daily' },
+    { loc: `${base}/tracking`, priority: '0.4', changefreq: 'monthly' },
+  ];
+
+  const productUrls = products.map(p => {
+    const lastmod = (p.updated_at || p.created_at || now).slice(0, 10);
+    return { loc: `${base}/product/${p.id}`, priority: '0.8', changefreq: 'weekly', lastmod };
+  });
+
+  const allUrls = [...staticUrls, ...productUrls];
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+${allUrls.map(u => `  <url>
+    <loc>${u.loc}</loc>
+    <lastmod>${u.lastmod || now}</lastmod>
+    <changefreq>${u.changefreq}</changefreq>
+    <priority>${u.priority}</priority>
+  </url>`).join('\n')}
+</urlset>`;
+
+  res.set('Content-Type', 'application/xml; charset=utf-8');
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.send(xml);
+});
+
 // ─── Global error handler (returns JSON, never HTML) ──────────────────────────
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
