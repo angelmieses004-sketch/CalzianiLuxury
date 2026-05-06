@@ -270,7 +270,7 @@
           </button>
           <button class="pay-method-tab" data-method="paypalme">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-            Tarjeta / PayPal
+            Tarjeta de crédito / débito
           </button>
         </div>
 
@@ -298,7 +298,10 @@
         <!-- PayPal.me panel -->
         <div class="pay-panel" id="payPanelPaypalme">
           <div class="paypalme-info">
-            <p class="paypalme-desc">Pagá con tu tarjeta de crédito, débito o cuenta PayPal de forma segura.</p>
+            <div class="paypalme-guest-badge">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              No necesitás cuenta — pagá como invitado con cualquier tarjeta
+            </div>
             <div class="paypalme-amount-row">
               <span class="paypalme-amount-label">Total a pagar:</span>
               <strong class="paypalme-amount-val" id="paypalmeAmount"></strong>
@@ -306,9 +309,11 @@
           </div>
           <button class="btn-paypalme" id="btnPaypalme">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-            Pagar con PayPal
+            Pagar con tarjeta
           </button>
-          <p class="paypalme-note">Serás redirigido a PayPal para completar el pago. Luego envianos el comprobante por WhatsApp.</p>
+          <p class="paypalme-note">
+            Te llevaremos a una página segura de PayPal. En ella elegí <strong>"Pagar como invitado"</strong> para ingresar tu tarjeta sin crear cuenta. Luego envianos el comprobante por WhatsApp.
+          </p>
         </div>
 
         <p class="cart-secure-note">

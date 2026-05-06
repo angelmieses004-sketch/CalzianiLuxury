@@ -805,7 +805,12 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 
 /* ─── PayPal.me panel ─────────────────────────────────────────────────────── */
 .paypalme-info { margin-bottom: 12px; }
-.paypalme-desc { font-size: 0.8rem; color: var(--gray-500); margin-bottom: 8px; }
+.paypalme-guest-badge {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.75rem; font-weight: 600; color: #15803d;
+  background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-radius: 4px; padding: 6px 10px; margin-bottom: 10px;
+}
 .paypalme-amount-row { display: flex; align-items: center; gap: 8px; }
 .paypalme-amount-label { font-size: 0.8rem; color: var(--gray-500); }
 .paypalme-amount-val { font-size: 1rem; font-weight: 700; color: #111; }
