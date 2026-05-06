@@ -883,6 +883,95 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
   }
 });
 
+// ─── PayPal.me order submit ────────────────────────────────────────────────────
+app.post('/api/orders/paypalme-submit', (req, res) => {
+  try {
+    const { cart, shipping, subtotal, shippingFee, total, promoCode } = req.body || {};
+    if (!Array.isArray(cart) || !cart.length) {
+      return res.status(400).json({ error: 'Carrito vacío.' });
+    }
+    const s = shipping || {};
+    if (!String(s.name || '').trim() || !String(s.phone || '').trim() || !String(s.country || '').trim()
+        || !String(s.province || '').trim() || !String(s.address || '').trim()) {
+      return res.status(400).json({ error: 'Datos de envío incompletos.' });
+    }
+
+    const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
+    const fee = Number(shippingFee);
+    const shipFee = Number.isFinite(fee) && fee >= 0 ? fee : CHECKOUT_SHIPPING_USD;
+    if (Math.abs(shipFee - CHECKOUT_SHIPPING_USD) > 0.02) {
+      return res.status(400).json({ error: 'Costo de envío no válido.' });
+    }
+
+    const stockCheck = validateCartStock(cart);
+    if (!stockCheck.ok) return res.status(400).json({ error: stockCheck.error });
+
+    const promoRes = applyPromoCalziani(lineSubtotal, promoCode, s.phone);
+    if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
+
+    const discountedSubtotal = promoRes.discountedSubtotal;
+    const totalCheck = Math.round((discountedSubtotal + shipFee) * 100) / 100;
+    const clientTotal = Number(total);
+    if (!Number.isFinite(clientTotal) || Math.abs(totalCheck - clientTotal) > 0.02) {
+      return res.status(400).json({ error: 'Total no coincide.' });
+    }
+
+    const orderNum = `CAL-P${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.toUpperCase();
+    const trackingCode = uniqueTrackingCode();
+
+    const payload = {
+      cart,
+      shipping: {
+        name:     String(s.name).trim(),
+        phone:    String(s.phone).trim(),
+        country:  String(s.country).trim(),
+        province: String(s.province).trim(),
+        address:  String(s.address).trim(),
+      },
+      subtotal: discountedSubtotal,
+      subtotalBeforeDiscount: promoRes.redeem ? lineSubtotal : undefined,
+      promoCode: promoRes.redeem ? PROMO_CALZIANI_CODE : undefined,
+      promoPercent: promoRes.redeem ? PROMO_CALZIANI_PERCENT : undefined,
+      shippingFee: shipFee,
+      total: totalCheck,
+      paymentMethod: 'paypalme',
+    };
+
+    const insertOrder = db.prepare(`
+      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status,
+        customer_name, customer_email, tracking_code, tracking_stage)
+      VALUES (?, ?, ?, ?, 0, ?, 'pending_paypalme', ?, ?, ?, 'received')
+    `);
+    const insertPromo = db.prepare(`
+      INSERT INTO promo_redemptions (promo_code, phone_key, order_number) VALUES (?, ?, ?)
+    `);
+
+    const userId = req.user?.id || null;
+    const tx = db.transaction(() => {
+      insertOrder.run(orderNum, userId, JSON.stringify(payload), discountedSubtotal, totalCheck,
+        payload.shipping.name, null, trackingCode);
+      if (promoRes.redeem && promoRes.phoneKey) {
+        insertPromo.run(PROMO_CALZIANI_CODE, promoRes.phoneKey, orderNum);
+      }
+    });
+    tx();
+
+    res.json({
+      ok: true,
+      orderNumber: orderNum,
+      trackingCode,
+      trackingUrl: trackingUrlFromCode(req, trackingCode),
+      paypalmeUrl: `https://paypal.me/Calziani/${totalCheck.toFixed(2)}`,
+    });
+  } catch (e) {
+    console.error('paypalme-submit:', e);
+    if (String(e.message).includes('UNIQUE')) {
+      return res.status(409).json({ error: 'Reintentá en un momento.' });
+    }
+    res.status(500).json({ error: 'Error al guardar el pedido.' });
+  }
+});
+
 // ─── AZUL Payment Page ────────────────────────────────────────────────────────
 const AZUL_ENV  = process.env.AZUL_ENV === 'production' ? 'production' : 'sandbox';
 const AZUL_URL  = AZUL_ENV === 'production'

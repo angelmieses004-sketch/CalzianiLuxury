@@ -13,6 +13,7 @@
     paid_paypal: 'Pagado (PayPal)',
     paid: 'Pagado',
     cancelled: 'Cancelado',
+    pending_paypalme: 'Pendiente (PayPal.me)',
     manual: 'Creado manualmente',
   };
 
