@@ -473,26 +473,28 @@
       `<option value="${s}" ${s === currentStage ? 'selected' : ''}>${TRACKING_STAGE_LABEL[s] || s}</option>`
     ).join('');
 
-    const trackingCodeHtml = tCode
-      ? `<span class="order-card__tracking-code">${escHtml(tCode)}
-           <button type="button" class="btn-copy-code" data-code="${escHtml(tCode)}" title="Copiar código">⎘</button>
-         </span>`
-      : `<span class="order-card__tracking-code order-card__tracking-code--empty">Sin código aún</span>`;
-
     const trackingBlock = `
       <div class="order-card__section order-card__tracking">
         <h4 class="order-card__h">Tracking</h4>
         <div class="tracking-admin-row">
-          <div class="tracking-code-display">
-            <span class="tracking-code-label">Código del cliente:</span>
-            ${trackingCodeHtml}
+          <div class="tracking-code-edit-wrap">
+            <label class="tracking-code-label" for="tcode-${o.id}">Código del cliente:</label>
+            <input
+              type="text"
+              id="tcode-${o.id}"
+              class="tracking-code-input"
+              value="${escHtml(tCode)}"
+              placeholder="Ej: CLZ-AB12CD"
+              maxlength="30"
+              spellcheck="false"
+              autocomplete="off"
+              data-order-id="${o.id}"
+            />
+            ${tLink
+              ? `<button type="button" class="btn-copy-link" data-link="${escHtml(tLink)}" title="Copiar link">Copiar link</button>
+                 <a href="${escHtml(tLink)}" target="_blank" rel="noopener" class="btn-open-tracking">Ver</a>`
+              : ''}
           </div>
-          ${tLink
-            ? `<div class="tracking-link-actions">
-                <a href="${escHtml(tLink)}" target="_blank" rel="noopener" class="btn-open-tracking">Ver tracking</a>
-                <button type="button" class="btn-copy-link" data-link="${escHtml(tLink)}" title="Copiar link">Copiar link</button>
-              </div>`
-            : ''}
           <div class="tracking-stage-select-wrap">
             <label class="tracking-stage-label-text" for="stage-${o.id}">Etapa:</label>
             <select class="tracking-stage-select" id="stage-${o.id}" data-order-id="${o.id}">
@@ -545,8 +547,9 @@
     const saveBtn = e.target.closest('.tracking-save-btn');
     if (saveBtn) {
       const orderId = saveBtn.dataset.orderId;
-      const stageEl = document.getElementById(`stage-${orderId}`);
-      const notesEl = document.getElementById(`notes-${orderId}`);
+      const stageEl  = document.getElementById(`stage-${orderId}`);
+      const notesEl  = document.getElementById(`notes-${orderId}`);
+      const codeEl   = document.getElementById(`tcode-${orderId}`);
       const feedback = document.getElementById(`tsave-${orderId}`);
       if (!stageEl) return;
 
@@ -557,22 +560,30 @@
           method: 'PUT',
           headers: authHeaders(),
           body: JSON.stringify({
+            tracking_code:  codeEl?.value.trim().toUpperCase() || '',
             tracking_stage: stageEl.value,
             tracking_notes: notesEl?.value || '',
           }),
         });
+        const d = await res.json().catch(() => ({}));
         if (!res.ok) {
-          const d = await res.json().catch(() => ({}));
           showToast(d.error || 'Error al guardar.', true);
         } else {
           feedback?.classList.remove('hidden');
           setTimeout(() => feedback?.classList.add('hidden'), 2500);
-          // Update the badge in the card header
+          // Update badge
           const card = saveBtn.closest('.order-card');
           const badge = card?.querySelector('.order-card__tracking-badge');
           if (badge) {
             badge.textContent = TRACKING_STAGE_LABEL[stageEl.value] || stageEl.value;
             badge.className = `order-card__tracking-badge order-card__tracking-badge--${stageEl.value}`;
+          }
+          // Update copy-link button with new code/url
+          if (d.tracking_url && codeEl) {
+            const linkBtn = saveBtn.closest('.order-card__tracking')?.querySelector('.btn-copy-link');
+            if (linkBtn) linkBtn.dataset.link = d.tracking_url;
+            const openBtn = saveBtn.closest('.order-card__tracking')?.querySelector('.btn-open-tracking');
+            if (openBtn) openBtn.href = d.tracking_url;
           }
           showToast('Tracking actualizado correctamente.');
         }

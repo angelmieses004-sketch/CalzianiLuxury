@@ -27,9 +27,16 @@
     .tracking-admin-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
     .tracking-code-display { display: flex; align-items: center; gap: 8px; }
     .tracking-code-label { font-size: 0.78rem; color: #666; white-space: nowrap; }
-    .tracking-code-val { font-family: monospace; font-size: 0.92rem; font-weight: 700; background: #111; color: #f0fdf4; padding: 3px 10px; border-radius: 4px; letter-spacing: 0.1em; }
-    .btn-copy-code { background: none; border: 1px solid #d1d5db; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 1rem; color: #374151; transition: background 0.15s; }
-    .btn-copy-code:hover { background: #f3f4f6; }
+    .tracking-code-edit-wrap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .tracking-code-input {
+      font-family: monospace; font-size: 0.88rem; font-weight: 700;
+      background: #111; color: #f0fdf4;
+      padding: 5px 10px; border-radius: 4px; letter-spacing: 0.1em;
+      border: 1px solid #333; width: 148px;
+      text-transform: uppercase;
+    }
+    .tracking-code-input:focus { outline: none; border-color: #555; }
+    .tracking-code-input::placeholder { color: #555; font-weight: 400; letter-spacing: 0; text-transform: none; }
     .tracking-link-actions { display: flex; align-items: center; gap: 8px; }
     .btn-open-tracking, .btn-copy-link {
       font-size: 0.75rem;

@@ -1277,23 +1277,34 @@ app.delete('/api/admin/orders/:id', requireAuth, (req, res) => {
   res.json({ message: 'Pedido eliminado.' });
 });
 
-// Admin: update tracking stage + notes for an order
+// Admin: update tracking code, stage + notes for an order
 app.put('/api/admin/orders/:id/tracking', requireAuth, (req, res) => {
-  const { tracking_stage, tracking_notes } = req.body || {};
+  const { tracking_stage, tracking_notes, tracking_code } = req.body || {};
   if (!TRACKING_STAGES.includes(tracking_stage)) {
     return res.status(400).json({ error: 'Etapa de tracking inválida.' });
   }
-  const order = db.prepare('SELECT id FROM orders WHERE id = ?').get(req.params.id);
+  const order = db.prepare('SELECT id, tracking_code FROM orders WHERE id = ?').get(req.params.id);
   if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
 
+  // Accept a custom code or keep the existing one; generate if still missing
+  let newCode = String(tracking_code || '').trim().toUpperCase() || order.tracking_code;
+  if (!newCode) newCode = uniqueTrackingCode();
+
+  // If a custom code is provided, verify uniqueness (unless it's the same order's code)
+  if (newCode !== order.tracking_code) {
+    const clash = db.prepare('SELECT id FROM orders WHERE tracking_code = ? AND id != ?').get(newCode, req.params.id);
+    if (clash) return res.status(409).json({ error: 'Ese código ya está en uso por otro pedido.' });
+  }
+
   db.prepare(
-    `UPDATE orders SET tracking_stage = ?, tracking_notes = ? WHERE id = ?`
-  ).run(tracking_stage, String(tracking_notes || '').trim(), req.params.id);
+    `UPDATE orders SET tracking_code = ?, tracking_stage = ?, tracking_notes = ? WHERE id = ?`
+  ).run(newCode, tracking_stage, String(tracking_notes || '').trim(), req.params.id);
 
   const updated = db.prepare(
     `SELECT id, order_number, tracking_code, tracking_stage, tracking_notes FROM orders WHERE id = ?`
   ).get(req.params.id);
-  res.json(updated);
+
+  res.json({ ...updated, tracking_url: trackingUrlFromCode(req, newCode) });
 });
 
 // Public: look up order by tracking code (no auth required)
