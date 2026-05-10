@@ -411,6 +411,7 @@
 
   // expiresAt en UTC
   const PROMO_CODES_CLIENT = {
+    CALZIANI:  { percent: 20, expiresAt: '2026-05-10T00:00:00Z' },
     EXCLUSIVE: { percent: 25, expiresAt: '2026-05-14T04:00:00Z' },
   };
 
