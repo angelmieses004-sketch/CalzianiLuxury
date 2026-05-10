@@ -406,24 +406,35 @@
   const checkoutBtn   = document.getElementById('checkoutBtn');
 
   const SHIPPING_USD  = 5; // flat shipping fee in USD
-  const PROMO_CALZIANI = 'CALZIANI';
-  const PROMO_CALZIANI_PCT = 20;
+  const PROMO_CALZIANI_PCT = 20; // kept for legacy references
   const LS_PROMO_ACTIVE = 'calziani_promo_calziani';
 
-  function promoCalzianiActive() {
-    try { return localStorage.getItem(LS_PROMO_ACTIVE) === '1'; } catch { return false; }
+  const PROMO_CODES_CLIENT = {
+    CALZIANI:  20,
+    EXCLUSIVE: 25,
+  };
+
+  function activePromoCode() {
+    try { return localStorage.getItem(LS_PROMO_ACTIVE) || null; } catch { return null; }
   }
-  function setPromoCalziani(on) {
+  function activePromoPct() {
+    const code = activePromoCode();
+    return code ? (PROMO_CODES_CLIENT[code] || 0) : 0;
+  }
+  function promoCalzianiActive() {
+    return !!activePromoCode();
+  }
+  function setPromoCalziani(on, code) {
     try {
-      if (on) localStorage.setItem(LS_PROMO_ACTIVE, '1');
+      if (on && code) localStorage.setItem(LS_PROMO_ACTIVE, code);
       else localStorage.removeItem(LS_PROMO_ACTIVE);
     } catch (_) {}
   }
 
   function applyPromoFromInput() {
     const v = (promoCodeInput?.value || '').trim().toUpperCase();
-    if (v === PROMO_CALZIANI) {
-      setPromoCalziani(true);
+    if (PROMO_CODES_CLIENT[v]) {
+      setPromoCalziani(true, v);
       promoMsg?.classList.add('hidden');
       promoClearBtn?.classList.remove('hidden');
       if (promoCodeInput) promoCodeInput.value = '';
@@ -700,10 +711,11 @@
   function cartTotals() {
     const cart = getCart();
     const lineSubtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-    const promoOn = promoCalzianiActive();
-    const discountAmt = promoOn ? Math.round(lineSubtotal * PROMO_CALZIANI_PCT / 100 * 100) / 100 : 0;
+    const promoOn  = promoCalzianiActive();
+    const promoPct = activePromoPct();
+    const discountAmt = promoOn ? Math.round(lineSubtotal * promoPct / 100 * 100) / 100 : 0;
     const subtotalAfter = promoOn
-      ? Math.round(lineSubtotal * (100 - PROMO_CALZIANI_PCT) / 100 * 100) / 100
+      ? Math.round(lineSubtotal * (100 - promoPct) / 100 * 100) / 100
       : lineSubtotal;
     const total = Math.round((subtotalAfter + SHIPPING_USD) * 100) / 100;
     return {
@@ -714,6 +726,7 @@
       total,
       totalUSD: total.toFixed(2),
       promoOn,
+      promoPct,
     };
   }
 
@@ -737,7 +750,7 @@
           cart,
           total,
           shipping,
-          promoCode: promoCalzianiActive() ? PROMO_CALZIANI : undefined,
+          promoCode: activePromoCode() || undefined,
         }),
       });
       const data = await res.json();
@@ -807,7 +820,7 @@
           subtotal: ct.subtotal,
           shippingFee: SHIPPING_USD,
           total: ct.total,
-          promoCode: ct.promoOn ? PROMO_CALZIANI : undefined,
+          promoCode: activePromoCode() || undefined,
         }),
       });
       const saveData = await saveRes.json().catch(() => ({}));
@@ -847,7 +860,7 @@
       ``,
       `Subtotal: ${formatUsdCheckout(ct.lineSubtotal)} / ${formatDopCheckout(ct.lineSubtotal)}`,
       ...(ct.promoOn
-        ? [`Descuento promocional −${PROMO_CALZIANI_PCT}%: ${formatUsdCheckout(ct.discountAmt)} / ${formatDopCheckout(ct.discountAmt)}`]
+        ? [`Descuento promocional −${ct.promoPct}%: ${formatUsdCheckout(ct.discountAmt)} / ${formatDopCheckout(ct.discountAmt)}`]
         : []),
       `Envío: ${formatUsdCheckout(SHIPPING_USD)} / ${formatDopCheckout(SHIPPING_USD)}`,
       `*Total: ${formatUsdCheckout(ct.total)} / ${formatDopCheckout(ct.total)}*`,
@@ -896,7 +909,7 @@
           subtotal: ct.subtotal,
           shippingFee: SHIPPING_USD,
           total: ct.total,
-          promoCode: ct.promoOn ? PROMO_CALZIANI : undefined,
+          promoCode: activePromoCode() || undefined,
         }),
       });
       const saveData = await saveRes.json().catch(() => ({}));

@@ -766,8 +766,13 @@ function trackingUrlFromCode(req, trackingCode) {
   return `${base}/tracking?code=${encodeURIComponent(trackingCode)}`;
 }
 
-const PROMO_CALZIANI_CODE = 'CALZIANI';
+const PROMO_CALZIANI_CODE    = 'CALZIANI';
 const PROMO_CALZIANI_PERCENT = 20;
+
+const PROMO_CODES = {
+  CALZIANI:  20,
+  EXCLUSIVE: 25,
+};
 
 function normalizePromoCode(code) {
   return String(code || '').trim().toUpperCase();
@@ -784,21 +789,22 @@ function normalizePhoneKey(phone) {
  */
 function applyPromoCalziani(lineSubtotal, promoCodeRaw, phone) {
   const code = normalizePromoCode(promoCodeRaw);
-  if (code !== PROMO_CALZIANI_CODE) {
+  const percent = PROMO_CODES[code];
+  if (!percent) {
     return { ok: true, discountedSubtotal: lineSubtotal, redeem: false };
   }
   const phoneKey = normalizePhoneKey(phone);
   if (!phoneKey) {
-    return { ok: false, error: 'Completá un teléfono válido para usar el código CALZIANI.' };
+    return { ok: false, error: `Completá un teléfono válido para usar el código ${code}.` };
   }
   const taken = db.prepare(
     'SELECT 1 FROM promo_redemptions WHERE promo_code = ? AND phone_key = ?'
-  ).get(PROMO_CALZIANI_CODE, phoneKey);
+  ).get(code, phoneKey);
   if (taken) {
     return { ok: false, error: 'Este código ya fue utilizado con este número de teléfono.' };
   }
-  const discountedSubtotal = Math.round(lineSubtotal * (100 - PROMO_CALZIANI_PERCENT)) / 100;
-  return { ok: true, discountedSubtotal, redeem: true, phoneKey };
+  const discountedSubtotal = Math.round(lineSubtotal * (100 - percent)) / 100;
+  return { ok: true, discountedSubtotal, redeem: true, phoneKey, code, percent };
 }
 
 app.post('/api/orders/whatsapp-submit', (req, res) => {
@@ -848,8 +854,8 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
       },
       subtotal: discountedSubtotal,
       subtotalBeforeDiscount: promoRes.redeem ? lineSubtotal : undefined,
-      promoCode: promoRes.redeem ? PROMO_CALZIANI_CODE : undefined,
-      promoPercent: promoRes.redeem ? PROMO_CALZIANI_PERCENT : undefined,
+      promoCode: promoRes.redeem ? promoRes.code : undefined,
+      promoPercent: promoRes.redeem ? promoRes.percent : undefined,
       shippingFee: shipFee,
       total: totalCheck,
       paymentMethod: 'whatsapp',
@@ -878,7 +884,7 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
         trackingCode,
       );
       if (promoRes.redeem && promoRes.phoneKey) {
-        insertPromo.run(PROMO_CALZIANI_CODE, promoRes.phoneKey, orderNum);
+        insertPromo.run(promoRes.code, promoRes.phoneKey, orderNum);
       }
     });
     tx();
@@ -945,8 +951,8 @@ app.post('/api/orders/paypalme-submit', (req, res) => {
       },
       subtotal: discountedSubtotal,
       subtotalBeforeDiscount: promoRes.redeem ? lineSubtotal : undefined,
-      promoCode: promoRes.redeem ? PROMO_CALZIANI_CODE : undefined,
-      promoPercent: promoRes.redeem ? PROMO_CALZIANI_PERCENT : undefined,
+      promoCode: promoRes.redeem ? promoRes.code : undefined,
+      promoPercent: promoRes.redeem ? promoRes.percent : undefined,
       shippingFee: shipFee,
       total: totalCheck,
       paymentMethod: 'paypalme',
@@ -966,7 +972,7 @@ app.post('/api/orders/paypalme-submit', (req, res) => {
       insertOrder.run(orderNum, userId, JSON.stringify(payload), discountedSubtotal, totalCheck,
         payload.shipping.name, null, trackingCode);
       if (promoRes.redeem && promoRes.phoneKey) {
-        insertPromo.run(PROMO_CALZIANI_CODE, promoRes.phoneKey, orderNum);
+        insertPromo.run(promoRes.code, promoRes.phoneKey, orderNum);
       }
     });
     tx();
@@ -1045,9 +1051,9 @@ app.post('/api/azul/checkout', (req, res) => {
   const itemsPayload = {
     cart,
     shipping,
-    promoCode: promoRes.redeem ? PROMO_CALZIANI_CODE : undefined,
+    promoCode: promoRes.redeem ? promoRes.code : undefined,
     subtotalBeforeDiscount: promoRes.redeem ? lineSubtotal : undefined,
-    promoPercent: promoRes.redeem ? PROMO_CALZIANI_PERCENT : undefined,
+    promoPercent: promoRes.redeem ? promoRes.percent : undefined,
   };
 
   const insertAzulOrder = db.prepare(`
@@ -1074,7 +1080,7 @@ app.post('/api/azul/checkout', (req, res) => {
         azulTrackingCode,
       );
       if (promoRes.redeem && promoRes.phoneKey) {
-        insertPromoAzul.run(PROMO_CALZIANI_CODE, promoRes.phoneKey, orderNum);
+        insertPromoAzul.run(promoRes.code, promoRes.phoneKey, orderNum);
       }
     });
     tx();
@@ -1173,9 +1179,9 @@ app.post('/api/paypal/create-order', async (req, res) => {
     const ppPayloadItems = {
       cart,
       shipping,
-      promoCode: promoRes.redeem ? PROMO_CALZIANI_CODE : undefined,
+      promoCode: promoRes.redeem ? promoRes.code : undefined,
       subtotalBeforeDiscount: promoRes.redeem ? lineSubtotal : undefined,
-      promoPercent: promoRes.redeem ? PROMO_CALZIANI_PERCENT : undefined,
+      promoPercent: promoRes.redeem ? promoRes.percent : undefined,
     };
 
     const paypalTrackingCode = uniqueTrackingCode();
@@ -1201,7 +1207,7 @@ app.post('/api/paypal/create-order', async (req, res) => {
           paypalTrackingCode,
         );
         if (promoRes.redeem && promoRes.phoneKey) {
-          insertPromoPp.run(PROMO_CALZIANI_CODE, promoRes.phoneKey, orderNum);
+          insertPromoPp.run(promoRes.code, promoRes.phoneKey, orderNum);
         }
       });
       tx();
