@@ -766,12 +766,12 @@ function trackingUrlFromCode(req, trackingCode) {
   return `${base}/tracking?code=${encodeURIComponent(trackingCode)}`;
 }
 
-const PROMO_CALZIANI_CODE    = 'CALZIANI';
-const PROMO_CALZIANI_PERCENT = 20;
+const PROMO_CALZIANI_CODE    = 'EXCLUSIVE';
+const PROMO_CALZIANI_PERCENT = 25;
 
+// expiresAt: ISO string en UTC (fin del miércoles 13-may-2026 hora RD, UTC-4 → 04:00 UTC del 14)
 const PROMO_CODES = {
-  CALZIANI:  20,
-  EXCLUSIVE: 25,
+  EXCLUSIVE: { percent: 25, expiresAt: '2026-05-14T04:00:00Z' },
 };
 
 function normalizePromoCode(code) {
@@ -789,9 +789,12 @@ function normalizePhoneKey(phone) {
  */
 function applyPromoCalziani(lineSubtotal, promoCodeRaw, phone) {
   const code = normalizePromoCode(promoCodeRaw);
-  const percent = PROMO_CODES[code];
-  if (!percent) {
+  const promo = PROMO_CODES[code];
+  if (!promo) {
     return { ok: true, discountedSubtotal: lineSubtotal, redeem: false };
+  }
+  if (promo.expiresAt && new Date() > new Date(promo.expiresAt)) {
+    return { ok: false, error: `El código ${code} ha expirado.` };
   }
   const phoneKey = normalizePhoneKey(phone);
   if (!phoneKey) {
@@ -803,6 +806,7 @@ function applyPromoCalziani(lineSubtotal, promoCodeRaw, phone) {
   if (taken) {
     return { ok: false, error: 'Este código ya fue utilizado con este número de teléfono.' };
   }
+  const { percent } = promo;
   const discountedSubtotal = Math.round(lineSubtotal * (100 - percent)) / 100;
   return { ok: true, discountedSubtotal, redeem: true, phoneKey, code, percent };
 }

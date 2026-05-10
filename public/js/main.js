@@ -406,20 +406,29 @@
   const checkoutBtn   = document.getElementById('checkoutBtn');
 
   const SHIPPING_USD  = 5; // flat shipping fee in USD
-  const PROMO_CALZIANI_PCT = 20; // kept for legacy references
+  const PROMO_CALZIANI_PCT = 25; // kept for legacy references
   const LS_PROMO_ACTIVE = 'calziani_promo_calziani';
 
+  // expiresAt en UTC
   const PROMO_CODES_CLIENT = {
-    CALZIANI:  20,
-    EXCLUSIVE: 25,
+    EXCLUSIVE: { percent: 25, expiresAt: '2026-05-14T04:00:00Z' },
   };
 
   function activePromoCode() {
-    try { return localStorage.getItem(LS_PROMO_ACTIVE) || null; } catch { return null; }
+    try {
+      const code = localStorage.getItem(LS_PROMO_ACTIVE);
+      if (!code) return null;
+      const promo = PROMO_CODES_CLIENT[code];
+      if (!promo) { localStorage.removeItem(LS_PROMO_ACTIVE); return null; }
+      if (promo.expiresAt && new Date() > new Date(promo.expiresAt)) {
+        localStorage.removeItem(LS_PROMO_ACTIVE); return null;
+      }
+      return code;
+    } catch { return null; }
   }
   function activePromoPct() {
     const code = activePromoCode();
-    return code ? (PROMO_CODES_CLIENT[code] || 0) : 0;
+    return code ? (PROMO_CODES_CLIENT[code]?.percent || 0) : 0;
   }
   function promoCalzianiActive() {
     return !!activePromoCode();
@@ -433,11 +442,21 @@
 
   function applyPromoFromInput() {
     const v = (promoCodeInput?.value || '').trim().toUpperCase();
-    if (PROMO_CODES_CLIENT[v]) {
-      setPromoCalziani(true, v);
-      promoMsg?.classList.add('hidden');
-      promoClearBtn?.classList.remove('hidden');
-      if (promoCodeInput) promoCodeInput.value = '';
+    const promo = PROMO_CODES_CLIENT[v];
+    if (promo) {
+      if (promo.expiresAt && new Date() > new Date(promo.expiresAt)) {
+        setPromoCalziani(false);
+        if (promoMsg) {
+          promoMsg.textContent = activeLang === 'en' ? `Code ${v} has expired.` : `El código ${v} ha expirado.`;
+          promoMsg.classList.remove('hidden');
+        }
+        promoClearBtn?.classList.add('hidden');
+      } else {
+        setPromoCalziani(true, v);
+        promoMsg?.classList.add('hidden');
+        promoClearBtn?.classList.remove('hidden');
+        if (promoCodeInput) promoCodeInput.value = '';
+      }
     } else if (!v) {
       setPromoCalziani(false);
       promoClearBtn?.classList.add('hidden');
