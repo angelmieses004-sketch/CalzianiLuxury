@@ -850,3 +850,41 @@ input:focus, textarea:focus, select:focus {
   .view__actions { flex-wrap: wrap; }
   .admin-search { width: 100%; }
 }
+
+/* ─── Pagination (admin) ────────────────────────────────────────────────────── */
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.25rem 0 0.5rem;
+}
+
+.admin-page-btn {
+  padding: 0.35rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  color: var(--black);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.admin-page-btn:hover:not(:disabled) {
+  background: var(--gray-100);
+  border-color: var(--gray-400);
+}
+
+.admin-page-btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.admin-page-info {
+  font-size: 0.78rem;
+  color: var(--gray-600);
+  padding: 0 0.25rem;
+}

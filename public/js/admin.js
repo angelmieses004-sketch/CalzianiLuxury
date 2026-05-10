@@ -88,6 +88,25 @@
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  function renderAdminPagination(page, pages, section) {
+    if (!pages || pages <= 1) return '';
+    const prev = page > 1
+      ? `<button class="admin-page-btn" data-section="${section}" data-page="${page - 1}">&#8592; Anterior</button>`
+      : `<button class="admin-page-btn" disabled>&#8592; Anterior</button>`;
+    const next = page < pages
+      ? `<button class="admin-page-btn" data-section="${section}" data-page="${page + 1}">Siguiente &#8594;</button>`
+      : `<button class="admin-page-btn" disabled>Siguiente &#8594;</button>`;
+    return `<div class="admin-pagination">${prev}<span class="admin-page-info">Página ${page} de ${pages}</span>${next}</div>`;
+  }
+
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.admin-page-btn[data-section]');
+    if (!btn) return;
+    const p = Number(btn.dataset.page);
+    if (btn.dataset.section === 'products') loadProducts(p);
+    if (btn.dataset.section === 'orders')   loadOrders(p);
+  });
+
   let toastTimer = null;
   function showToast(msg, isError = false) {
     toast.textContent = msg;
@@ -303,24 +322,30 @@
   });
 
   // ─── Products list ───────────────────────────────────────────────────────────
-  async function loadProducts() {
+  const PRODUCTS_PER_PAGE = 15;
+  let currentProductsPage = 1;
+
+  async function loadProducts(page = currentProductsPage) {
     adminList.innerHTML = '<div class="table-loading">Cargando...</div>';
+    currentProductsPage = page;
     const cat = adminCatFilter.value;
     const q = adminSearch.value.trim();
     const params = new URLSearchParams();
     if (cat !== 'all') params.set('category', cat);
     if (q) params.set('search', q);
+    params.set('page', page);
+    params.set('limit', PRODUCTS_PER_PAGE);
 
     try {
       const res = await fetch(`/api/products?${params}`);
-      const products = await res.json();
-      renderTable(products);
+      const data = await res.json();
+      renderTable(data.products, data.total, data.page, data.pages);
     } catch {
       adminList.innerHTML = '<div class="table-empty">Error al cargar productos.</div>';
     }
   }
 
-  function renderTable(products) {
+  function renderTable(products, total, page, pages) {
     if (!products.length) {
       adminList.innerHTML = '<div class="table-empty">No hay productos.</div>';
       return;
@@ -379,7 +404,7 @@
           </tr>`;
         }).join('')}
       </tbody>
-    </table>`;
+    </table>` + renderAdminPagination(page, pages, 'products');
 
     adminList.querySelectorAll('[data-edit]').forEach(btn => {
       btn.addEventListener('click', () => openEdit(Number(btn.dataset.edit)));
@@ -391,9 +416,10 @@
 
   adminSearch.addEventListener('input', () => {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(loadProducts, 350);
+    currentProductsPage = 1;
+    searchTimer = setTimeout(() => loadProducts(1), 350);
   });
-  adminCatFilter.addEventListener('change', loadProducts);
+  adminCatFilter.addEventListener('change', () => { currentProductsPage = 1; loadProducts(1); });
 
   function statusSlug(s) {
     return String(s || 'pending').replace(/[^a-z0-9_-]/gi, '') || 'pending';
@@ -412,29 +438,35 @@
     return ORDER_STATUS_LABEL[status] || escHtml(status || '—');
   }
 
-  async function loadOrders() {
+  const ORDERS_PER_PAGE = 10;
+  let currentOrdersPage = 1;
+
+  async function loadOrders(page = currentOrdersPage) {
     if (!token || !ordersList) return;
+    currentOrdersPage = page;
     ordersList.innerHTML = '<div class="table-loading">Cargando pedidos...</div>';
     try {
-      const res = await fetch('/api/admin/orders', { headers: authHeaders() });
+      const res = await fetch(`/api/admin/orders?page=${page}&limit=${ORDERS_PER_PAGE}`, { headers: authHeaders() });
       if (!res.ok) {
         ordersList.innerHTML = '<div class="table-empty">No se pudieron cargar los pedidos.</div>';
         return;
       }
-      const orders = await res.json();
-      renderOrders(orders);
+      const data = await res.json();
+      renderOrders(data.orders, data.total, data.page, data.pages);
     } catch {
       ordersList.innerHTML = '<div class="table-empty">Error de conexión.</div>';
     }
   }
 
-  function renderOrders(orders) {
+  function renderOrders(orders, total, page, pages) {
     window._lastOrders = orders;
     if (!orders.length) {
       ordersList.innerHTML = '<div class="table-empty">No hay pedidos registrados.</div>';
       return;
     }
-    ordersList.innerHTML = orders.map(renderOrderCard).join('');
+    ordersList.innerHTML =
+      orders.map(renderOrderCard).join('') +
+      renderAdminPagination(page, pages, 'orders');
   }
 
   function renderOrderCard(o) {
@@ -919,10 +951,11 @@
       // Find in last loaded orders list
       const cached = (window._lastOrders || []).find(o => o.id === id);
       if (cached) { openEditOrderModal(cached); return; }
-      // fallback: reload
-      fetch('/api/admin/orders', { headers: authHeaders() })
+      // fallback: reload current page
+      fetch(`/api/admin/orders?page=${currentOrdersPage}&limit=${ORDERS_PER_PAGE}`, { headers: authHeaders() })
         .then(r => r.json())
-        .then(orders => {
+        .then(data => {
+          const orders = data.orders || data;
           window._lastOrders = orders;
           const o = orders.find(x => x.id === id);
           if (o) openEditOrderModal(o);

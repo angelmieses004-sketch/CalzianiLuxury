@@ -265,6 +265,10 @@ function requireAuth(req, res, next) {
 
 app.get('/api/products', (req, res) => {
   const { category, search, size } = req.query;
+  const pageNum  = parseInt(req.query.page);
+  const limitNum = parseInt(req.query.limit) || 12;
+  const paginate = !isNaN(pageNum) && pageNum >= 1;
+
   let query = 'SELECT * FROM products';
   const params = [];
   const conditions = [];
@@ -286,6 +290,13 @@ app.get('/api/products', (req, res) => {
       });
     }
 
+    const total = products.length;
+
+    if (paginate) {
+      const offset = (pageNum - 1) * limitNum;
+      products = products.slice(offset, offset + limitNum);
+    }
+
     // Attach first image only (for card display performance)
     products = products.map(p => {
       const firstImg = db.prepare(
@@ -299,7 +310,11 @@ app.get('/api/products', (req, res) => {
       };
     });
 
-    res.json(products);
+    if (paginate) {
+      res.json({ products, total, page: pageNum, pages: Math.ceil(total / limitNum) });
+    } else {
+      res.json(products);
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener productos' });
@@ -1315,12 +1330,25 @@ app.post('/api/admin/orders', requireAuth, (req, res) => {
 
 // Admin: list orders (includes tracking fields)
 app.get('/api/admin/orders', requireAuth, (req, res) => {
+  const pageNum  = parseInt(req.query.page);
+  const limitNum = parseInt(req.query.limit) || 10;
+  const paginate = !isNaN(pageNum) && pageNum >= 1;
+
+  const total  = db.prepare('SELECT COUNT(*) as cnt FROM orders').get().cnt;
+  const offset = paginate ? (pageNum - 1) * limitNum : 0;
+  const sqlLimit = paginate ? limitNum : 200;
+
   const orders = db.prepare(
     `SELECT id, order_number, customer_name, customer_email, subtotal, itbis, total,
             status, created_at, items_json, tracking_code, tracking_stage, tracking_notes
-     FROM orders ORDER BY created_at DESC LIMIT 200`
-  ).all();
-  res.json(orders);
+     FROM orders ORDER BY created_at DESC LIMIT ? OFFSET ?`
+  ).all(sqlLimit, offset);
+
+  if (paginate) {
+    res.json({ orders, total, page: pageNum, pages: Math.ceil(total / limitNum) });
+  } else {
+    res.json(orders);
+  }
 });
 
 // Admin: edit order (customer info + status; generates tracking code if missing)

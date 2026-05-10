@@ -953,38 +953,59 @@
     sizeFilterBtns.querySelectorAll('.size-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         currentSize = btn.dataset.size;
+        currentProductsPage = 1;
         sizeFilterBtns.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        fetchProducts(currentCategory, searchInput.value, currentSize);
+        fetchProducts(currentCategory, searchInput.value, currentSize, 1);
       });
     });
   }
 
   let lastProducts = [];
   let lastSaleProducts = [];
+  const STOREFRONT_PER_PAGE = 12;
+  let currentProductsPage = 1;
 
   // ─── Fetch & render ─────────────────────────────────────────────────────────
-  async function fetchProducts(category = 'all', search = '', size = 'all') {
+  async function fetchProducts(category = 'all', search = '', size = 'all', page = currentProductsPage) {
+    currentProductsPage = page;
     grid.innerHTML = '<div class="loading">Cargando...</div>';
     const params = new URLSearchParams();
     if (category !== 'all') params.set('category', category);
     if (search.trim()) params.set('search', search.trim());
     if (size !== 'all') params.set('size', size);
+    params.set('page', page);
+    params.set('limit', STOREFRONT_PER_PAGE);
 
     try {
       const res = await fetch(`/api/products?${params}`);
       if (!res.ok) throw new Error();
-      lastProducts = await res.json();
-      renderProducts(lastProducts);
+      const data = await res.json();
+      lastProducts = data.products;
+      renderProducts(data.products, data.total, data.page, data.pages);
     } catch {
       grid.innerHTML = '<div class="empty-state"><span class="empty-state__icon">!</span>Error al cargar productos.</div>';
     }
   }
 
-  function renderProducts(products) {
+  function renderPagination(page, pages) {
+    if (!pages || pages <= 1) return '';
+    const prev = page > 1
+      ? `<button class="store-page-btn" data-page="${page - 1}">&#8592;</button>`
+      : `<button class="store-page-btn" disabled>&#8592;</button>`;
+    const next = page < pages
+      ? `<button class="store-page-btn" data-page="${page + 1}">&#8594;</button>`
+      : `<button class="store-page-btn" disabled>&#8594;</button>`;
+    const dots = Array.from({ length: pages }, (_, i) => i + 1).map(n =>
+      `<button class="store-page-dot${n === page ? ' active' : ''}" data-page="${n}">${n}</button>`
+    ).join('');
+    return `<div class="store-pagination">${prev}${dots}${next}</div>`;
+  }
+
+  function renderProducts(products, total, page, pages) {
     sectionTitle.textContent = TITLE_MAP[currentCategory] || 'Productos';
-    productCount.textContent = products.length
-      ? `${products.length} resultado${products.length !== 1 ? 's' : ''}` : '';
+    productCount.textContent = total != null
+      ? `${total} resultado${total !== 1 ? 's' : ''}` : '';
 
     if (!products.length) {
       grid.innerHTML = `<div class="empty-state"><span class="empty-state__icon">—</span>No hay productos en esta categoría aún.</div>`;
@@ -1039,6 +1060,22 @@
         btn.querySelector('svg').setAttribute('fill', now ? 'currentColor' : 'none');
       });
     });
+
+    // Inject pagination below the grid
+    let paginationEl = document.getElementById('storefrontPagination');
+    if (!paginationEl) {
+      paginationEl = document.createElement('div');
+      paginationEl.id = 'storefrontPagination';
+      grid.parentNode.insertBefore(paginationEl, grid.nextSibling);
+    }
+    paginationEl.innerHTML = renderPagination(page, pages);
+    paginationEl.querySelectorAll('.store-page-btn[data-page], .store-page-dot[data-page]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = Number(btn.dataset.page);
+        fetchProducts(currentCategory, searchInput.value, currentSize, p);
+        window.scrollTo({ top: document.getElementById('products')?.offsetTop - 80 || 0, behavior: 'smooth' });
+      });
+    });
   }
 
   // ─── Category nav ────────────────────────────────────────────────────────────
@@ -1048,15 +1085,17 @@
       btn.classList.add('active');
       currentCategory = btn.dataset.cat;
       currentSize = 'all';
+      currentProductsPage = 1;
       renderSizeFilter(currentCategory);
-      fetchProducts(currentCategory, searchInput.value, currentSize);
+      fetchProducts(currentCategory, searchInput.value, currentSize, 1);
     });
   });
 
   // ─── Search ──────────────────────────────────────────────────────────────────
   searchInput.addEventListener('input', () => {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => fetchProducts(currentCategory, searchInput.value, currentSize), 350);
+    currentProductsPage = 1;
+    searchTimer = setTimeout(() => fetchProducts(currentCategory, searchInput.value, currentSize, 1), 350);
   });
 
   // ─── Auth ─────────────────────────────────────────────────────────────────────
