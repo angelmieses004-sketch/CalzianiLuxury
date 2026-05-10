@@ -1014,7 +1014,7 @@
 
     grid.innerHTML = products.map(p => {
       const isOffer  = p.compare_price && p.compare_price > p.price;
-      const discount = isOffer ? Math.round((1 - p.price / p.compare_price) * 100) : 0;
+      const discount = isOffer ? Math.round(Math.round((1 - p.price / p.compare_price) * 100) / 10) * 10 : 0;
       const avail    = aggregateStock(p);
       const sl       = stockLabel(avail);
       const fav      = isFav(p.id);
@@ -1330,7 +1330,7 @@
       const saleGrid = document.getElementById('saleGrid');
       if (!saleGrid) return;
       saleGrid.innerHTML = sale.map(p => {
-        const discount = Math.round((1 - p.price / p.compare_price) * 100);
+        const discount = Math.round(Math.round((1 - p.price / p.compare_price) * 100) / 10) * 10;
         const imgHtml = p.cover
           ? `<img src="/img/products/${escHtml(p.cover)}" alt="${escHtml(p.name)}" class="product-card__img" loading="lazy" />`
           : `<div class="product-card__img-empty"><span>CALZIANI</span></div>`;
