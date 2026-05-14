@@ -769,10 +769,9 @@ function trackingUrlFromCode(req, trackingCode) {
 const PROMO_CALZIANI_CODE    = 'EXCLUSIVE';
 const PROMO_CALZIANI_PERCENT = 25;
 
-// expiresAt: ISO string en UTC (fin del miércoles 13-may-2026 hora RD, UTC-4 → 04:00 UTC del 14)
 const PROMO_CODES = {
   CALZIANI:  { percent: 20, expiresAt: '2026-05-10T00:00:00Z' },
-  EXCLUSIVE: { percent: 25, expiresAt: '2026-05-14T04:00:00Z' },
+  EXCLUSIVE: { percent: 25 },
 };
 
 function normalizePromoCode(code) {

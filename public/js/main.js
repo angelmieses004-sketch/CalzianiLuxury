@@ -409,10 +409,9 @@
   const PROMO_CALZIANI_PCT = 25; // kept for legacy references
   const LS_PROMO_ACTIVE = 'calziani_promo_calziani';
 
-  // expiresAt en UTC
   const PROMO_CODES_CLIENT = {
     CALZIANI:  { percent: 20, expiresAt: '2026-05-10T00:00:00Z' },
-    EXCLUSIVE: { percent: 25, expiresAt: '2026-05-14T04:00:00Z' },
+    EXCLUSIVE: { percent: 25 },
   };
 
   function activePromoCode() {
