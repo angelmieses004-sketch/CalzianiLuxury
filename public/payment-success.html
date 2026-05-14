@@ -82,14 +82,14 @@
       // Fire Purchase exactly once per session
       if (purchaseRaw && !sessionStorage.getItem('fbq_purchase_fired')) {
         sessionStorage.setItem('fbq_purchase_fired', '1');
-        const userData = {
-          name:    purchaseRaw.name    || '',
-          phone:   purchaseRaw.phone   || '',
-          country: purchaseRaw.country || '',
-        };
+        if (purchaseRaw.name || purchaseRaw.phone) {
+          window.CalzianiPixel?.setAdvancedMatching({
+            name:  purchaseRaw.name    || '',
+            phone: purchaseRaw.phone   || '',
+          });
+        }
         await window.CalzianiPixel?.trackPurchase(
-          { total: purchaseRaw.total, numItems: purchaseRaw.numItems, orderId },
-          (userData.name || userData.phone) ? userData : null
+          { total: purchaseRaw.total, numItems: purchaseRaw.numItems, orderId }
         );
         localStorage.removeItem('calziani_pending_purchase');
         localStorage.removeItem('calziani_pending_order');

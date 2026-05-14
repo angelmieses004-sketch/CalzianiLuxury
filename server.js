@@ -847,12 +847,30 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
       return res.status(400).json({ error: 'Subtotal no coincide.' });
     }
 
+    // Duplicate guard: reject if an identical order (same phone + same total) was placed in the last 2 minutes
+    const normalizedPhone = String(s.phone).replace(/\D/g, '');
+    const recentDuplicate = db.prepare(`
+      SELECT order_number FROM orders
+      WHERE total = ?
+        AND created_at >= datetime('now', '-2 minutes')
+        AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+              json_extract(items_json, '$.shipping.phone'),
+            ' ',''),'-',''),'(',''),')',''),'+','') = ?
+        AND status = 'pending_transfer'
+      LIMIT 1
+    `).get(totalCheck, normalizedPhone);
+    if (recentDuplicate) {
+      return res.status(409).json({
+        error: `Ya existe un pedido reciente con estos datos (${recentDuplicate.order_number}). Si querés hacer otro pedido, esperá unos minutos.`,
+      });
+    }
+
     const orderNum = `CAL-W${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.toUpperCase();
     const payload = {
       cart,
       shipping: {
         name: String(s.name).trim(),
-        phone: String(s.phone).trim(),
+        phone: String(s.phone).trim().replace(/\D/g, ''),
         country: String(s.country).trim(),
         province: String(s.province).trim(),
         address: String(s.address).trim(),

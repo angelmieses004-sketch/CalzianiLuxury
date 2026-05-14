@@ -80,11 +80,37 @@
     return true;
   }
 
+  const PIXEL_ID = '1453546619905126';
+
   // ── API pública ───────────────────────────────────────────────────────────
   window.CalzianiPixel = {
 
     sha256,
     hashUserData,
+
+    // Advanced Matching — llamar cuando se conozca la identidad del usuario
+    // (login, registro o carga de sesión). fbq hashea los valores automáticamente.
+    setAdvancedMatching(userData) {
+      if (!assertFbq('setAdvancedMatching') || !userData) return;
+      const raw = {};
+      if (userData.email) raw.em = String(userData.email).trim().toLowerCase();
+      if (userData.phone) {
+        const digits = String(userData.phone).replace(/\D/g, '');
+        if (digits) raw.ph = digits;
+      }
+      if (userData.name) {
+        const parts = String(userData.name).trim().split(/\s+/);
+        raw.fn = parts[0].toLowerCase();
+        if (parts.length > 1) raw.ln = parts.slice(1).join(' ').toLowerCase();
+      }
+      if (!Object.keys(raw).length) return;
+      console.log('[CalzianiPixel] ▶ setAdvancedMatching', Object.keys(raw));
+      try {
+        fbq('init', PIXEL_ID, raw);
+      } catch (e) {
+        console.error('[CalzianiPixel] setAdvancedMatching error:', e);
+      }
+    },
 
     // ViewContent — una vez por carga de página de producto
     trackViewContent(product) {
@@ -123,7 +149,7 @@
     },
 
     // InitiateCheckout — deduplicado por huella del carrito (sessionStorage)
-    async trackInitiateCheckout(cart, total, userData) {
+    async trackInitiateCheckout(cart, total) {
       if (!assertFbq('InitiateCheckout')) return;
       if (!cart || !cart.length) {
         console.log('[CalzianiPixel] InitiateCheckout omitido — carrito vacío');
@@ -141,22 +167,16 @@
       const num_items = cart.reduce((s, i) => s + i.qty, 0);
       const eventData = { value: Number(total), currency: 'USD', num_items };
 
-      console.log('[CalzianiPixel] ▶ InitiateCheckout', eventData, userData || '(sin user data)');
+      console.log('[CalzianiPixel] ▶ InitiateCheckout', eventData);
       try {
-        if (userData && (userData.email || userData.phone || userData.name)) {
-          const hashed = await hashUserData(userData);
-          console.log('[CalzianiPixel]   user data hasheada:', Object.keys(hashed));
-          fbq('track', 'InitiateCheckout', eventData, hashed);
-        } else {
-          fbq('track', 'InitiateCheckout', eventData);
-        }
+        fbq('track', 'InitiateCheckout', eventData);
       } catch (e) {
         console.error('[CalzianiPixel] InitiateCheckout error:', e);
       }
     },
 
     // Purchase — solo en la página de éxito de AZUL, una vez por sesión
-    async trackPurchase(orderData, userData) {
+    async trackPurchase(orderData) {
       if (!assertFbq('Purchase')) return;
 
       const eventData = {
@@ -166,15 +186,9 @@
       };
       if (orderData.orderId) eventData.order_id = String(orderData.orderId);
 
-      console.log('[CalzianiPixel] ▶ Purchase', eventData, userData || '(sin user data)');
+      console.log('[CalzianiPixel] ▶ Purchase', eventData);
       try {
-        if (userData && (userData.email || userData.phone || userData.name)) {
-          const hashed = await hashUserData(userData);
-          console.log('[CalzianiPixel]   user data hasheada:', Object.keys(hashed));
-          fbq('track', 'Purchase', eventData, hashed);
-        } else {
-          fbq('track', 'Purchase', eventData);
-        }
+        fbq('track', 'Purchase', eventData);
       } catch (e) {
         console.error('[CalzianiPixel] Purchase error:', e);
       }

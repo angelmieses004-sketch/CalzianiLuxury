@@ -500,11 +500,9 @@
       return;
     }
     const { total } = cartTotals();
-    const s = getShippingInfo();
-    const userData = (s.name || s.phone) ? { name: s.name, phone: s.phone, country: s.country } : null;
     console.log('[main.js] fireInitiateCheckout → total:', total, '| items:', cart.length);
     if (window.CalzianiPixel) {
-      window.CalzianiPixel.trackInitiateCheckout(cart, total, userData);
+      window.CalzianiPixel.trackInitiateCheckout(cart, total);
     } else {
       console.warn('[main.js] CalzianiPixel no disponible — InitiateCheckout no se disparó');
     }
@@ -802,10 +800,7 @@
         phone:    shipping.phone,
         country:  shipping.country,
       }));
-      // Ensure InitiateCheckout fires before leaving (checkout button path)
-      await window.CalzianiPixel?.trackInitiateCheckout(cart, total,
-        shipping.name ? { name: shipping.name, phone: shipping.phone, country: shipping.country } : null
-      );
+      await window.CalzianiPixel?.trackInitiateCheckout(cart, total);
       form.submit();
     } catch (e) {
       alert('Error de conexión. Intentá nuevamente.');
@@ -854,10 +849,7 @@
       orderNumber = saveData.orderNumber || '';
       trackingCode = saveData.trackingCode || '';
       trackingUrl = saveData.trackingUrl || (trackingCode ? `${location.origin}/tracking?code=${encodeURIComponent(trackingCode)}` : '');
-      // InitiateCheckout for WhatsApp checkout path
-      window.CalzianiPixel?.trackInitiateCheckout(cart, ct.total,
-        ship.name ? { name: ship.name, phone: ship.phone, country: ship.country } : null
-      );
+      window.CalzianiPixel?.trackInitiateCheckout(cart, ct.total);
       setPromoCalziani(false);
       if (promoCodeInput) promoCodeInput.value = '';
       promoClearBtn?.classList.add('hidden');
@@ -900,9 +892,23 @@
     ].filter(Boolean).join('\n');
     const phone = (payConfig.whatsapp || '18093076122').replace(/\D/g, '');
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-    btn.disabled = false;
-    btn.innerHTML = prevHtml;
-    updateCheckoutTermsGate();
+
+    // Clear cart so the order cannot be submitted a second time
+    localStorage.removeItem('calziani_cart');
+
+    const cartBody = document.getElementById('cartBody');
+    if (cartBody) {
+      cartBody.innerHTML = `
+        <div style="padding:28px 20px;text-align:center">
+          <div style="width:52px;height:52px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.4rem">✓</div>
+          <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px">¡Pedido registrado!</h3>
+          <p style="font-size:0.82rem;color:#555;margin-bottom:4px">Pedido: <strong>${orderNumber}</strong></p>
+          <p style="font-size:0.82rem;color:#555;margin-bottom:16px">Envianos el comprobante de transferencia por WhatsApp para confirmar tu pedido.</p>
+          ${trackingUrl ? `<a href="${trackingUrl}" target="_blank" style="font-size:0.8rem;color:#111;text-decoration:underline;display:block;margin-bottom:14px">Ver seguimiento de pedido</a>` : ''}
+          <button onclick="location.href='/'" style="background:#111;color:#fff;border:none;padding:10px 24px;font-size:0.8rem;font-weight:700;letter-spacing:0.08em;cursor:pointer;border-radius:2px">Seguir comprando</button>
+        </div>`;
+    }
+    updateCartUI();
   });
 
   // ─── PayPal.me payment ───────────────────────────────────────────────────────
@@ -1264,6 +1270,7 @@
       document.getElementById('loginTrigger')?.addEventListener('click', () => openAuthModal('login'));
       return;
     }
+    window.CalzianiPixel?.setAdvancedMatching(user);
     const initials  = user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
     const avatarHtml = user.avatar
       ? `<img src="${user.avatar}" class="user-avatar-img" alt="${escHtml(user.name)}" referrerpolicy="no-referrer" />`
