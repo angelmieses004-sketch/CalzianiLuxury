@@ -1274,7 +1274,7 @@ async function getPayPalToken() {
 }
 
 app.post('/api/paypal/create-order', async (req, res) => {
-  const { cart, shippingFee = 5, shipping, promoCode } = req.body || {};
+  const { cart, shippingFee, shipping, promoCode } = req.body || {};
   if (!cart?.length) return res.status(400).json({ error: 'Carrito vacío.' });
   if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_SECRET)
     return res.status(503).json({ error: 'PayPal no configurado.' });
@@ -1282,11 +1282,11 @@ app.post('/api/paypal/create-order', async (req, res) => {
   const stockPp = validateCartStock(cart);
   if (!stockPp.ok) return res.status(400).json({ error: stockPp.error });
 
-  const lineSubtotal = cart.reduce((s, i) => s + Number(i.price) * Number(i.qty), 0);
-  const promoRes = applyPromoCalziani(lineSubtotal, promoCode, shipping?.phone);
+  const promoRes = applyPromoCalziani(cart, promoCode, shipping?.phone);
   if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
 
-  const shipFee = Number(shippingFee || 5);
+  const lineSubtotal = cart.reduce((s, i) => s + Number(i.price) * Number(i.qty), 0);
+  const shipFee = Number.isFinite(Number(shippingFee)) ? Number(shippingFee) : CHECKOUT_SHIPPING_USD;
   const totalUSDNum = Math.round((promoRes.discountedSubtotal + shipFee) * 100) / 100;
   const totalUSD = totalUSDNum.toFixed(2);
 
@@ -1294,26 +1294,31 @@ app.post('/api/paypal/create-order', async (req, res) => {
     return res.status(400).json({ error: 'Total inválido: ' + totalUSD });
   }
 
-  const orderNum  = `CAL-${Date.now().toString(36).toUpperCase()}`;
+  const orderNum = `CAL-PP${Date.now().toString(36).toUpperCase()}`;
   const ppPayload = {
     intent: 'CAPTURE',
-    purchase_units: [{ amount: { currency_code: 'USD', value: totalUSD } }],
+    purchase_units: [{
+      reference_id: orderNum,
+      amount: { currency_code: 'USD', value: totalUSD },
+    }],
   };
-
-  console.log('[PayPal] Sending payload:', JSON.stringify(ppPayload));
 
   try {
     const token  = await getPayPalToken();
     const ppRes  = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'PayPal-Request-Id': orderNum },
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'PayPal-Request-Id': orderNum,
+      },
       body: JSON.stringify(ppPayload),
     });
     const ppData = await ppRes.json();
-    console.log('[PayPal] Response status:', ppRes.status, JSON.stringify(ppData).slice(0, 400));
 
     if (!ppData.id) {
-      return res.status(502).json({ error: 'PayPal error: ' + (ppData.message || JSON.stringify(ppData)) });
+      console.error('[PayPal] create-order API error:', JSON.stringify(ppData).slice(0, 600));
+      return res.status(502).json({ error: 'PayPal error: ' + (ppData.message || 'respuesta inesperada') });
     }
 
     const ppPayloadItems = {
@@ -1322,12 +1327,16 @@ app.post('/api/paypal/create-order', async (req, res) => {
       promoCode: promoRes.redeem ? promoRes.code : undefined,
       subtotalBeforeDiscount: promoRes.redeem ? lineSubtotal : undefined,
       promoPercent: promoRes.redeem ? promoRes.percent : undefined,
+      shippingFee: shipFee,
+      total: totalUSDNum,
+      paymentMethod: 'paypal',
     };
 
     const paypalTrackingCode = uniqueTrackingCode();
     const insertPp = db.prepare(`
-      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, cardnet_session, customer_email, tracking_code, tracking_stage)
-      VALUES (?, ?, ?, ?, ?, ?, 'pending_paypal', ?, ?, ?, 'received')
+      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status,
+        cardnet_session, customer_name, customer_email, tracking_code, tracking_stage)
+      VALUES (?, ?, ?, ?, 0, ?, 'pending_paypal', ?, ?, ?, ?, 'received')
     `);
     const insertPromoPp = db.prepare(`
       INSERT INTO promo_redemptions (promo_code, phone_key, order_number) VALUES (?, ?, ?)
@@ -1340,10 +1349,10 @@ app.post('/api/paypal/create-order', async (req, res) => {
           req.user?.id || null,
           JSON.stringify(ppPayloadItems),
           promoRes.discountedSubtotal,
-          0,
           totalUSDNum,
           ppData.id,
           shipping?.name || null,
+          null,
           paypalTrackingCode,
         );
         if (promoRes.redeem && promoRes.phoneKey) {
@@ -1379,7 +1388,6 @@ app.post('/api/paypal/capture-order/:orderId', async (req, res) => {
     const capData = await capRes.json();
     if (capData.status === 'COMPLETED') {
       db.prepare(`UPDATE orders SET status = 'paid_paypal' WHERE cardnet_session = ?`).run(req.params.orderId);
-      localStorage && localStorage.removeItem('calziani_cart'); // no-op on server, handled client-side
     }
     res.json(capData);
   } catch (e) {

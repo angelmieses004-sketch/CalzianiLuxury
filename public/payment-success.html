@@ -47,7 +47,7 @@
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
     <h1 class="pay-title">¡Pago aprobado!</h1>
-    <p class="pay-sub">Tu pedido fue procesado correctamente. Gracias por comprar en Calziani.</p>
+    <p class="pay-sub" id="paySuccessSub">Tu pedido fue procesado correctamente. Gracias por comprar en Calziani.</p>
     <p class="pay-order" id="orderRef"></p>
     <p class="pay-track" id="trackRef" hidden></p>
     <div class="pay-actions">
@@ -57,8 +57,15 @@
   </div>
   <script>
     (async () => {
-      // Resolve order ID: URL param → pending_purchase → pending_order
+      // Personalize message per method
       const params       = new URLSearchParams(location.search);
+      const method       = params.get('method');
+      const subEl        = document.getElementById('paySuccessSub');
+      if (subEl && method === 'paypal') {
+        subEl.textContent = 'Tu pago con PayPal fue procesado correctamente. Gracias por comprar en Calziani.';
+      }
+
+      // Resolve order ID: URL param → pending_purchase → pending_order
       const orderFromUrl = params.get('order');
       const purchaseRaw  = JSON.parse(localStorage.getItem('calziani_pending_purchase') || 'null');
       const orderId      = orderFromUrl
