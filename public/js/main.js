@@ -405,69 +405,70 @@
   const promoMsg = document.getElementById('promoMsg');
   const checkoutBtn   = document.getElementById('checkoutBtn');
 
-  const SHIPPING_USD  = 5; // flat shipping fee in USD
-  const PROMO_CALZIANI_PCT = 25; // kept for legacy references
-  const LS_PROMO_ACTIVE = 'calziani_promo_calziani';
+  const SHIPPING_USD    = 5;
+  const LS_PROMO_DATA   = 'calziani_promo_data'; // stores { code, percent, excludedProductIds }
+  // Clear legacy key from old hardcoded promo system
+  try { localStorage.removeItem('calziani_promo_calziani'); } catch (_) {}
 
-  const PROMO_CODES_CLIENT = {
-    CALZIANI:  { percent: 20, expiresAt: '2026-05-10T00:00:00Z' },
-    EXCLUSIVE: { percent: 25 },
-  };
-
-  function activePromoCode() {
+  function activePromoData() {
     try {
-      const code = localStorage.getItem(LS_PROMO_ACTIVE);
-      if (!code) return null;
-      const promo = PROMO_CODES_CLIENT[code];
-      if (!promo) { localStorage.removeItem(LS_PROMO_ACTIVE); return null; }
-      if (promo.expiresAt && new Date() > new Date(promo.expiresAt)) {
-        localStorage.removeItem(LS_PROMO_ACTIVE); return null;
-      }
-      return code;
+      const raw = localStorage.getItem(LS_PROMO_DATA);
+      return raw ? JSON.parse(raw) : null;
     } catch { return null; }
   }
-  function activePromoPct() {
-    const code = activePromoCode();
-    return code ? (PROMO_CODES_CLIENT[code]?.percent || 0) : 0;
-  }
-  function promoCalzianiActive() {
-    return !!activePromoCode();
-  }
-  function setPromoCalziani(on, code) {
+  function activePromoCode()  { return activePromoData()?.code  || null; }
+  function activePromoPct()   { return activePromoData()?.percent || 0; }
+  function promoCalzianiActive() { return !!activePromoData(); }
+
+  function setPromoData(data) {
     try {
-      if (on && code) localStorage.setItem(LS_PROMO_ACTIVE, code);
-      else localStorage.removeItem(LS_PROMO_ACTIVE);
+      if (data) localStorage.setItem(LS_PROMO_DATA, JSON.stringify(data));
+      else localStorage.removeItem(LS_PROMO_DATA);
     } catch (_) {}
   }
+  function setPromoCalziani(on, code) {
+    if (!on) setPromoData(null);
+    // when enabling, full data is set by applyPromoFromInput after API call
+  }
 
-  function applyPromoFromInput() {
+  async function applyPromoFromInput() {
     const v = (promoCodeInput?.value || '').trim().toUpperCase();
-    const promo = PROMO_CODES_CLIENT[v];
-    if (promo) {
-      if (promo.expiresAt && new Date() > new Date(promo.expiresAt)) {
-        setPromoCalziani(false);
+    if (!v) {
+      setPromoData(null);
+      promoClearBtn?.classList.add('hidden');
+      promoMsg?.classList.add('hidden');
+      updateCartUI();
+      return;
+    }
+
+    if (promoApplyBtn) { promoApplyBtn.disabled = true; promoApplyBtn.textContent = '...'; }
+    try {
+      const res  = await fetch('/api/promo/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: v }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPromoData(null);
         if (promoMsg) {
-          promoMsg.textContent = activeLang === 'en' ? `Code ${v} has expired.` : `El código ${v} ha expirado.`;
+          promoMsg.textContent = data.error || (activeLang === 'en' ? 'Invalid code.' : 'Código no válido.');
           promoMsg.classList.remove('hidden');
         }
         promoClearBtn?.classList.add('hidden');
       } else {
-        setPromoCalziani(true, v);
+        setPromoData({ code: data.code, percent: data.percent, excludedProductIds: data.excludedProductIds || [] });
         promoMsg?.classList.add('hidden');
         promoClearBtn?.classList.remove('hidden');
         if (promoCodeInput) promoCodeInput.value = '';
       }
-    } else if (!v) {
-      setPromoCalziani(false);
-      promoClearBtn?.classList.add('hidden');
-      promoMsg?.classList.add('hidden');
-    } else {
-      setPromoCalziani(false);
+    } catch {
       if (promoMsg) {
-        promoMsg.textContent = activeLang === 'en' ? 'Invalid code.' : 'Código no válido.';
+        promoMsg.textContent = activeLang === 'en' ? 'Connection error.' : 'Error de conexión.';
         promoMsg.classList.remove('hidden');
       }
-      promoClearBtn?.classList.add('hidden');
+    } finally {
+      if (promoApplyBtn) { promoApplyBtn.disabled = false; promoApplyBtn.textContent = activeLang === 'en' ? 'Apply' : 'Aplicar'; }
     }
     updateCartUI();
   }
@@ -475,7 +476,7 @@
   function initPromoCart() {
     promoApplyBtn?.addEventListener('click', applyPromoFromInput);
     promoClearBtn?.addEventListener('click', () => {
-      setPromoCalziani(false);
+      setPromoData(null);
       if (promoCodeInput) promoCodeInput.value = '';
       promoMsg?.classList.add('hidden');
       promoClearBtn?.classList.add('hidden');
@@ -550,7 +551,11 @@
     cartFoot.classList.remove('hidden');
 
     // Items
-    cartItems.innerHTML = cart.map(item => `
+    const _promoData    = activePromoData();
+    const _excludedIds  = _promoData ? (_promoData.excludedProductIds || []).map(Number) : [];
+    cartItems.innerHTML = cart.map(item => {
+      const excluded = _promoData && _excludedIds.includes(Number(item.id));
+      return `
       <li class="cart-item">
         <div class="cart-item__img">
           ${item.cover
@@ -560,6 +565,7 @@
         <div class="cart-item__info">
           <p class="cart-item__name">${escHtml(item.name)}</p>
           ${item.size ? `<p class="cart-item__size">Talle: ${escHtml(item.size)}</p>` : ''}
+          ${excluded ? `<p class="cart-item__promo-excluded">El código ${escHtml(_promoData.code)} no aplica a este producto</p>` : ''}
           <div class="cart-item__qty">
             <button class="qty-btn" data-id="${item.id}" data-size="${item.size||''}" data-delta="-1">−</button>
             <span>${item.qty}</span>
@@ -575,7 +581,8 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
-      </li>`).join('');
+      </li>`;
+    }).join('');
 
     // Totals (USD + DOP for transfer / local customers)
     const ct = cartTotals();
@@ -726,13 +733,22 @@
   }
 
   function cartTotals() {
-    const cart = getCart();
+    const cart      = getCart();
+    const promoData = activePromoData();
     const lineSubtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-    const promoOn  = promoCalzianiActive();
-    const promoPct = activePromoPct();
-    const discountAmt = promoOn ? Math.round(lineSubtotal * promoPct / 100 * 100) / 100 : 0;
+    const promoOn  = !!promoData;
+    const promoPct = promoData?.percent || 0;
+    const excludedIds = promoData ? (promoData.excludedProductIds || []).map(Number) : [];
+
+    const eligibleSubtotal = promoOn
+      ? cart.reduce((s, i) => excludedIds.includes(Number(i.id)) ? s : s + i.price * i.qty, 0)
+      : 0;
+    const ineligibleSubtotal = lineSubtotal - eligibleSubtotal;
+    const discountAmt = promoOn
+      ? Math.round(eligibleSubtotal * promoPct / 100 * 100) / 100
+      : 0;
     const subtotalAfter = promoOn
-      ? Math.round(lineSubtotal * (100 - promoPct) / 100 * 100) / 100
+      ? Math.round((eligibleSubtotal * (100 - promoPct) / 100 + ineligibleSubtotal) * 100) / 100
       : lineSubtotal;
     const total = Math.round((subtotalAfter + SHIPPING_USD) * 100) / 100;
     return {

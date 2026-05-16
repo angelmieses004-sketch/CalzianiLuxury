@@ -308,7 +308,8 @@
     views.forEach(v => v.classList.toggle('active', v.id === `view${capitalize(name)}`));
     sidebarLinks.forEach(l => l.classList.toggle('active', l.dataset.view === name));
     if (name === 'products') loadProducts();
-    if (name === 'orders') loadOrders();
+    if (name === 'orders')   loadOrders();
+    if (name === 'promos')   loadPromos();
   }
 
   function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -1091,6 +1092,279 @@
 
   document.getElementById('nosNewBtn')?.addEventListener('click', resetNewOrderForm);
   document.getElementById('nosOrdersBtn')?.addEventListener('click', () => switchView('orders'));
+
+  // ─── Promo codes ─────────────────────────────────────────────────────────────
+  const promoList          = document.getElementById('promoList');
+  const showPromoFormBtn   = document.getElementById('showPromoFormBtn');
+  const promoFormCard      = document.getElementById('promoFormCard');
+  const promoFormTitle     = document.getElementById('promoFormTitle');
+  const promoFormSaveBtn   = document.getElementById('promoFormSaveBtn');
+  const promoFormCancelBtn = document.getElementById('promoFormCancelBtn');
+  const promoFormError     = document.getElementById('promoFormError');
+  const pfCode             = document.getElementById('pfCode');
+  const pfPercent          = document.getElementById('pfPercent');
+  const pfExpires          = document.getElementById('pfExpires');
+  const pfActive           = document.getElementById('pfActive');
+  const pfExcludeSearch    = document.getElementById('pfExcludeSearch');
+  const pfExcludeDropdown  = document.getElementById('pfExcludeDropdown');
+  const pfExcludedChips    = document.getElementById('pfExcludedChips');
+
+  let editingPromoCode   = null;
+  let excludedProducts   = [];  // [{ id, name }]
+  let excludeSearchTimer = null;
+
+  function resetPromoForm() {
+    editingPromoCode = null;
+    excludedProducts = [];
+    pfCode.value    = '';
+    pfCode.disabled = false;
+    pfPercent.value = '';
+    pfExpires.value = '';
+    pfActive.checked = true;
+    pfExcludedChips.innerHTML = '';
+    pfExcludeSearch.value = '';
+    pfExcludeDropdown.classList.add('hidden');
+    promoFormError.classList.add('hidden');
+    promoFormTitle.textContent = 'Nuevo código';
+    promoFormCard.classList.remove('hidden');
+  }
+
+  function hidePromoForm() {
+    promoFormCard.classList.add('hidden');
+    editingPromoCode = null;
+    excludedProducts = [];
+  }
+
+  function renderExcludedChips() {
+    pfExcludedChips.innerHTML = excludedProducts.map(p => `
+      <span class="promo-chip">
+        ${escHtml(p.name)}
+        <button class="promo-chip-remove" data-id="${p.id}" title="Quitar">×</button>
+      </span>`).join('');
+    pfExcludedChips.querySelectorAll('.promo-chip-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        excludedProducts = excludedProducts.filter(p => p.id !== Number(btn.dataset.id));
+        renderExcludedChips();
+      });
+    });
+  }
+
+  async function loadPromos() {
+    promoList.innerHTML = '<div class="table-loading">Cargando...</div>';
+    try {
+      const res  = await fetch('/api/admin/promos', { headers: authHeaders() });
+      const data = await res.json();
+      if (!res.ok) { promoList.innerHTML = `<div class="table-empty">${data.error || 'Error al cargar.'}</div>`; return; }
+      renderPromos(data);
+    } catch {
+      promoList.innerHTML = '<div class="table-empty">Error de conexión.</div>';
+    }
+  }
+
+  function renderPromos(promos) {
+    if (!promos.length) {
+      promoList.innerHTML = '<div class="table-empty">No hay códigos de descuento. Creá el primero.</div>';
+      return;
+    }
+    promoList.innerHTML = `<table class="promo-table">
+      <thead><tr>
+        <th>Código</th><th>Descuento</th><th>Estado</th><th>Expira</th><th>Excluidos</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${promos.map(p => {
+          const activeBadge = p.active
+            ? `<span class="promo-badge promo-badge--active">Activo</span>`
+            : `<span class="promo-badge promo-badge--inactive">Inactivo</span>`;
+          const expires = p.expires_at
+            ? new Date(p.expires_at).toLocaleDateString('es', { day:'2-digit', month:'short', year:'numeric' })
+            : '—';
+          const excCount = Array.isArray(p.excluded_product_ids) ? p.excluded_product_ids.length : 0;
+          return `<tr>
+            <td><strong>${escHtml(p.code)}</strong></td>
+            <td>${p.percent}%</td>
+            <td>${activeBadge}</td>
+            <td>${expires}</td>
+            <td>${excCount ? `${excCount} producto${excCount > 1 ? 's' : ''}` : '—'}</td>
+            <td>
+              <div class="promo-actions">
+                <button class="btn btn-ghost btn-sm" data-promo-edit="${escHtml(p.code)}">Editar</button>
+                <button class="btn btn-ghost btn-sm" data-promo-toggle="${escHtml(p.code)}" data-active="${p.active}">
+                  ${p.active ? 'Desactivar' : 'Activar'}
+                </button>
+                <button class="btn btn-danger btn-sm" data-promo-delete="${escHtml(p.code)}">Eliminar</button>
+              </div>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+  }
+
+  // Delegated click handlers on promoList
+  promoList?.addEventListener('click', async e => {
+    const editBtn   = e.target.closest('[data-promo-edit]');
+    const toggleBtn = e.target.closest('[data-promo-toggle]');
+    const deleteBtn = e.target.closest('[data-promo-delete]');
+
+    if (editBtn) {
+      const code = editBtn.dataset.promoEdit;
+      await openEditPromo(code);
+    }
+    if (toggleBtn) {
+      const code   = toggleBtn.dataset.promoToggle;
+      const active = toggleBtn.dataset.active === '1';
+      if (!confirm(`¿${active ? 'Desactivar' : 'Activar'} el código ${code}?`)) return;
+      try {
+        const res = await fetch(`/api/admin/promos/${encodeURIComponent(code)}`, {
+          method: 'PUT',
+          headers: authHeaders(),
+          body: JSON.stringify({ active: !active }),
+        });
+        if (!res.ok) { const d = await res.json(); showToast(d.error || 'Error', true); return; }
+        showToast(`Código ${code} ${active ? 'desactivado' : 'activado'}.`);
+        loadPromos();
+      } catch { showToast('Error de conexión.', true); }
+    }
+    if (deleteBtn) {
+      const code = deleteBtn.dataset.promoDelete;
+      if (!confirm(`¿Eliminar el código ${code}? Esta acción no se puede deshacer.`)) return;
+      try {
+        const res = await fetch(`/api/admin/promos/${encodeURIComponent(code)}`, {
+          method: 'DELETE', headers: authHeaders(),
+        });
+        if (!res.ok) { const d = await res.json(); showToast(d.error || 'Error', true); return; }
+        showToast(`Código ${code} eliminado.`);
+        loadPromos();
+      } catch { showToast('Error de conexión.', true); }
+    }
+  });
+
+  async function openEditPromo(code) {
+    try {
+      const res  = await fetch('/api/admin/promos', { headers: authHeaders() });
+      const data = await res.json();
+      const promo = data.find(p => p.code === code);
+      if (!promo) { showToast('Código no encontrado.', true); return; }
+
+      editingPromoCode     = promo.code;
+      excludedProducts     = [];
+      pfCode.value         = promo.code;
+      pfCode.disabled      = true;
+      pfPercent.value      = promo.percent;
+      pfActive.checked     = !!promo.active;
+      pfExpires.value      = promo.expires_at
+        ? promo.expires_at.slice(0, 16)
+        : '';
+      promoFormTitle.textContent = `Editar código: ${promo.code}`;
+
+      // Load excluded product names
+      if (promo.excluded_product_ids?.length) {
+        const productRes = await fetch(`/api/products?page=1&limit=200`, { headers: authHeaders() });
+        const productData = await productRes.json();
+        const productMap = {};
+        (productData.products || []).forEach(p => { productMap[p.id] = p.name; });
+        excludedProducts = promo.excluded_product_ids.map(id => ({
+          id, name: productMap[id] || `Producto #${id}`,
+        }));
+      }
+      renderExcludedChips();
+      promoFormError.classList.add('hidden');
+      promoFormCard.classList.remove('hidden');
+      promoFormCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch { showToast('Error al cargar el código.', true); }
+  }
+
+  showPromoFormBtn?.addEventListener('click', () => {
+    if (!promoFormCard.classList.contains('hidden') && !editingPromoCode) {
+      hidePromoForm();
+    } else {
+      resetPromoForm();
+      promoFormCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+
+  promoFormCancelBtn?.addEventListener('click', hidePromoForm);
+
+  promoFormSaveBtn?.addEventListener('click', async () => {
+    promoFormError.classList.add('hidden');
+    const code    = (pfCode.value || '').trim().toUpperCase();
+    const percent = Number(pfPercent.value);
+    const active  = pfActive.checked;
+    const expires = pfExpires.value ? new Date(pfExpires.value).toISOString() : null;
+    const excludedIds = excludedProducts.map(p => p.id);
+
+    if (!code) { showError(promoFormError, 'El código no puede estar vacío.'); return; }
+    if (!percent || percent < 1 || percent > 100) {
+      showError(promoFormError, 'El descuento debe ser entre 1 y 100.'); return;
+    }
+
+    promoFormSaveBtn.disabled = true;
+    promoFormSaveBtn.textContent = 'Guardando...';
+    try {
+      const url    = editingPromoCode
+        ? `/api/admin/promos/${encodeURIComponent(editingPromoCode)}`
+        : '/api/admin/promos';
+      const method = editingPromoCode ? 'PUT' : 'POST';
+      const res    = await fetch(url, {
+        method,
+        headers: authHeaders(),
+        body: JSON.stringify({ code, percent, active, expires_at: expires, excluded_product_ids: excludedIds }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showError(promoFormError, data.error || 'Error al guardar.'); return; }
+      showToast(editingPromoCode ? 'Código actualizado.' : 'Código creado.');
+      hidePromoForm();
+      loadPromos();
+    } catch { showError(promoFormError, 'Error de conexión.'); }
+    finally { promoFormSaveBtn.disabled = false; promoFormSaveBtn.textContent = 'Guardar'; }
+  });
+
+  // Product exclusion search
+  let allProductsForExclude = null;
+
+  async function ensureProductsForExclude() {
+    if (allProductsForExclude) return allProductsForExclude;
+    const res  = await fetch('/api/products?page=1&limit=500', { headers: authHeaders() });
+    const data = await res.json();
+    allProductsForExclude = data.products || [];
+    return allProductsForExclude;
+  }
+
+  pfExcludeSearch?.addEventListener('input', () => {
+    clearTimeout(excludeSearchTimer);
+    excludeSearchTimer = setTimeout(async () => {
+      const q = pfExcludeSearch.value.trim().toLowerCase();
+      if (!q) { pfExcludeDropdown.classList.add('hidden'); return; }
+      try {
+        const products = await ensureProductsForExclude();
+        const matches  = products.filter(p =>
+          p.name.toLowerCase().includes(q) &&
+          !excludedProducts.some(ex => ex.id === p.id)
+        ).slice(0, 12);
+        if (!matches.length) { pfExcludeDropdown.classList.add('hidden'); return; }
+        pfExcludeDropdown.innerHTML = matches.map(p =>
+          `<div class="promo-exclude-dropdown-item" data-id="${p.id}" data-name="${escHtml(p.name)}">${escHtml(p.name)}</div>`
+        ).join('');
+        pfExcludeDropdown.classList.remove('hidden');
+      } catch { pfExcludeDropdown.classList.add('hidden'); }
+    }, 220);
+  });
+
+  pfExcludeDropdown?.addEventListener('click', e => {
+    const item = e.target.closest('.promo-exclude-dropdown-item');
+    if (!item) return;
+    excludedProducts.push({ id: Number(item.dataset.id), name: item.dataset.name });
+    renderExcludedChips();
+    pfExcludeSearch.value = '';
+    pfExcludeDropdown.classList.add('hidden');
+    pfExcludeSearch.focus();
+  });
+
+  document.addEventListener('click', e => {
+    if (!pfExcludeDropdown?.contains(e.target) && e.target !== pfExcludeSearch) {
+      pfExcludeDropdown?.classList.add('hidden');
+    }
+  });
 
   // ─── Init ────────────────────────────────────────────────────────────────────
   checkAuth();

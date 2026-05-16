@@ -127,6 +127,25 @@ try {
   `);
 } catch (_) {}
 
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS promo_codes (
+      code                 TEXT PRIMARY KEY,
+      percent              INTEGER NOT NULL,
+      active               INTEGER NOT NULL DEFAULT 1,
+      expires_at           TEXT,
+      excluded_product_ids TEXT NOT NULL DEFAULT '[]',
+      created_at           TEXT DEFAULT (datetime('now'))
+    );
+  `);
+  // Seed legacy hard-coded codes (INSERT OR IGNORE so re-runs are safe)
+  const seedPromo = db.prepare(
+    `INSERT OR IGNORE INTO promo_codes (code, percent, active, expires_at) VALUES (?, ?, ?, ?)`
+  );
+  seedPromo.run('CALZIANI',  20, 0, '2026-05-10T00:00:00Z');
+  seedPromo.run('EXCLUSIVE', 25, 1, null);
+} catch (_) {}
+
 const existingAdmin = db.prepare('SELECT id FROM admin WHERE id = 1').get();
 if (!existingAdmin) {
   db.prepare("INSERT INTO admin (id, username, password) VALUES (1, 'admin', 'calziani2024')").run();

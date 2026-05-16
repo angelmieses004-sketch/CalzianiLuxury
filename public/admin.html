@@ -159,6 +159,9 @@
         <button class="sidebar__link" data-view="neworder">
           <span class="sidebar__icon">✎</span> Nuevo pedido
         </button>
+        <button class="sidebar__link" data-view="promos">
+          <span class="sidebar__icon">%</span> Descuentos
+        </button>
         <button class="sidebar__link" data-view="settings">
           <span class="sidebar__icon">⚙</span> Ajustes
         </button>
@@ -390,6 +393,58 @@
             <button type="button" class="btn btn-ghost" id="newOrderCancelBtn">Cancelar</button>
           </div>
         </form>
+      </section>
+
+      <!-- VIEW: Descuentos -->
+      <section id="viewPromos" class="view">
+        <div class="view__header">
+          <h2 class="view__title">Códigos de descuento</h2>
+          <button class="btn btn-primary btn-sm" id="showPromoFormBtn">+ Nuevo código</button>
+        </div>
+
+        <!-- New / Edit promo form -->
+        <div id="promoFormCard" class="settings-card hidden">
+          <h3 class="settings-card__title" id="promoFormTitle">Nuevo código</h3>
+          <div class="form-row">
+            <div class="field">
+              <label for="pfCode">Código <span class="required">*</span></label>
+              <input type="text" id="pfCode" placeholder="Ej: VERANO25" maxlength="40" style="text-transform:uppercase" />
+            </div>
+            <div class="field">
+              <label for="pfPercent">Descuento % <span class="required">*</span></label>
+              <input type="number" id="pfPercent" placeholder="Ej: 25" min="1" max="100" />
+            </div>
+            <div class="field">
+              <label for="pfExpires">Expira el (opcional)</label>
+              <input type="datetime-local" id="pfExpires" />
+            </div>
+            <div class="field" style="flex:0 0 auto;justify-content:flex-end;padding-bottom:4px">
+              <label style="visibility:hidden">Estado</label>
+              <label class="promo-toggle-label">
+                <input type="checkbox" id="pfActive" checked />
+                <span>Activo</span>
+              </label>
+            </div>
+          </div>
+          <div class="field" style="margin-top:0.5rem">
+            <label>Excluir productos (opcional)</label>
+            <div class="promo-exclude-wrap">
+              <input type="text" id="pfExcludeSearch" placeholder="Buscar producto para excluir..." autocomplete="off" />
+              <div id="pfExcludeDropdown" class="promo-exclude-dropdown hidden"></div>
+            </div>
+            <div id="pfExcludedChips" class="promo-chips"></div>
+          </div>
+          <div id="promoFormError" class="form-error hidden" style="margin-top:0.75rem"></div>
+          <div class="form-btns" style="margin-top:1rem">
+            <button class="btn btn-primary" id="promoFormSaveBtn">Guardar</button>
+            <button class="btn btn-ghost"   id="promoFormCancelBtn">Cancelar</button>
+          </div>
+        </div>
+
+        <!-- Promo list -->
+        <div id="promoList" class="product-table-wrap">
+          <div class="table-loading">Cargando...</div>
+        </div>
       </section>
 
       <!-- VIEW: Settings -->

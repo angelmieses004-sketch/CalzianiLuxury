@@ -766,14 +766,6 @@ function trackingUrlFromCode(req, trackingCode) {
   return `${base}/tracking?code=${encodeURIComponent(trackingCode)}`;
 }
 
-const PROMO_CALZIANI_CODE    = 'EXCLUSIVE';
-const PROMO_CALZIANI_PERCENT = 25;
-
-const PROMO_CODES = {
-  CALZIANI:  { percent: 20, expiresAt: '2026-05-10T00:00:00Z' },
-  EXCLUSIVE: { percent: 25 },
-};
-
 function normalizePromoCode(code) {
   return String(code || '').trim().toUpperCase();
 }
@@ -785,17 +777,22 @@ function normalizePhoneKey(phone) {
 }
 
 /**
- * Descuento sobre subtotal de líneas (sin envío). Una vez por teléfono en BD.
+ * Aplica descuento al carrito (sin envío), respetando productos excluidos.
+ * cart: array de { id, price, qty }
+ * Una vez por teléfono en BD.
  */
-function applyPromoCalziani(lineSubtotal, promoCodeRaw, phone) {
+function applyPromoCalziani(cart, promoCodeRaw, phone) {
+  const lineSubtotal = cart.reduce((s, i) => s + Number(i.price) * Number(i.qty), 0);
   const code = normalizePromoCode(promoCodeRaw);
-  const promo = PROMO_CODES[code];
-  if (!promo) {
-    return { ok: true, discountedSubtotal: lineSubtotal, redeem: false };
-  }
-  if (promo.expiresAt && new Date() > new Date(promo.expiresAt)) {
+  if (!code) return { ok: true, discountedSubtotal: lineSubtotal, redeem: false };
+
+  const promo = db.prepare('SELECT * FROM promo_codes WHERE code = ?').get(code);
+  if (!promo) return { ok: true, discountedSubtotal: lineSubtotal, redeem: false };
+  if (!promo.active) return { ok: false, error: `El código ${code} no está disponible.` };
+  if (promo.expires_at && new Date() > new Date(promo.expires_at)) {
     return { ok: false, error: `El código ${code} ha expirado.` };
   }
+
   const phoneKey = normalizePhoneKey(phone);
   if (!phoneKey) {
     return { ok: false, error: `Completá un teléfono válido para usar el código ${code}.` };
@@ -806,10 +803,92 @@ function applyPromoCalziani(lineSubtotal, promoCodeRaw, phone) {
   if (taken) {
     return { ok: false, error: 'Este código ya fue utilizado con este número de teléfono.' };
   }
+
+  const excludedIds = JSON.parse(promo.excluded_product_ids || '[]').map(Number);
+  const eligibleSubtotal = cart.reduce((s, i) => {
+    if (excludedIds.includes(Number(i.id))) return s;
+    return s + Number(i.price) * Number(i.qty);
+  }, 0);
+  const ineligibleSubtotal = lineSubtotal - eligibleSubtotal;
   const { percent } = promo;
-  const discountedSubtotal = Math.round(lineSubtotal * (100 - percent)) / 100;
+  const discountedSubtotal = Math.round(
+    (eligibleSubtotal * (100 - percent) / 100 + ineligibleSubtotal) * 100
+  ) / 100;
   return { ok: true, discountedSubtotal, redeem: true, phoneKey, code, percent };
 }
+
+// ─── Public: validate promo code (no redemption yet) ──────────────────────────
+app.post('/api/promo/validate', (req, res) => {
+  const code = normalizePromoCode(req.body?.code);
+  if (!code) return res.status(400).json({ error: 'Ingresá un código.' });
+
+  const promo = db.prepare('SELECT * FROM promo_codes WHERE code = ?').get(code);
+  if (!promo || !promo.active) return res.status(404).json({ error: 'Código no válido.' });
+  if (promo.expires_at && new Date() > new Date(promo.expires_at)) {
+    return res.status(400).json({ error: `El código ${code} ha expirado.` });
+  }
+
+  const excludedProductIds = JSON.parse(promo.excluded_product_ids || '[]').map(Number);
+  res.json({ ok: true, code, percent: promo.percent, excludedProductIds });
+});
+
+// ─── Admin: promo codes CRUD ───────────────────────────────────────────────────
+app.get('/api/admin/promos', requireAuth, (req, res) => {
+  const rows = db.prepare('SELECT * FROM promo_codes ORDER BY created_at DESC').all();
+  res.json(rows.map(r => ({
+    ...r,
+    excluded_product_ids: JSON.parse(r.excluded_product_ids || '[]'),
+  })));
+});
+
+app.post('/api/admin/promos', requireAuth, (req, res) => {
+  const { code, percent, active = 1, expires_at = null, excluded_product_ids = [] } = req.body || {};
+  const c = normalizePromoCode(code);
+  if (!c) return res.status(400).json({ error: 'El código no puede estar vacío.' });
+  if (!/^[A-Z0-9_-]+$/.test(c)) return res.status(400).json({ error: 'El código solo puede contener letras, números, guiones y guiones bajos.' });
+  const pct = Number(percent);
+  if (!Number.isInteger(pct) || pct < 1 || pct > 100) {
+    return res.status(400).json({ error: 'El descuento debe ser un número entero entre 1 y 100.' });
+  }
+  const exists = db.prepare('SELECT 1 FROM promo_codes WHERE code = ?').get(c);
+  if (exists) return res.status(409).json({ error: `El código ${c} ya existe.` });
+
+  db.prepare(
+    `INSERT INTO promo_codes (code, percent, active, expires_at, excluded_product_ids) VALUES (?, ?, ?, ?, ?)`
+  ).run(c, pct, active ? 1 : 0, expires_at || null, JSON.stringify(excluded_product_ids));
+
+  res.json({ ok: true, code: c });
+});
+
+app.put('/api/admin/promos/:code', requireAuth, (req, res) => {
+  const code = normalizePromoCode(req.params.code);
+  const promo = db.prepare('SELECT * FROM promo_codes WHERE code = ?').get(code);
+  if (!promo) return res.status(404).json({ error: 'Código no encontrado.' });
+
+  const { percent, active, expires_at, excluded_product_ids } = req.body || {};
+  const pct = percent !== undefined ? Number(percent) : promo.percent;
+  if (!Number.isInteger(pct) || pct < 1 || pct > 100) {
+    return res.status(400).json({ error: 'El descuento debe ser un número entero entre 1 y 100.' });
+  }
+  const newActive   = active !== undefined ? (active ? 1 : 0) : promo.active;
+  const newExpires  = expires_at !== undefined ? (expires_at || null) : promo.expires_at;
+  const newExcluded = excluded_product_ids !== undefined
+    ? JSON.stringify(excluded_product_ids)
+    : promo.excluded_product_ids;
+
+  db.prepare(
+    `UPDATE promo_codes SET percent=?, active=?, expires_at=?, excluded_product_ids=? WHERE code=?`
+  ).run(pct, newActive, newExpires, newExcluded, code);
+
+  res.json({ ok: true });
+});
+
+app.delete('/api/admin/promos/:code', requireAuth, (req, res) => {
+  const code = normalizePromoCode(req.params.code);
+  const result = db.prepare('DELETE FROM promo_codes WHERE code = ?').run(code);
+  if (!result.changes) return res.status(404).json({ error: 'Código no encontrado.' });
+  res.json({ ok: true });
+});
 
 app.post('/api/orders/whatsapp-submit', (req, res) => {
   try {
@@ -832,7 +911,7 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
     const stockCheck = validateCartStock(cart);
     if (!stockCheck.ok) return res.status(400).json({ error: stockCheck.error });
 
-    const promoRes = applyPromoCalziani(lineSubtotal, promoCode, s.phone);
+    const promoRes = applyPromoCalziani(cart, promoCode, s.phone);
     if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
 
     const discountedSubtotal = promoRes.discountedSubtotal;
@@ -939,7 +1018,6 @@ app.post('/api/orders/paypalme-submit', (req, res) => {
       return res.status(400).json({ error: 'Datos de envío incompletos.' });
     }
 
-    const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
     const fee = Number(shippingFee);
     const shipFee = Number.isFinite(fee) && fee >= 0 ? fee : CHECKOUT_SHIPPING_USD;
     if (Math.abs(shipFee - CHECKOUT_SHIPPING_USD) > 0.02) {
@@ -949,9 +1027,10 @@ app.post('/api/orders/paypalme-submit', (req, res) => {
     const stockCheck = validateCartStock(cart);
     if (!stockCheck.ok) return res.status(400).json({ error: stockCheck.error });
 
-    const promoRes = applyPromoCalziani(lineSubtotal, promoCode, s.phone);
+    const promoRes = applyPromoCalziani(cart, promoCode, s.phone);
     if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
 
+    const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
     const discountedSubtotal = promoRes.discountedSubtotal;
     const totalCheck = Math.round((discountedSubtotal + shipFee) * 100) / 100;
     const clientTotal = Number(total);
@@ -1035,7 +1114,7 @@ app.post('/api/azul/checkout', (req, res) => {
   if (!stockAzul.ok) return res.status(400).json({ error: stockAzul.error });
 
   const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
-  const promoRes = applyPromoCalziani(lineSubtotal, promoCode, shipping?.phone);
+  const promoRes = applyPromoCalziani(cart, promoCode, shipping?.phone);
   if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
 
   const totalUSDCheck = Math.round((promoRes.discountedSubtotal + CHECKOUT_SHIPPING_USD) * 100) / 100;
