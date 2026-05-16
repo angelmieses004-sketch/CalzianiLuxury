@@ -1,14 +1,17 @@
 (() => {
-  const grid          = document.getElementById('productGrid');
-  const sectionTitle  = document.getElementById('sectionTitle');
-  const productCount  = document.getElementById('productCount');
-  const searchInput   = document.getElementById('searchInput');
-  const navBtns       = document.querySelectorAll('.nav-btn');
-  const sizeFilterBar = document.getElementById('sizeFilterBar');
-  const sizeFilterBtns= document.getElementById('sizeFilterBtns');
+  const grid           = document.getElementById('productGrid');
+  const sectionTitle   = document.getElementById('sectionTitle');
+  const productCount   = document.getElementById('productCount');
+  const searchInput    = document.getElementById('searchInput');
+  const navBtns        = document.querySelectorAll('.nav-btn');
+  const sizeFilterBar  = document.getElementById('sizeFilterBar');
+  const sizeFilterBtns = document.getElementById('sizeFilterBtns');
+  const brandFilterBar = document.getElementById('brandFilterBar');
+  const brandFilterBtns= document.getElementById('brandFilterBtns');
 
   let currentCategory = 'all';
   let currentSize     = 'all';
+  let currentBrand    = 'all';
   let searchTimer     = null;
 
   // ─── Translations ─────────────────────────────────────────────────────────────
@@ -1021,13 +1024,14 @@
   let currentProductsPage = 1;
 
   // ─── Fetch & render ─────────────────────────────────────────────────────────
-  async function fetchProducts(category = 'all', search = '', size = 'all', page = currentProductsPage) {
+  async function fetchProducts(category = 'all', search = '', size = 'all', page = currentProductsPage, brand = currentBrand) {
     currentProductsPage = page;
     grid.innerHTML = '<div class="loading">Cargando...</div>';
     const params = new URLSearchParams();
     if (category !== 'all') params.set('category', category);
     if (search.trim()) params.set('search', search.trim());
     if (size !== 'all') params.set('size', size);
+    if (brand !== 'all') params.set('brand_id', brand);
     params.set('page', page);
     params.set('limit', STOREFRONT_PER_PAGE);
 
@@ -1138,18 +1142,48 @@
       navBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentCategory = btn.dataset.cat;
-      currentSize = 'all';
+      currentSize  = 'all';
+      currentBrand = 'all';
       currentProductsPage = 1;
       renderSizeFilter(currentCategory);
-      fetchProducts(currentCategory, searchInput.value, currentSize, 1);
+      updateBrandFilterActive();
+      fetchProducts(currentCategory, searchInput.value, currentSize, 1, 'all');
     });
   });
+
+  // ─── Brand filter ─────────────────────────────────────────────────────────────
+  function updateBrandFilterActive() {
+    if (!brandFilterBtns) return;
+    brandFilterBtns.querySelectorAll('.brand-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.brand === String(currentBrand));
+    });
+  }
+
+  async function initBrandFilter() {
+    try {
+      const res    = await fetch('/api/brands');
+      const brands = res.ok ? await res.json() : [];
+      if (!brands.length || !brandFilterBar) return;
+      brandFilterBtns.innerHTML =
+        `<button class="brand-btn active" data-brand="all">Todas</button>` +
+        brands.map(b => `<button class="brand-btn" data-brand="${b.id}">${escHtml(b.name)}</button>`).join('');
+      brandFilterBar.classList.remove('hidden');
+      brandFilterBtns.addEventListener('click', e => {
+        const btn = e.target.closest('.brand-btn');
+        if (!btn) return;
+        currentBrand = btn.dataset.brand === 'all' ? 'all' : Number(btn.dataset.brand);
+        currentProductsPage = 1;
+        updateBrandFilterActive();
+        fetchProducts(currentCategory, searchInput.value, currentSize, 1, currentBrand);
+      });
+    } catch { /* no brands, hide bar */ }
+  }
 
   // ─── Search ──────────────────────────────────────────────────────────────────
   searchInput.addEventListener('input', () => {
     clearTimeout(searchTimer);
     currentProductsPage = 1;
-    searchTimer = setTimeout(() => fetchProducts(currentCategory, searchInput.value, currentSize, 1), 350);
+    searchTimer = setTimeout(() => fetchProducts(currentCategory, searchInput.value, currentSize, 1, currentBrand), 350);
   });
 
   // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -1349,7 +1383,7 @@
   if (_qParam) {
     searchInput.value = _qParam.trim();
     history.replaceState(null, '', '/');
-    fetchProducts(currentCategory, searchInput.value, currentSize, 1);
+    fetchProducts(currentCategory, searchInput.value, currentSize, 1, currentBrand);
   }
 
   async function initAuth() {
@@ -1437,6 +1471,7 @@
   applyTranslations();
   initLangBtn();
   renderSizeFilter(currentCategory);
+  initBrandFilter();
   loadCurrencyRates().then(() => {
     fetchProducts();
     loadSaleProducts();

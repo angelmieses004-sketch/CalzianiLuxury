@@ -162,6 +162,9 @@
         <button class="sidebar__link" data-view="promos">
           <span class="sidebar__icon">%</span> Descuentos
         </button>
+        <button class="sidebar__link" data-view="brands">
+          <span class="sidebar__icon">◉</span> Marcas
+        </button>
         <button class="sidebar__link" data-view="settings">
           <span class="sidebar__icon">⚙</span> Ajustes
         </button>
@@ -224,6 +227,12 @@
                 <option value="calzado">Calzado</option>
                 <option value="ropa">Ropa</option>
                 <option value="accesorio">Accesorio</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="fBrand">Marca</label>
+              <select id="fBrand">
+                <option value="">Sin marca</option>
               </select>
             </div>
           </div>
@@ -443,6 +452,27 @@
 
         <!-- Promo list -->
         <div id="promoList" class="product-table-wrap">
+          <div class="table-loading">Cargando...</div>
+        </div>
+      </section>
+
+      <!-- VIEW: Marcas -->
+      <section id="viewBrands" class="view">
+        <div class="view__header">
+          <h2 class="view__title">Marcas</h2>
+        </div>
+        <div class="settings-card" style="max-width:520px">
+          <h3 class="settings-card__title">Nueva marca</h3>
+          <div style="display:flex;gap:0.6rem;align-items:flex-end">
+            <div class="field" style="flex:1">
+              <label for="brandNameInput">Nombre de la marca</label>
+              <input type="text" id="brandNameInput" placeholder="Ej: Nike, Adidas…" maxlength="80" />
+            </div>
+            <button class="btn btn-primary btn-sm" id="brandAddBtn" style="margin-bottom:1px">Agregar</button>
+          </div>
+          <div id="brandFormError" class="form-error hidden" style="margin-top:0.6rem"></div>
+        </div>
+        <div id="brandList" class="product-table-wrap" style="max-width:520px;margin-top:1rem">
           <div class="table-loading">Cargando...</div>
         </div>
       </section>

@@ -310,6 +310,7 @@
     if (name === 'products') loadProducts();
     if (name === 'orders')   loadOrders();
     if (name === 'promos')   loadPromos();
+    if (name === 'brands')   loadBrandsView();
   }
 
   function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -657,6 +658,111 @@
   });
 
   // ─── Product Form ────────────────────────────────────────────────────────────
+  // ─── Brands helpers ──────────────────────────────────────────────────────────
+  const fBrand         = document.getElementById('fBrand');
+  const brandNameInput = document.getElementById('brandNameInput');
+  const brandAddBtn    = document.getElementById('brandAddBtn');
+  const brandFormError = document.getElementById('brandFormError');
+  const brandList      = document.getElementById('brandList');
+
+  let cachedBrands = [];
+
+  async function fetchBrands() {
+    try {
+      const res = await fetch('/api/brands');
+      cachedBrands = res.ok ? await res.json() : [];
+    } catch { cachedBrands = []; }
+    return cachedBrands;
+  }
+
+  async function populateBrandSelect(selectedId) {
+    await fetchBrands();
+    if (!fBrand) return;
+    fBrand.innerHTML = '<option value="">Sin marca</option>' +
+      cachedBrands.map(b => `<option value="${b.id}"${Number(selectedId) === b.id ? ' selected' : ''}>${escHtml(b.name)}</option>`).join('');
+  }
+
+  async function loadBrandsView() {
+    if (!brandList) return;
+    brandList.innerHTML = '<div class="table-loading">Cargando...</div>';
+    await fetchBrands();
+    if (!cachedBrands.length) {
+      brandList.innerHTML = '<div class="table-empty">No hay marcas. Agregá la primera.</div>';
+      return;
+    }
+    brandList.innerHTML = `<table class="promo-table">
+      <thead><tr><th>Marca</th><th></th></tr></thead>
+      <tbody>
+        ${cachedBrands.map(b => `<tr>
+          <td id="brand-name-${b.id}">${escHtml(b.name)}</td>
+          <td>
+            <div class="promo-actions">
+              <button class="btn btn-ghost btn-sm" data-brand-rename="${b.id}" data-brand-current="${escHtml(b.name)}">Renombrar</button>
+              <button class="btn btn-danger btn-sm" data-brand-delete="${b.id}" data-brand-name="${escHtml(b.name)}">Eliminar</button>
+            </div>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  }
+
+  brandAddBtn?.addEventListener('click', async () => {
+    brandFormError.classList.add('hidden');
+    const name = (brandNameInput?.value || '').trim();
+    if (!name) { showError(brandFormError, 'Ingresá un nombre.'); return; }
+    brandAddBtn.disabled = true;
+    try {
+      const res = await fetch('/api/admin/brands', {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify({ name }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showError(brandFormError, data.error || 'Error al crear.'); return; }
+      brandNameInput.value = '';
+      showToast(`Marca "${name}" creada.`);
+      loadBrandsView();
+    } catch { showError(brandFormError, 'Error de conexión.'); }
+    finally { brandAddBtn.disabled = false; }
+  });
+
+  brandNameInput?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); brandAddBtn?.click(); }
+  });
+
+  brandList?.addEventListener('click', async e => {
+    const renameBtn = e.target.closest('[data-brand-rename]');
+    const deleteBtn = e.target.closest('[data-brand-delete]');
+
+    if (renameBtn) {
+      const id      = renameBtn.dataset.brandRename;
+      const current = renameBtn.dataset.brandCurrent;
+      const newName = prompt(`Nuevo nombre para "${current}":`, current);
+      if (!newName || newName.trim() === current) return;
+      try {
+        const res = await fetch(`/api/admin/brands/${id}`, {
+          method: 'PUT', headers: authHeaders(), body: JSON.stringify({ name: newName.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.error || 'Error.', true); return; }
+        showToast('Marca actualizada.');
+        loadBrandsView();
+      } catch { showToast('Error de conexión.', true); }
+    }
+
+    if (deleteBtn) {
+      const id   = deleteBtn.dataset.brandDelete;
+      const name = deleteBtn.dataset.brandName;
+      if (!confirm(`¿Eliminar la marca "${name}"? Los productos quedarán sin marca.`)) return;
+      try {
+        const res = await fetch(`/api/admin/brands/${id}`, {
+          method: 'DELETE', headers: authHeaders(),
+        });
+        if (!res.ok) { const d = await res.json(); showToast(d.error || 'Error.', true); return; }
+        showToast(`Marca "${name}" eliminada.`);
+        loadBrandsView();
+      } catch { showToast('Error de conexión.', true); }
+    }
+  });
+
   function resetForm() {
     editId.value = '';
     productForm.reset();
@@ -667,6 +773,7 @@
     sizesHint.classList.remove('hidden');
     offerBadgePreview.classList.remove('visible');
     resetImages();
+    populateBrandSelect(null);
   }
 
   function openNew() {
@@ -692,6 +799,7 @@
       newFiles = [];
       removeIds = [];
       renderImgGrid();
+      await populateBrandSelect(p.brand_id);
       formTitle.textContent = 'Editar producto';
       formSubmitBtn.textContent = 'Guardar cambios';
       hideError(formError);
@@ -718,6 +826,7 @@
     const sizes_stock = getSizesStock();
     const compare_price = fComparePrice.value;
     const shipping_days = fShipping.value.trim();
+    const brand_id = fBrand?.value || '';
     const id = editId.value;
 
     if (!name) { showError(formError, 'El nombre del producto es obligatorio.'); return; }
@@ -740,6 +849,7 @@
     formData.append('sizes_stock', JSON.stringify(sizes_stock));
     formData.append('compare_price', compare_price || '');
     formData.append('shipping_days', shipping_days || '');
+    formData.append('brand_id', brand_id || '');
     formData.append('remove_image_ids', JSON.stringify(removeIds));
     newFiles.forEach(file => formData.append('images', file));
 

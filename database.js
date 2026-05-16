@@ -98,6 +98,16 @@ try { db.exec(`ALTER TABLE products ADD COLUMN image TEXT DEFAULT NULL`); } catc
 try { db.exec(`ALTER TABLE products ADD COLUMN sizes_stock TEXT DEFAULT '{}'`); } catch (_) {}
 try { db.exec(`ALTER TABLE products ADD COLUMN gender TEXT DEFAULT NULL`); } catch (_) {}
 
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS brands (
+      id   INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE
+    );
+  `);
+} catch (_) {}
+try { db.exec(`ALTER TABLE products ADD COLUMN brand_id INTEGER REFERENCES brands(id) ON DELETE SET NULL`); } catch (_) {}
+
 // Migrate old single `image` column into product_images table (run once)
 const productsWithLegacyImage = db.prepare(
   `SELECT id, image FROM products WHERE image IS NOT NULL AND image != ''`

@@ -1505,6 +1505,34 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 }
 
 /* ─── Size filter bar ──────────────────────────────────────────────────────── */
+/* ─── Brand filter bar ──────────────────────────────────────────────────────── */
+.brand-filter-bar {
+  margin-bottom: 0.75rem;
+}
+
+.brand-filter-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.brand-btn {
+  padding: 0.3rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  border: 1px solid var(--gray-200);
+  border-radius: 20px;
+  background: var(--white);
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.brand-btn:hover { background: var(--gray-100); color: var(--black); border-color: var(--gray-400); }
+.brand-btn.active { background: var(--black); color: var(--white); border-color: var(--black); }
+
 .size-filter-bar {
   display: flex;
   align-items: center;
