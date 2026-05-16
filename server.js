@@ -1287,6 +1287,31 @@ async function getPayPalToken() {
   return data.access_token;
 }
 
+app.get('/api/paypal/debug', requireAuth, async (req, res) => {
+  const clientId = process.env.PAYPAL_CLIENT_ID || '';
+  const secret   = PAYPAL_CLIENT_SECRET_VALUE;
+  const preview  = (s) => s.length > 10 ? `${s.slice(0,6)}...${s.slice(-4)} (${s.length} chars)` : `(${s.length} chars)`;
+  const result = {
+    env:      PAYPAL_ENV,
+    apiBase:  PAYPAL_API_BASE,
+    clientId: preview(clientId),
+    secret:   preview(secret),
+    rawEnvVars: {
+      PAYPAL_CLIENT_ID:     clientId ? 'present' : 'MISSING',
+      PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET ? 'present' : 'MISSING',
+      PAYPAL_SECRET:        process.env.PAYPAL_SECRET        ? 'present' : 'MISSING',
+      PAYPAL_ENV:           process.env.PAYPAL_ENV || '(not set)',
+    },
+  };
+  try {
+    await getPayPalToken();
+    result.tokenTest = 'SUCCESS — credenciales válidas';
+  } catch (e) {
+    result.tokenTest = 'FAILED: ' + e.message;
+  }
+  res.json(result);
+});
+
 app.post('/api/paypal/create-order', async (req, res) => {
   const { cart, shippingFee, shipping, promoCode } = req.body || {};
   if (!cart?.length) return res.status(400).json({ error: 'Carrito vacío.' });
