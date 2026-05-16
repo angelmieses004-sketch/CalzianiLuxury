@@ -279,6 +279,22 @@
         </button>
       </div>`;
 
+    const trustHtml = `
+      <div class="pp-trust">
+        <div class="pp-trust__item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>100% Autenticidad garantizada</span>
+        </div>
+        <div class="pp-trust__item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="m16 8 5 0 2 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          <span>Envío mundial disponible</span>
+        </div>
+        <div class="pp-trust__item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/><path d="M12 8v4l3 3"/></svg>
+          <span>Atención personalizada 24/7</span>
+        </div>
+      </div>`;
+
     page.innerHTML = `
       <div class="pp-container">
         <a href="/" class="pp-back">← Volver</a>
@@ -292,6 +308,7 @@
             ${stockHtml}
             ${sizesHtml}
             ${ctaHtml}
+            ${trustHtml}
             ${p.description ? `<div class="pp-desc"><p class="pp-label">Descripción</p><p>${escHtml(p.description)}</p></div>` : ''}
           </div>
         </div>

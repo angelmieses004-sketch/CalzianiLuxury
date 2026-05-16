@@ -291,6 +291,33 @@
 }
 .pp-btn-fav:hover, .pp-btn-fav.active { border-color: #e53935; color: #e53935; }
 
+/* ─── Trust badges ───────────────────────────────────────────────────────────── */
+.pp-trust {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 1.25rem;
+  padding: 1rem 1.1rem;
+  background: #fafafa;
+  border: 1px solid #efefef;
+  border-radius: 4px;
+}
+
+.pp-trust__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #444;
+  letter-spacing: 0.02em;
+}
+
+.pp-trust__item svg {
+  flex-shrink: 0;
+  color: #111;
+}
+
 /* ─── Description ─────────────────────────────────────────────────────────────── */
 .pp-desc {
   padding-top: 0.5rem;
