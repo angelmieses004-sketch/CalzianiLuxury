@@ -1287,7 +1287,14 @@ async function getPayPalToken() {
   return data.access_token;
 }
 
-app.get('/api/paypal/debug', requireAuth, async (req, res) => {
+app.get('/api/paypal/debug', async (req, res) => {
+  const t = req.query.token || req.headers['x-admin-token'] || '';
+  const parts = Buffer.from(t, 'base64').toString('utf8').split(':');
+  if (parts.length !== 2) return res.status(401).json({ error: 'No autorizado. Usá ?token=TU_TOKEN' });
+  const [u, p] = parts;
+  if (!db.prepare('SELECT 1 FROM admin WHERE username=? AND password=?').get(u, p)) {
+    return res.status(401).json({ error: 'Credenciales incorrectas.' });
+  }
   const clientId = process.env.PAYPAL_CLIENT_ID || '';
   const secret   = PAYPAL_CLIENT_SECRET_VALUE;
   const preview  = (s) => s.length > 10 ? `${s.slice(0,6)}...${s.slice(-4)} (${s.length} chars)` : `(${s.length} chars)`;
