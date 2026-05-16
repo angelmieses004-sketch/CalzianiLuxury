@@ -1344,6 +1344,14 @@
     setTimeout(() => { openCart(); fireInitiateCheckout(); }, 300);
   }
 
+  // Pre-fill search from ?q= param
+  const _qParam = new URLSearchParams(window.location.search).get('q');
+  if (_qParam) {
+    searchInput.value = _qParam.trim();
+    history.replaceState(null, '', '/');
+    fetchProducts(currentCategory, searchInput.value, currentSize, 1);
+  }
+
   async function initAuth() {
     try {
       const res  = await fetch('/api/auth/me');
