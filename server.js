@@ -1257,24 +1257,31 @@ app.post('/api/azul/checkout', (req, res) => {
 });
 
 // ─── PayPal ────────────────────────────────────────────────────────────────────
-// Default to 'production' when credentials are present and PAYPAL_ENV is not explicitly 'sandbox'
+// Accept both PAYPAL_CLIENT_SECRET (standard PayPal naming) and PAYPAL_SECRET (legacy)
+const PAYPAL_CLIENT_SECRET_VALUE = process.env.PAYPAL_CLIENT_SECRET || process.env.PAYPAL_SECRET || '';
+// Default to 'production'; only use sandbox when PAYPAL_ENV is explicitly set to 'sandbox'
 const PAYPAL_ENV      = process.env.PAYPAL_ENV === 'sandbox' ? 'sandbox' : 'production';
 const PAYPAL_API_BASE = PAYPAL_ENV === 'production'
   ? 'https://api-m.paypal.com'
   : 'https://api-m.sandbox.paypal.com';
 
-console.log(`[PayPal] env=${PAYPAL_ENV} base=${PAYPAL_API_BASE}`);
+console.log(`[PayPal] env=${PAYPAL_ENV} | base=${PAYPAL_API_BASE} | clientId=${process.env.PAYPAL_CLIENT_ID ? 'SET' : 'MISSING'} | secret=${PAYPAL_CLIENT_SECRET_VALUE ? 'SET' : 'MISSING'}`);
 
 async function getPayPalToken() {
-  const creds = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_SECRET}`).toString('base64');
-  const res   = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
+  const clientId = process.env.PAYPAL_CLIENT_ID || '';
+  const secret   = PAYPAL_CLIENT_SECRET_VALUE;
+  const creds    = Buffer.from(`${clientId}:${secret}`).toString('base64');
+  const res = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
     method: 'POST',
-    headers: { 'Authorization': `Basic ${creds}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: {
+      'Authorization': `Basic ${creds}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
     body: 'grant_type=client_credentials',
   });
   const data = await res.json();
   if (!data.access_token) {
-    console.error('[PayPal] getToken failed:', JSON.stringify(data).slice(0, 300));
+    console.error('[PayPal] getToken failed (status', res.status, '):', JSON.stringify(data).slice(0, 400));
     throw new Error('PayPal auth failed: ' + (data.error_description || data.error || 'unknown'));
   }
   return data.access_token;
@@ -1283,8 +1290,8 @@ async function getPayPalToken() {
 app.post('/api/paypal/create-order', async (req, res) => {
   const { cart, shippingFee, shipping, promoCode } = req.body || {};
   if (!cart?.length) return res.status(400).json({ error: 'Carrito vacío.' });
-  if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_SECRET)
-    return res.status(503).json({ error: 'PayPal no configurado.' });
+  if (!process.env.PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET_VALUE)
+    return res.status(503).json({ error: 'PayPal no configurado. Verificá las variables PAYPAL_CLIENT_ID y PAYPAL_CLIENT_SECRET en Railway.' });
 
   const stockPp = validateCartStock(cart);
   if (!stockPp.ok) return res.status(400).json({ error: stockPp.error });
