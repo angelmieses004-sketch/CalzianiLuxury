@@ -1257,10 +1257,13 @@ app.post('/api/azul/checkout', (req, res) => {
 });
 
 // ─── PayPal ────────────────────────────────────────────────────────────────────
-const PAYPAL_ENV        = process.env.PAYPAL_ENV === 'production' ? 'production' : 'sandbox';
-const PAYPAL_API_BASE   = PAYPAL_ENV === 'production'
+// Default to 'production' when credentials are present and PAYPAL_ENV is not explicitly 'sandbox'
+const PAYPAL_ENV      = process.env.PAYPAL_ENV === 'sandbox' ? 'sandbox' : 'production';
+const PAYPAL_API_BASE = PAYPAL_ENV === 'production'
   ? 'https://api-m.paypal.com'
   : 'https://api-m.sandbox.paypal.com';
+
+console.log(`[PayPal] env=${PAYPAL_ENV} base=${PAYPAL_API_BASE}`);
 
 async function getPayPalToken() {
   const creds = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_SECRET}`).toString('base64');
@@ -1270,6 +1273,10 @@ async function getPayPalToken() {
     body: 'grant_type=client_credentials',
   });
   const data = await res.json();
+  if (!data.access_token) {
+    console.error('[PayPal] getToken failed:', JSON.stringify(data).slice(0, 300));
+    throw new Error('PayPal auth failed: ' + (data.error_description || data.error || 'unknown'));
+  }
   return data.access_token;
 }
 
@@ -1317,8 +1324,9 @@ app.post('/api/paypal/create-order', async (req, res) => {
     const ppData = await ppRes.json();
 
     if (!ppData.id) {
-      console.error('[PayPal] create-order API error:', JSON.stringify(ppData).slice(0, 600));
-      return res.status(502).json({ error: 'PayPal error: ' + (ppData.message || 'respuesta inesperada') });
+      const ppMsg = ppData.message || ppData.error_description || ppData.error || JSON.stringify(ppData).slice(0, 200);
+      console.error('[PayPal] create-order API error:', ppMsg, '| full:', JSON.stringify(ppData).slice(0, 600));
+      return res.status(502).json({ error: `Error de PayPal: ${ppMsg}` });
     }
 
     const ppPayloadItems = {

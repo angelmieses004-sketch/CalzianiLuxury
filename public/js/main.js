@@ -669,28 +669,56 @@
     try {
       await loadPaypalSDK(clientId);
       container.innerHTML = '';
+      // Flag to suppress onError when we already showed a specific message
+      let _ppErrorShown = false;
+
       window.paypal.Buttons({
         style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal', height: 44 },
         createOrder: async () => {
           hidePaypalError();
-          if (!validateShipping()) throw new Error('shipping');
-          if (!validateTerms())   throw new Error('terms');
+          _ppErrorShown = false;
+
+          if (!validateShipping()) {
+            showPaypalError('Completá los datos de envío antes de continuar.');
+            _ppErrorShown = true;
+            throw new Error('validation:shipping');
+          }
+          if (!validateTerms()) {
+            showPaypalError('Aceptá los términos y condiciones para continuar.');
+            _ppErrorShown = true;
+            throw new Error('validation:terms');
+          }
+
           const cart     = getCart();
           const shipping = getShippingInfo();
           const { total } = cartTotals();
-          const res  = await fetch('/api/paypal/create-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              cart,
-              shipping,
-              shippingFee: SHIPPING_USD,
-              total,
-              promoCode: activePromoCode() || undefined,
-            }),
-          });
-          const data = await res.json();
-          if (!res.ok) { showPaypalError(data.error || 'Error al crear el pedido.'); throw new Error(data.error); }
+          let data;
+          try {
+            const res = await fetch('/api/paypal/create-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                cart,
+                shipping,
+                shippingFee: SHIPPING_USD,
+                total,
+                promoCode: activePromoCode() || undefined,
+              }),
+            });
+            data = await res.json();
+            if (!res.ok) {
+              showPaypalError(data.error || 'Error al crear el pedido. Intentá nuevamente.');
+              _ppErrorShown = true;
+              throw new Error(data.error || 'create-order failed');
+            }
+          } catch (fetchErr) {
+            if (!_ppErrorShown) {
+              showPaypalError('Error de conexión. Revisá tu internet e intentá nuevamente.');
+              _ppErrorShown = true;
+            }
+            throw fetchErr;
+          }
+
           // Store context for success page
           localStorage.setItem('calziani_pending_purchase', JSON.stringify({
             total,
@@ -707,8 +735,9 @@
         },
         onApprove: async (ppData) => {
           hidePaypalError();
-          const container = document.getElementById('paypal-button-container');
-          if (container) container.innerHTML = '<div style="text-align:center;padding:14px;font-size:0.82rem;color:#888">Procesando pago...</div>';
+          _ppErrorShown = false;
+          const btnCont = document.getElementById('paypal-button-container');
+          if (btnCont) btnCont.innerHTML = '<div style="text-align:center;padding:14px;font-size:0.82rem;color:#888">Procesando pago...</div>';
           try {
             const res  = await fetch(`/api/paypal/capture-order/${ppData.orderID}`, {
               method: 'POST',
@@ -718,25 +747,26 @@
             if (data.status === 'COMPLETED') {
               localStorage.removeItem('calziani_cart');
               setPromoData(null);
-              window.CalzianiPixel?.trackInitiateCheckout(getCart(), cartTotals().total);
               window.location.href = '/payment/success?method=paypal';
             } else {
-              showPaypalError('El pago no pudo completarse. Intentá nuevamente.');
-              if (container) container.innerHTML = '';
+              const capMsg = data.message || data.details?.[0]?.description || 'El pago no pudo completarse.';
+              showPaypalError(`${capMsg} Intentá nuevamente.`);
+              if (btnCont) btnCont.innerHTML = '';
               paypalButtonsRendered = false;
               renderPaypalButtons();
             }
           } catch {
-            showPaypalError('Error de conexión al confirmar el pago.');
+            showPaypalError('Error de conexión al confirmar el pago. Intentá nuevamente.');
           }
         },
         onError: (err) => {
-          console.error('[PayPal] button error:', err);
-          showPaypalError('Error en el proceso de pago. Intentá nuevamente.');
+          console.error('[PayPal] SDK error:', err);
+          // Only show generic message if we haven't already shown a specific one
+          if (!_ppErrorShown) {
+            showPaypalError('Error en el proceso de pago. Intentá nuevamente.');
+          }
         },
-        onCancel: () => {
-          hidePaypalError();
-        },
+        onCancel: () => { hidePaypalError(); },
       }).render('#paypal-button-container');
       paypalButtonsRendered = true;
     } catch (e) {
