@@ -1164,10 +1164,26 @@
       const res    = await fetch('/api/brands');
       const brands = res.ok ? await res.json() : [];
       if (!brands.length || !brandFilterBar) return;
+
+      // Pre-select brand from ?brand= URL param (matched by name, case-insensitive)
+      const _brandParam = new URLSearchParams(window.location.search).get('brand');
+      if (_brandParam) {
+        const match = brands.find(b => b.name.toLowerCase() === _brandParam.toLowerCase().trim());
+        if (match) {
+          currentBrand = match.id;
+          history.replaceState(null, '', '/');
+        }
+      }
+
       brandFilterBtns.innerHTML =
-        `<button class="brand-btn active" data-brand="all">Todas</button>` +
-        brands.map(b => `<button class="brand-btn" data-brand="${b.id}">${escHtml(b.name)}</button>`).join('');
+        `<button class="brand-btn${currentBrand === 'all' ? ' active' : ''}" data-brand="all">Todas</button>` +
+        brands.map(b => `<button class="brand-btn${b.id === currentBrand ? ' active' : ''}" data-brand="${b.id}">${escHtml(b.name)}</button>`).join('');
       brandFilterBar.classList.remove('hidden');
+
+      if (currentBrand !== 'all') {
+        fetchProducts(currentCategory, searchInput.value, currentSize, 1, currentBrand);
+      }
+
       brandFilterBtns.addEventListener('click', e => {
         const btn = e.target.closest('.brand-btn');
         if (!btn) return;
