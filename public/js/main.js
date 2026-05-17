@@ -634,9 +634,6 @@
   const paypalTotalDisplay = document.getElementById('paypalTotalDisplay');
   const paypalErrEl        = document.getElementById('paypalErr');
 
-  let paypalButtonsRendered = false;
-  let paypalSDKLoaded       = false;
-
   function showPaypalError(msg) {
     if (!paypalErrEl) return;
     paypalErrEl.textContent = msg;
@@ -644,136 +641,61 @@
   }
   function hidePaypalError() { paypalErrEl?.classList.add('hidden'); }
 
-  async function loadPaypalSDK(clientId) {
-    if (paypalSDKLoaded || document.getElementById('paypal-sdk-script')) { paypalSDKLoaded = true; return; }
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.id  = 'paypal-sdk-script';
-      script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD&intent=capture`;
-      script.onload  = () => { paypalSDKLoaded = true; resolve(); };
-      script.onerror = () => reject(new Error('Error al cargar PayPal SDK'));
-      document.head.appendChild(script);
-    });
-  }
-
-  async function renderPaypalButtons() {
-    if (paypalButtonsRendered) return;
-    const clientId = payConfig.paypalClientId;
-    if (!clientId) {
-      showPaypalError('PayPal no está configurado en este momento.');
-      return;
-    }
-    const container = document.getElementById('paypal-button-container');
-    if (!container) return;
-    container.innerHTML = '<div style="text-align:center;padding:14px;font-size:0.82rem;color:#888">Cargando PayPal...</div>';
+  // ─── PayPal.me button (tab "PayPal / Tarjeta") ────────────────────────────────
+  document.getElementById('btnPaypalSDK')?.addEventListener('click', async () => {
+    hidePaypalError();
+    if (!validateShipping()) { showPaypalError('Completá los datos de envío antes de continuar.'); return; }
+    if (!validateTerms())    { showPaypalError('Aceptá los términos y condiciones para continuar.'); return; }
+    const cart = getCart();
+    if (!cart.length) return;
+    const ship = getShippingInfo();
+    const ct   = cartTotals();
+    const btn  = document.getElementById('btnPaypalSDK');
+    const prev = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Guardando pedido...';
     try {
-      await loadPaypalSDK(clientId);
-      container.innerHTML = '';
-      // Flag to suppress onError when we already showed a specific message
-      let _ppErrorShown = false;
+      const saveRes = await fetch('/api/orders/paypalme-submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          cart, shipping: ship,
+          subtotal: ct.subtotal,
+          shippingFee: SHIPPING_USD,
+          total: ct.total,
+          promoCode: activePromoCode() || undefined,
+        }),
+      });
+      const saveData = await saveRes.json().catch(() => ({}));
+      if (!saveRes.ok) { showPaypalError(saveData.error || 'No se pudo guardar el pedido.'); btn.disabled = false; btn.innerHTML = prev; return; }
 
-      window.paypal.Buttons({
-        style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal', height: 44 },
-        createOrder: async () => {
-          hidePaypalError();
-          _ppErrorShown = false;
+      const paypalUrl = `https://paypal.me/Calziani/${ct.total.toFixed(2)}`;
+      window.open(paypalUrl, '_blank', 'noopener');
+      localStorage.removeItem('calziani_cart');
+      setPromoData(null);
 
-          if (!validateShipping()) {
-            showPaypalError('Completá los datos de envío antes de continuar.');
-            _ppErrorShown = true;
-            throw new Error('validation:shipping');
-          }
-          if (!validateTerms()) {
-            showPaypalError('Aceptá los términos y condiciones para continuar.');
-            _ppErrorShown = true;
-            throw new Error('validation:terms');
-          }
-
-          const cart     = getCart();
-          const shipping = getShippingInfo();
-          const { total } = cartTotals();
-          let data;
-          try {
-            const res = await fetch('/api/paypal/create-order', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                cart,
-                shipping,
-                shippingFee: SHIPPING_USD,
-                total,
-                promoCode: activePromoCode() || undefined,
-              }),
-            });
-            data = await res.json();
-            if (!res.ok) {
-              showPaypalError(data.error || 'Error al crear el pedido. Intentá nuevamente.');
-              _ppErrorShown = true;
-              throw new Error(data.error || 'create-order failed');
-            }
-          } catch (fetchErr) {
-            if (!_ppErrorShown) {
-              showPaypalError('Error de conexión. Revisá tu internet e intentá nuevamente.');
-              _ppErrorShown = true;
-            }
-            throw fetchErr;
-          }
-
-          // Store context for success page
-          localStorage.setItem('calziani_pending_purchase', JSON.stringify({
-            total,
-            numItems: cart.reduce((s, i) => s + i.qty, 0),
-            orderId:  data.orderNumber,
-            trackingCode: data.trackingCode || '',
-            trackingUrl:  data.trackingUrl  || '',
-            name:    shipping.name,
-            phone:   shipping.phone,
-            country: shipping.country,
-          }));
-          localStorage.setItem('calziani_pending_order', data.orderNumber);
-          return data.orderId;
-        },
-        onApprove: async (ppData) => {
-          hidePaypalError();
-          _ppErrorShown = false;
-          const btnCont = document.getElementById('paypal-button-container');
-          if (btnCont) btnCont.innerHTML = '<div style="text-align:center;padding:14px;font-size:0.82rem;color:#888">Procesando pago...</div>';
-          try {
-            const res  = await fetch(`/api/paypal/capture-order/${ppData.orderID}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-            });
-            const data = await res.json();
-            if (data.status === 'COMPLETED') {
-              localStorage.removeItem('calziani_cart');
-              setPromoData(null);
-              window.location.href = '/payment/success?method=paypal';
-            } else {
-              const capMsg = data.message || data.details?.[0]?.description || 'El pago no pudo completarse.';
-              showPaypalError(`${capMsg} Intentá nuevamente.`);
-              if (btnCont) btnCont.innerHTML = '';
-              paypalButtonsRendered = false;
-              renderPaypalButtons();
-            }
-          } catch {
-            showPaypalError('Error de conexión al confirmar el pago. Intentá nuevamente.');
-          }
-        },
-        onError: (err) => {
-          console.error('[PayPal] SDK error:', err);
-          // Only show generic message if we haven't already shown a specific one
-          if (!_ppErrorShown) {
-            showPaypalError('Error en el proceso de pago. Intentá nuevamente.');
-          }
-        },
-        onCancel: () => { hidePaypalError(); },
-      }).render('#paypal-button-container');
-      paypalButtonsRendered = true;
-    } catch (e) {
-      container.innerHTML = '';
-      showPaypalError('No se pudo cargar PayPal. Revisá tu conexión e intentá nuevamente.');
+      const cartBody = document.getElementById('cartBody');
+      if (cartBody) {
+        const trackingUrl = saveData.trackingUrl || '';
+        const orderNum    = saveData.orderNumber  || '';
+        cartBody.innerHTML = `
+          <div style="padding:28px 20px;text-align:center">
+            <div style="width:52px;height:52px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.4rem">✓</div>
+            <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px">¡Pedido registrado!</h3>
+            <p style="font-size:0.82rem;color:#555;margin-bottom:4px">Pedido: <strong>${orderNum}</strong></p>
+            <p style="font-size:0.82rem;color:#555;margin-bottom:16px">Completá el pago en la ventana de PayPal y envianos el comprobante por WhatsApp.</p>
+            ${trackingUrl ? `<a href="${trackingUrl}" target="_blank" style="font-size:0.8rem;color:#111;text-decoration:underline;display:block;margin-bottom:14px">Ver seguimiento de pedido</a>` : ''}
+            <button onclick="location.href='/'" style="background:#111;color:#fff;border:none;padding:10px 24px;font-size:0.8rem;font-weight:700;letter-spacing:0.08em;cursor:pointer;border-radius:2px">Seguir comprando</button>
+          </div>`;
+      }
+      updateCartUI();
+    } catch {
+      showPaypalError('Error de conexión. Intentá nuevamente.');
+      btn.disabled = false;
+      btn.innerHTML = prev;
     }
-  }
+  });
 
   payMethodTabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -784,14 +706,9 @@
       payPanelTransfer?.classList.toggle('active', activeMethod === 'transfer');
       payPanelPaypalme?.classList.toggle('active', activeMethod === 'paypalme');
       payPanelPaypal?.classList.toggle('active', activeMethod === 'paypal');
-      if (activeMethod === 'paypalme' && paypalmeAmountEl) {
-        const { total } = cartTotals();
-        paypalmeAmountEl.textContent = `$${total.toFixed(2)} USD`;
-      }
       if (activeMethod === 'paypal') {
         const { total } = cartTotals();
         if (paypalTotalDisplay) paypalTotalDisplay.textContent = `$${total.toFixed(2)} USD`;
-        renderPaypalButtons();
       }
     });
   });
@@ -804,9 +721,6 @@
       const { total } = cartTotals();
       const dopRate   = currencyRates.DOP || 59.48;
       if (azulNote) azulNote.textContent = `Total: RD$${(total * dopRate).toFixed(0)} (USD $${total.toFixed(2)})`;
-      // Show PayPal tab only if client ID is configured
-      const paypalTab = document.getElementById('paypalTab');
-      if (paypalTab) paypalTab.classList.toggle('hidden', !payConfig.paypalClientId);
     } catch { /* ignore */ }
   }
 
@@ -847,7 +761,7 @@
 
   function updateCheckoutTermsGate() {
     const ok = !!document.getElementById('acceptTerms')?.checked;
-    ['btnWhatsapp', 'btnAzulPay', 'btnPaypalme'].forEach(id => {
+    ['btnWhatsapp', 'btnAzulPay', 'btnPaypalme', 'btnPaypalSDK'].forEach(id => {
       const btn = document.getElementById(id);
       if (!btn) return;
       btn.disabled = !ok;

@@ -295,16 +295,25 @@
           </button>
         </div>
 
-        <!-- PayPal SDK panel -->
+        <!-- PayPal.me panel -->
         <div class="pay-panel" id="payPanelPaypal">
           <div class="paypal-panel-info">
-            <p class="paypal-panel-note">Pagá con tu cuenta PayPal o con cualquier tarjeta de crédito/débito como invitado. Pago 100% seguro.</p>
-            <div class="paypal-total-row">
+            <div class="paypalme-guest-badge">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              Pagá con tu cuenta PayPal o con tarjeta como invitado — sin crear cuenta
+            </div>
+            <div class="paypal-total-row" style="margin-top:10px">
               <span>Total:</span>
               <strong id="paypalTotalDisplay"></strong>
             </div>
           </div>
-          <div id="paypal-button-container" class="paypal-btn-container"></div>
+          <button class="btn-paypalme" id="btnPaypalSDK">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Pagar con PayPal
+          </button>
+          <p class="paypalme-note" style="margin-top:10px">
+            Se abrirá paypal.me/Calziani en una nueva ventana. Completá el pago allí y envianos el comprobante por WhatsApp.
+          </p>
           <div id="paypalErr" class="paypal-error hidden"></div>
         </div>
 
