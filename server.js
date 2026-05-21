@@ -1677,10 +1677,16 @@ app.get('/api/tracking/:code', (req, res) => {
 
   if (!order) return res.status(404).json({ error: 'Código no encontrado. Verificá que sea correcto.' });
 
-  // Return limited info to the public
   let cart = [];
   try { const d = JSON.parse(order.items_json || '{}'); cart = Array.isArray(d.cart) ? d.cart : []; } catch { /* */ }
   const numItems = cart.reduce((s, i) => s + Number(i.qty || 1), 0);
+
+  const items = cart.map(i => ({
+    name:  i.name  || '',
+    size:  i.size  || '',
+    qty:   Number(i.qty  || 1),
+    cover: i.cover || '',
+  }));
 
   res.json({
     order_number:    order.order_number,
@@ -1692,6 +1698,7 @@ app.get('/api/tracking/:code', (req, res) => {
     tracking_stage:  order.tracking_stage || 'received',
     tracking_notes:  order.tracking_notes || '',
     num_items:       numItems,
+    items,
   });
 });
 

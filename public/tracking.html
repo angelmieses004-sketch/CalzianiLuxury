@@ -99,6 +99,16 @@
     .trk-notes.visible { display: block; }
     .trk-notes__label { font-weight: 700; margin-bottom: 4px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; }
 
+    /* ── Items list ── */
+    .trk-items { padding: 20px 24px; border-top: 1px solid #f3f4f6; display: flex; flex-direction: column; gap: 12px; }
+    .trk-items__title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #888; margin-bottom: 4px; }
+    .trk-item { display: flex; align-items: center; gap: 14px; }
+    .trk-item__img { width: 64px; height: 64px; border-radius: 6px; object-fit: cover; background: #f3f4f6; flex-shrink: 0; border: 1px solid #e5e5e5; }
+    .trk-item__img-empty { width: 64px; height: 64px; border-radius: 6px; background: #f3f4f6; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: #aaa; letter-spacing: 0.1em; border: 1px solid #e5e5e5; }
+    .trk-item__info { flex: 1; min-width: 0; }
+    .trk-item__name { font-size: 0.88rem; font-weight: 600; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .trk-item__meta { font-size: 0.78rem; color: #666; margin-top: 3px; }
+
     /* ── Footer info ── */
     .trk-result__info { padding: 16px 24px 24px; border-top: 1px solid #f3f4f6; display: flex; gap: 24px; flex-wrap: wrap; }
     .trk-info-item { font-size: 0.8rem; color: #666; }
@@ -159,6 +169,11 @@
         <p id="trkNotesText"></p>
       </div>
 
+      <div id="trkItems" class="trk-items" style="display:none">
+        <p class="trk-items__title">Productos del pedido</p>
+        <div id="trkItemsList"></div>
+      </div>
+
       <div class="trk-result__info">
         <div class="trk-info-item">
           <span>Cliente</span>
@@ -214,6 +229,31 @@
         ? '$' + Number(data.total).toFixed(2) + ' USD' : '—';
       document.getElementById('rItems').textContent     = data.num_items > 0
         ? `${data.num_items} artículo${data.num_items !== 1 ? 's' : ''}` : '—';
+
+      // Render product images + sizes
+      const itemsSection = document.getElementById('trkItems');
+      const itemsList    = document.getElementById('trkItemsList');
+      if (data.items && data.items.length) {
+        itemsList.innerHTML = data.items.map(item => {
+          const imgEl = item.cover
+            ? `<img src="/img/products/${item.cover}" alt="${item.name}" class="trk-item__img" loading="lazy" />`
+            : `<div class="trk-item__img-empty">CALZIANI</div>`;
+          const meta = [
+            item.size ? `Talle: ${item.size}` : '',
+            item.qty > 1 ? `x${item.qty}` : '',
+          ].filter(Boolean).join(' · ');
+          return `<div class="trk-item">
+            ${imgEl}
+            <div class="trk-item__info">
+              <p class="trk-item__name">${item.name}</p>
+              ${meta ? `<p class="trk-item__meta">${meta}</p>` : ''}
+            </div>
+          </div>`;
+        }).join('');
+        itemsSection.style.display = '';
+      } else {
+        itemsSection.style.display = 'none';
+      }
 
       const currentIdx = STAGES.findIndex(s => s.key === data.tracking_stage);
       const steps = document.getElementById('trkSteps');
