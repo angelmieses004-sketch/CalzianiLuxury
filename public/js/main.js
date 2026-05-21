@@ -1164,7 +1164,7 @@
         ? `<span class="pc-price pc-price--sale">${formatPrice(p.price)}</span><span class="pc-price-orig">${formatPrice(p.compare_price)}</span>`
         : `<span class="pc-price">${formatPrice(p.price)}</span>`;
 
-      const couponLabel = _appliedPromo ? `− ${formatPrice(couponAmt)} cupón` : `− ${formatPrice(couponAmt)} con código ${_promo.code}`;
+      const couponLabel = `− ${formatPrice(couponAmt)} cupón`;
       const couponHtml = promoEligible ? `
         <div class="pc-coupon-block">
           <span class="pc-coupon-badge">${couponLabel}</span>
