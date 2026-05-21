@@ -9,10 +9,11 @@
   const brandFilterBar = document.getElementById('brandFilterBar');
   const brandFilterBtns= document.getElementById('brandFilterBtns');
 
-  let currentCategory = 'all';
-  let currentSize     = 'all';
-  let currentBrand    = 'all';
-  let searchTimer     = null;
+  let currentCategory    = 'all';
+  let currentSize        = 'all';
+  let currentBrand       = 'all';
+  let searchTimer        = null;
+  let _bestAvailablePromo = null; // best active promo from server (for card badges)
 
   // ─── Translations ─────────────────────────────────────────────────────────────
   const T = {
@@ -1132,9 +1133,11 @@
       return;
     }
 
-    // Check active promo for coupon badges on cards
-    const _promo       = activePromoData();
-    const _promoExcIds = _promo ? (_promo.excludedProductIds || []).map(Number) : [];
+    // Coupon badges: use applied promo first, then fall back to best available promo
+    const _appliedPromo = activePromoData();
+    const _bestPromo    = _appliedPromo || _bestAvailablePromo;
+    const _promo        = _bestPromo;
+    const _promoExcIds  = _promo ? (_promo.excludedProductIds || []).map(Number) : [];
 
     grid.innerHTML = products.map(p => {
       const isOffer  = p.compare_price && p.compare_price > p.price;
@@ -1161,9 +1164,10 @@
         ? `<span class="pc-price pc-price--sale">${formatPrice(p.price)}</span><span class="pc-price-orig">${formatPrice(p.compare_price)}</span>`
         : `<span class="pc-price">${formatPrice(p.price)}</span>`;
 
+      const couponLabel = _appliedPromo ? `− ${formatPrice(couponAmt)} cupón` : `− ${formatPrice(couponAmt)} con código ${_promo.code}`;
       const couponHtml = promoEligible ? `
         <div class="pc-coupon-block">
-          <span class="pc-coupon-badge">− ${formatPrice(couponAmt)} cupón</span>
+          <span class="pc-coupon-badge">${couponLabel}</span>
           <span class="pc-coupon-after">${formatPrice(priceAfterCoupon)} con cupón</span>
         </div>` : '';
 
@@ -1567,6 +1571,19 @@
   initLangBtn();
   renderSizeFilter(currentCategory);
   initBrandFilter();
+
+  // Load best available promo for card badges (non-blocking)
+  fetch('/api/promos/active')
+    .then(r => r.ok ? r.json() : [])
+    .then(promos => {
+      if (promos.length) {
+        _bestAvailablePromo = promos[0]; // already sorted by percent DESC
+        // Re-render if products are already loaded
+        if (lastProducts.length) renderProducts(lastProducts, lastProducts.length, currentProductsPage, null);
+      }
+    })
+    .catch(() => {});
+
   loadCurrencyRates().then(() => {
     fetchProducts();
     loadSaleProducts();

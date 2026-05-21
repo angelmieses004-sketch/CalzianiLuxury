@@ -857,6 +857,27 @@ function applyPromoCalziani(cart, promoCodeRaw, phone) {
 }
 
 // ─── Public: validate promo code (no redemption yet) ──────────────────────────
+// Devuelve todos los códigos activos y no expirados (sin revelar el código exacto, solo info de descuento)
+app.get('/api/promos/active', (req, res) => {
+  try {
+    const now   = new Date().toISOString();
+    const promos = db.prepare(`
+      SELECT code, percent, excluded_product_ids
+      FROM promo_codes
+      WHERE active = 1
+        AND (expires_at IS NULL OR expires_at > ?)
+      ORDER BY percent DESC
+    `).all(now);
+    res.json(promos.map(p => ({
+      code:               p.code,
+      percent:            p.percent,
+      excludedProductIds: JSON.parse(p.excluded_product_ids || '[]').map(Number),
+    })));
+  } catch (e) {
+    res.json([]);
+  }
+});
+
 app.post('/api/promo/validate', (req, res) => {
   const code = normalizePromoCode(req.body?.code);
   if (!code) return res.status(400).json({ error: 'Ingresá un código.' });
