@@ -1283,6 +1283,31 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   text-decoration: line-through;
 }
 
+.pc-coupon-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  margin-top: 0.3rem;
+}
+
+.pc-coupon-badge {
+  display: inline-block;
+  background: #c0392b;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 0.18rem 0.5rem;
+  border-radius: 3px;
+  width: fit-content;
+}
+
+.pc-coupon-after {
+  font-size: 0.75rem;
+  color: #555;
+  font-weight: 500;
+}
+
 .pc-sizes {
   display: flex;
   flex-wrap: wrap;

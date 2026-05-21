@@ -1132,12 +1132,22 @@
       return;
     }
 
+    // Check active promo for coupon badges on cards
+    const _promo       = activePromoData();
+    const _promoExcIds = _promo ? (_promo.excludedProductIds || []).map(Number) : [];
+
     grid.innerHTML = products.map(p => {
       const isOffer  = p.compare_price && p.compare_price > p.price;
       const discount = isOffer ? Math.round(Math.round((1 - p.price / p.compare_price) * 100) / 10) * 10 : 0;
       const avail    = aggregateStock(p);
       const sl       = stockLabel(avail);
       const fav      = isFav(p.id);
+
+      // Coupon eligibility
+      const promoEligible = _promo && !_promoExcIds.includes(Number(p.id));
+      const basePrice     = isOffer ? p.price : p.price; // price after any compare_price offer
+      const couponAmt     = promoEligible ? Math.round(basePrice * _promo.percent / 100 * 100) / 100 : 0;
+      const priceAfterCoupon = promoEligible ? Math.round((basePrice - couponAmt) * 100) / 100 : 0;
 
       const imgHtml = p.cover
         ? `<img src="/img/products/${escHtml(p.cover)}" alt="${escHtml(p.name)}" class="product-card__img" loading="lazy" />`
@@ -1150,6 +1160,12 @@
       const priceHtml = isOffer
         ? `<span class="pc-price pc-price--sale">${formatPrice(p.price)}</span><span class="pc-price-orig">${formatPrice(p.compare_price)}</span>`
         : `<span class="pc-price">${formatPrice(p.price)}</span>`;
+
+      const couponHtml = promoEligible ? `
+        <div class="pc-coupon-block">
+          <span class="pc-coupon-badge">− ${formatPrice(couponAmt)} cupón</span>
+          <span class="pc-coupon-after">${formatPrice(priceAfterCoupon)} con cupón</span>
+        </div>` : '';
 
       return `<div class="product-card-wrap">
         <a class="product-card" href="/product/${p.id}" aria-label="Ver ${escHtml(p.name)}">
@@ -1164,6 +1180,7 @@
             <p class="pc-category">${CATEGORY_LABELS[p.category] || p.category}</p>
             <h3 class="pc-name">${escHtml(p.name)}</h3>
             <div class="pc-pricing">${priceHtml}</div>
+            ${couponHtml}
             ${p.sizes && p.sizes.length ? `<div class="pc-sizes">${p.sizes.map(s => `<span class="pc-size">${s}</span>`).join('')}</div>` : ''}
           </div>
         </a>
