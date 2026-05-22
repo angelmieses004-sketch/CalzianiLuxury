@@ -1501,10 +1501,12 @@ app.post('/api/admin/orders', requireAuth, (req, res) => {
 
   const cartLines = items
     .map(i => ({
+      id:    i.id    ? String(i.id).trim()    : undefined,
       name:  String(i.name  || '').trim(),
       qty:   Math.max(1, Math.floor(Number(i.qty)  || 1)),
       price: Math.max(0, Number(i.price) || 0),
       size:  String(i.size  || '').trim(),
+      cover: i.cover ? String(i.cover).trim() : undefined,
     }))
     .filter(i => i.name);
 

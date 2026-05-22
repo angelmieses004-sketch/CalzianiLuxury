@@ -1092,31 +1092,130 @@
   const noAddRowBtn         = document.getElementById('noAddRow');
   let noRowCount = 0;
 
-  function addOrderRow(name = '', size = '', qty = 1, price = '') {
+  function addOrderRow(opts = {}) {
+    // opts: { name, size, qty, price, cover, id, sizes }
+    const { name = '', size = '', qty = 1, price = '', cover = '', id = '', sizes = [] } = opts;
     noRowCount++;
+    const rowId = noRowCount;
     const row = document.createElement('div');
     row.className = 'no-item-row';
-    row.dataset.rowId = noRowCount;
+    row.dataset.rowId = rowId;
+
+    const sizesOpts = sizes.length
+      ? `<option value="">— talle —</option>` + sizes.map(s => `<option value="${escHtml(s)}"${s === size ? ' selected' : ''}>${escHtml(s)}</option>`).join('')
+      : '';
+
     row.innerHTML = `
-      <input type="text"   class="no-r-name"  placeholder="Nombre del producto" value="${escHtml(String(name))}" />
-      <input type="text"   class="no-r-size"  placeholder="—"                   value="${escHtml(String(size))}" />
-      <input type="number" class="no-r-qty"   placeholder="1"  min="1" step="1" value="${Number(qty) || 1}" />
-      <input type="number" class="no-r-price" placeholder="0.00" min="0" step="0.01" value="${price !== '' ? Number(price) : ''}" />
+      <div class="no-r-product-wrap">
+        ${cover ? `<img src="/img/products/${escHtml(cover)}" class="no-r-thumb" alt="" />` : `<div class="no-r-thumb-empty"></div>`}
+        <div class="no-r-search-wrap" style="flex:1;position:relative">
+          <input type="text" class="no-r-name" placeholder="Buscar producto o escribir nombre…" value="${escHtml(String(name))}" autocomplete="off" />
+          <div class="no-r-dropdown hidden"></div>
+        </div>
+        <input type="hidden" class="no-r-cover" value="${escHtml(cover)}" />
+        <input type="hidden" class="no-r-id"    value="${escHtml(String(id))}" />
+      </div>
+      ${sizesOpts
+        ? `<select class="no-r-size-sel">${sizesOpts}</select>`
+        : `<input type="text" class="no-r-size" placeholder="Talle" value="${escHtml(String(size))}" />`}
+      <input type="number" class="no-r-qty"   placeholder="1"    min="1"   step="1"    value="${Number(qty) || 1}" />
+      <input type="number" class="no-r-price" placeholder="0.00" min="0"   step="0.01" value="${price !== '' ? Number(price) : ''}" />
       <button type="button" class="no-item-remove" title="Quitar">×</button>`;
+
+    // Remove row
     row.querySelector('.no-item-remove').addEventListener('click', () => {
       row.remove();
       if (!noItemsTable.querySelectorAll('.no-item-row').length) addOrderRow();
     });
+
+    // Product search as-you-type
+    const nameInput = row.querySelector('.no-r-name');
+    const dropdown  = row.querySelector('.no-r-dropdown');
+    let searchTimer = null;
+
+    nameInput.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      const q = nameInput.value.trim();
+      if (q.length < 2) { dropdown.classList.add('hidden'); return; }
+      searchTimer = setTimeout(async () => {
+        try {
+          const res  = await fetch(`/api/products?search=${encodeURIComponent(q)}&limit=8`, { headers: { 'x-admin-token': token } });
+          const data = await res.json();
+          const list = data.products || data || [];
+          if (!list.length) { dropdown.classList.add('hidden'); return; }
+          dropdown.innerHTML = list.map(p => `
+            <div class="no-r-dropdown-item" data-id="${p.id}" data-name="${escHtml(p.name)}"
+                 data-price="${p.price}" data-cover="${escHtml(p.cover || '')}"
+                 data-sizes="${escHtml(JSON.stringify(Array.isArray(p.sizes) ? p.sizes : []))}">
+              ${p.cover ? `<img src="/img/products/${escHtml(p.cover)}" style="width:32px;height:32px;object-fit:cover;border-radius:3px;flex-shrink:0" />` : ''}
+              <div>
+                <div style="font-weight:600;font-size:0.82rem">${escHtml(p.name)}</div>
+                <div style="font-size:0.75rem;color:#888">$${p.price}</div>
+              </div>
+            </div>`).join('');
+          dropdown.classList.remove('hidden');
+        } catch { dropdown.classList.add('hidden'); }
+      }, 220);
+    });
+
+    dropdown.addEventListener('click', e => {
+      const item = e.target.closest('.no-r-dropdown-item');
+      if (!item) return;
+      // Fill row fields
+      nameInput.value = item.dataset.name;
+      row.querySelector('.no-r-cover').value = item.dataset.cover;
+      row.querySelector('.no-r-id').value    = item.dataset.id;
+      row.querySelector('.no-r-price').value = item.dataset.price;
+
+      // Update thumb
+      const thumbWrap = row.querySelector('.no-r-thumb, .no-r-thumb-empty');
+      if (item.dataset.cover) {
+        const img = document.createElement('img');
+        img.src = `/img/products/${item.dataset.cover}`;
+        img.className = 'no-r-thumb';
+        img.alt = '';
+        thumbWrap.replaceWith(img);
+      }
+
+      // Replace size input with select if product has sizes
+      let productSizes = [];
+      try { productSizes = JSON.parse(item.dataset.sizes); } catch { productSizes = []; }
+      const sizeCell = row.querySelector('.no-r-size-sel, .no-r-size');
+      if (productSizes.length) {
+        const sel = document.createElement('select');
+        sel.className = 'no-r-size-sel';
+        sel.innerHTML = `<option value="">— talle —</option>` +
+          productSizes.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
+        sizeCell.replaceWith(sel);
+      } else {
+        const inp = document.createElement('input');
+        inp.type = 'text'; inp.className = 'no-r-size'; inp.placeholder = 'Talle';
+        sizeCell.replaceWith(inp);
+      }
+
+      dropdown.classList.add('hidden');
+    });
+
+    document.addEventListener('click', e => {
+      if (!row.contains(e.target)) dropdown.classList.add('hidden');
+    }, { passive: true });
+
     noItemsTable.appendChild(row);
   }
 
   function getOrderItems() {
-    return [...noItemsTable.querySelectorAll('.no-item-row')].map(row => ({
-      name:  row.querySelector('.no-r-name').value.trim(),
-      size:  row.querySelector('.no-r-size').value.trim(),
-      qty:   Number(row.querySelector('.no-r-qty').value) || 1,
-      price: Number(row.querySelector('.no-r-price').value) || 0,
-    })).filter(i => i.name);
+    return [...noItemsTable.querySelectorAll('.no-item-row')].map(row => {
+      const sizeSel = row.querySelector('.no-r-size-sel');
+      const sizeInp = row.querySelector('.no-r-size');
+      return {
+        name:  row.querySelector('.no-r-name').value.trim(),
+        size:  (sizeSel ? sizeSel.value : sizeInp?.value || '').trim(),
+        qty:   Number(row.querySelector('.no-r-qty').value)   || 1,
+        price: Number(row.querySelector('.no-r-price').value) || 0,
+        cover: row.querySelector('.no-r-cover').value.trim(),
+        id:    row.querySelector('.no-r-id').value.trim(),
+      };
+    }).filter(i => i.name);
   }
 
   function resetNewOrderForm() {
