@@ -511,6 +511,8 @@ app.get('/api/admin/customer-photos', requireAuth, (req, res) => {
       SELECT cp.*, p.name AS product_name, p.category AS product_category
       FROM customer_photos cp
       JOIN products p ON p.id = cp.product_id
+      WHERE (cp.rating IS NULL OR cp.rating NOT BETWEEN 1 AND 5)
+        AND trim(COALESCE(cp.review_text, '')) = ''
       ORDER BY cp.created_at DESC, cp.id DESC
     `).all();
     res.json(rows);
@@ -599,6 +601,116 @@ app.delete('/api/admin/customer-photos/:id', requireAuth, (req, res) => {
   } catch (e) {
     console.error('customer-photos delete:', e);
     res.status(500).json({ error: 'Error al eliminar la foto.' });
+  }
+});
+
+function normalizeSqliteDatetime(value) {
+  if (value == null || value === '') return null;
+  const s = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s)) return `${s.replace('T', ' ')}:00`;
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) return s;
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(s)) return `${s}:00`;
+  return null;
+}
+
+function isReviewRow(row) {
+  const rating = Number(row?.rating);
+  const text = String(row?.review_text || '').trim();
+  return (Number.isFinite(rating) && rating >= 1 && rating <= 5) || text.length > 0;
+}
+
+app.get('/api/admin/reviews', requireAuth, (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT cp.*, p.name AS product_name, p.category AS product_category
+      FROM customer_photos cp
+      JOIN products p ON p.id = cp.product_id
+      WHERE (cp.rating IS NOT NULL AND cp.rating BETWEEN 1 AND 5)
+         OR trim(COALESCE(cp.review_text, '')) != ''
+      ORDER BY cp.created_at DESC, cp.id DESC
+    `).all();
+    res.json(rows);
+  } catch (e) {
+    console.error('admin reviews list:', e);
+    res.status(500).json({ error: 'Error al obtener reseñas.' });
+  }
+});
+
+app.put('/api/admin/reviews/:id', requireAuth, upload.single('image'), async (req, res) => {
+  try {
+    const row = db.prepare('SELECT * FROM customer_photos WHERE id = ?').get(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Reseña no encontrada.' });
+    if (!isReviewRow(row)) return res.status(400).json({ error: 'Este registro no es una reseña.' });
+
+    const rating = req.body?.rating != null ? Number(req.body.rating) : row.rating;
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Calificación inválida (1-5).' });
+    }
+
+    const review_text = req.body?.review_text != null
+      ? String(req.body.review_text).trim().slice(0, 800)
+      : String(row.review_text || '').trim();
+    if (!review_text) return res.status(400).json({ error: 'La reseña no puede estar vacía.' });
+
+    const reviewer_name = req.body?.reviewer_name != null
+      ? String(req.body.reviewer_name).trim().slice(0, 80)
+      : String(row.reviewer_name || 'Cliente').trim();
+    if (!reviewer_name) return res.status(400).json({ error: 'El nombre es obligatorio.' });
+
+    const active = req.body?.active != null ? (req.body.active === '1' || req.body.active === true || req.body.active === 'true' ? 1 : 0) : row.active;
+
+    let productId = row.product_id;
+    if (req.body?.product_id != null) {
+      productId = Number(req.body.product_id);
+      if (!Number.isFinite(productId) || productId <= 0) {
+        return res.status(400).json({ error: 'Producto inválido.' });
+      }
+      const product = db.prepare('SELECT id FROM products WHERE id = ?').get(productId);
+      if (!product) return res.status(404).json({ error: 'Producto no encontrado.' });
+    }
+
+    let created_at = row.created_at;
+    if (req.body?.created_at != null) {
+      const parsed = normalizeSqliteDatetime(req.body.created_at);
+      if (!parsed) return res.status(400).json({ error: 'Fecha inválida.' });
+      created_at = parsed;
+    }
+
+    let filename = row.filename || '';
+    const removePhoto = req.body?.remove_photo === '1' || req.body?.remove_photo === true || req.body?.remove_photo === 'true';
+    if (removePhoto && filename) {
+      deleteCustomerPhotoFile(filename);
+      filename = '';
+    }
+    if (req.file?.buffer) {
+      if (filename) deleteCustomerPhotoFile(filename);
+      filename = await processAndSaveCustomerPhoto(req.file.buffer);
+    }
+
+    db.prepare(`
+      UPDATE customer_photos
+      SET product_id = ?, filename = ?, review_text = ?, rating = ?, reviewer_name = ?, active = ?, created_at = ?
+      WHERE id = ?
+    `).run(productId, filename, review_text, rating, reviewer_name, active, created_at, req.params.id);
+
+    res.json({ ok: true, photo: filename || null });
+  } catch (e) {
+    console.error('admin reviews update:', e);
+    res.status(500).json({ error: 'Error al actualizar la reseña.' });
+  }
+});
+
+app.delete('/api/admin/reviews/:id', requireAuth, (req, res) => {
+  try {
+    const row = db.prepare('SELECT * FROM customer_photos WHERE id = ?').get(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Reseña no encontrada.' });
+    if (!isReviewRow(row)) return res.status(400).json({ error: 'Este registro no es una reseña.' });
+    db.prepare('DELETE FROM customer_photos WHERE id = ?').run(req.params.id);
+    deleteCustomerPhotoFile(row.filename);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('admin reviews delete:', e);
+    res.status(500).json({ error: 'Error al eliminar la reseña.' });
   }
 });
 

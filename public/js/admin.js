@@ -312,6 +312,7 @@
     if (name === 'promos')   loadPromos();
     if (name === 'brands')   loadBrandsView();
     if (name === 'customers') loadCustomersView();
+    if (name === 'reviews')   loadReviewsView();
   }
 
   function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -932,6 +933,261 @@
         if (!res.ok) { const d = await res.json(); showToast(d.error || 'Error.', true); return; }
         showToast('Foto eliminada.');
         loadCustomersView();
+      } catch { showToast('Error de conexión.', true); }
+    }
+  });
+
+  // ─── Reviews admin ───────────────────────────────────────────────────────────
+  const reviewsAdminList     = document.getElementById('reviewsAdminList');
+  const editReviewModal      = document.getElementById('editReviewModal');
+  const editReviewBackdrop   = document.getElementById('editReviewBackdrop');
+  const cancelEditReviewBtn  = document.getElementById('cancelEditReviewBtn');
+  const confirmEditReviewBtn = document.getElementById('confirmEditReviewBtn');
+  const editReviewError      = document.getElementById('editReviewError');
+  const erProductSearch      = document.getElementById('erProductSearch');
+  const erProductId          = document.getElementById('erProductId');
+  const erProductDropdown    = document.getElementById('erProductDropdown');
+  const erProductSelected    = document.getElementById('erProductSelected');
+  let erSearchTimer = null;
+  let editingReviewId = null;
+
+  function formatReviewAdminDate(iso) {
+    if (!iso) return '—';
+    try {
+      const d = new Date(String(iso).replace(' ', 'T'));
+      if (Number.isNaN(d.getTime())) return iso;
+      return new Intl.DateTimeFormat('es-DO', { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
+    } catch { return iso; }
+  }
+
+  function sqliteToDatetimeLocal(str) {
+    if (!str) return '';
+    return String(str).trim().replace(' ', 'T').slice(0, 16);
+  }
+
+  function clearErProductSelection() {
+    if (erProductId) erProductId.value = '';
+    if (erProductSelected) {
+      erProductSelected.textContent = '';
+      erProductSelected.classList.add('hidden');
+    }
+  }
+
+  function selectErProduct(product) {
+    if (erProductId) erProductId.value = product.id;
+    if (erProductSearch) erProductSearch.value = product.name;
+    if (erProductSelected) {
+      erProductSelected.textContent = `Producto: ${product.name}`;
+      erProductSelected.classList.remove('hidden');
+    }
+    erProductDropdown?.classList.add('hidden');
+  }
+
+  erProductSearch?.addEventListener('input', () => {
+    clearTimeout(erSearchTimer);
+    clearErProductSelection();
+    const q = erProductSearch.value.trim();
+    if (!q) {
+      erProductDropdown?.classList.add('hidden');
+      return;
+    }
+    erSearchTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/products?search=${encodeURIComponent(q)}&limit=8`);
+        const data = await res.json();
+        const products = data.products || data;
+        if (!products.length) {
+          erProductDropdown.innerHTML = '<div class="cp-product-empty">Sin resultados</div>';
+        } else {
+          erProductDropdown.innerHTML = products.map(p => `
+            <button type="button" class="cp-product-option" data-id="${p.id}">
+              ${p.cover ? `<img src="/img/products/${escHtml(p.cover)}" alt="" />` : ''}
+              <span>${escHtml(p.name)}</span>
+            </button>`).join('');
+        }
+        erProductDropdown.classList.remove('hidden');
+      } catch {
+        erProductDropdown?.classList.add('hidden');
+      }
+    }, 220);
+  });
+
+  erProductDropdown?.addEventListener('click', e => {
+    const btn = e.target.closest('.cp-product-option');
+    if (!btn) return;
+    selectErProduct({ id: btn.dataset.id, name: btn.querySelector('span')?.textContent || '' });
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.review-product-field')) {
+      erProductDropdown?.classList.add('hidden');
+    }
+  }, { passive: true });
+
+  async function loadReviewsView() {
+    if (!reviewsAdminList) return;
+    reviewsAdminList.innerHTML = '<div class="table-loading">Cargando...</div>';
+    try {
+      const res = await fetch('/api/admin/reviews', { headers: authHeaders() });
+      const rows = await res.json();
+      if (!res.ok) {
+        reviewsAdminList.innerHTML = `<div class="table-empty">${escHtml(rows.error || 'Error al cargar.')}</div>`;
+        return;
+      }
+      if (!rows.length) {
+        reviewsAdminList.innerHTML = '<div class="table-empty">Todavía no hay reseñas publicadas.</div>';
+        return;
+      }
+      reviewsAdminList.innerHTML = `<table class="review-admin-table">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Cliente</th>
+            <th>★</th>
+            <th>Reseña</th>
+            <th>Fecha</th>
+            <th>Foto</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr class="${r.active ? '' : 'review-admin-row--hidden'}">
+              <td>${escHtml(r.product_name || '—')}</td>
+              <td>${escHtml(r.reviewer_name || 'Cliente')}</td>
+              <td>${'★'.repeat(Number(r.rating) || 0)}</td>
+              <td class="review-admin-table__text">${escHtml((r.review_text || '').slice(0, 80))}${(r.review_text || '').length > 80 ? '…' : ''}</td>
+              <td>${escHtml(formatReviewAdminDate(r.created_at))}</td>
+              <td>${r.filename ? 'Sí' : '—'}</td>
+              <td>${r.active ? 'Visible' : 'Oculta'}</td>
+              <td class="review-admin-table__actions">
+                <button type="button" class="btn btn-ghost btn-sm" data-review-edit="${r.id}">Editar</button>
+                <button type="button" class="btn btn-danger btn-sm" data-review-delete="${r.id}">Eliminar</button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+    } catch {
+      reviewsAdminList.innerHTML = '<div class="table-empty">Error de conexión.</div>';
+    }
+  }
+
+  function openEditReviewModal(row) {
+    editingReviewId = row.id;
+    document.getElementById('erId').value = row.id;
+    erProductId.value = row.product_id;
+    erProductSearch.value = row.product_name || '';
+    if (erProductSelected) {
+      erProductSelected.textContent = row.product_name ? `Producto: ${row.product_name}` : '';
+      erProductSelected.classList.toggle('hidden', !row.product_name);
+    }
+    document.getElementById('erName').value = row.reviewer_name || '';
+    document.getElementById('erRating').value = String(row.rating || 5);
+    document.getElementById('erDate').value = sqliteToDatetimeLocal(row.created_at);
+    document.getElementById('erText').value = row.review_text || '';
+    document.getElementById('erActive').checked = !!row.active;
+    document.getElementById('erPhotoFile').value = '';
+    document.getElementById('erRemovePhoto').checked = false;
+
+    const photoWrap = document.getElementById('erPhotoCurrent');
+    const photoImg = document.getElementById('erPhotoImg');
+    const removeWrap = document.getElementById('erRemovePhotoWrap');
+    if (row.filename) {
+      photoImg.src = `/img/customer-photos/${row.filename}`;
+      photoWrap?.classList.remove('hidden');
+      removeWrap?.classList.remove('hidden');
+    } else {
+      photoImg?.removeAttribute('src');
+      photoWrap?.classList.add('hidden');
+      removeWrap?.classList.add('hidden');
+    }
+
+    hideError(editReviewError);
+    editReviewModal.classList.add('open');
+    editReviewModal.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeEditReviewModal() {
+    editingReviewId = null;
+    editReviewModal?.classList.remove('open');
+    editReviewModal?.setAttribute('aria-hidden', 'true');
+  }
+
+  cancelEditReviewBtn?.addEventListener('click', closeEditReviewModal);
+  editReviewBackdrop?.addEventListener('click', closeEditReviewModal);
+
+  confirmEditReviewBtn?.addEventListener('click', async () => {
+    if (!editingReviewId) return;
+    hideError(editReviewError);
+
+    const productId = erProductId?.value;
+    const reviewer_name = document.getElementById('erName').value.trim();
+    const rating = document.getElementById('erRating').value;
+    const review_text = document.getElementById('erText').value.trim();
+    const created_at = document.getElementById('erDate').value;
+    const active = document.getElementById('erActive').checked;
+    const remove_photo = document.getElementById('erRemovePhoto').checked;
+    const photoFile = document.getElementById('erPhotoFile').files?.[0];
+
+    if (!productId) { showError(editReviewError, 'Seleccioná un producto.'); return; }
+    if (!reviewer_name) { showError(editReviewError, 'El nombre es obligatorio.'); return; }
+    if (!review_text) { showError(editReviewError, 'La reseña no puede estar vacía.'); return; }
+    if (!created_at) { showError(editReviewError, 'Indicá la fecha de publicación.'); return; }
+
+    const fd = new FormData();
+    fd.append('product_id', productId);
+    fd.append('reviewer_name', reviewer_name);
+    fd.append('rating', rating);
+    fd.append('review_text', review_text);
+    fd.append('created_at', created_at);
+    fd.append('active', active ? '1' : '0');
+    if (remove_photo) fd.append('remove_photo', '1');
+    if (photoFile) fd.append('image', photoFile);
+
+    confirmEditReviewBtn.disabled = true;
+    try {
+      const res = await fetch(`/api/admin/reviews/${editingReviewId}`, {
+        method: 'PUT',
+        headers: { 'x-admin-token': token },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) { showError(editReviewError, data.error || 'Error al guardar.'); return; }
+      showToast('Reseña actualizada.');
+      closeEditReviewModal();
+      loadReviewsView();
+    } catch {
+      showError(editReviewError, 'Error de conexión.');
+    } finally {
+      confirmEditReviewBtn.disabled = false;
+    }
+  });
+
+  reviewsAdminList?.addEventListener('click', async e => {
+    const editBtn = e.target.closest('[data-review-edit]');
+    const deleteBtn = e.target.closest('[data-review-delete]');
+
+    if (editBtn) {
+      try {
+        const res = await fetch('/api/admin/reviews', { headers: authHeaders() });
+        const rows = await res.json();
+        const row = rows.find(r => String(r.id) === editBtn.dataset.reviewEdit);
+        if (row) openEditReviewModal(row);
+      } catch { showToast('Error al cargar la reseña.', true); }
+    }
+
+    if (deleteBtn) {
+      const id = deleteBtn.dataset.reviewDelete;
+      if (!confirm('¿Eliminar esta reseña?')) return;
+      try {
+        const res = await fetch(`/api/admin/reviews/${id}`, {
+          method: 'DELETE',
+          headers: authHeaders(),
+        });
+        if (!res.ok) { const d = await res.json(); showToast(d.error || 'Error.', true); return; }
+        showToast('Reseña eliminada.');
+        loadReviewsView();
       } catch { showToast('Error de conexión.', true); }
     }
   });

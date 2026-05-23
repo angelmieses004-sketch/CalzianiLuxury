@@ -168,6 +168,9 @@
         <button class="sidebar__link" data-view="customers">
           <span class="sidebar__icon">◎</span> Clientes
         </button>
+        <button class="sidebar__link" data-view="reviews">
+          <span class="sidebar__icon">★</span> Reseñas
+        </button>
         <button class="sidebar__link" data-view="settings">
           <span class="sidebar__icon">⚙</span> Ajustes
         </button>
@@ -518,6 +521,17 @@
         </div>
       </section>
 
+      <!-- VIEW: Reseñas -->
+      <section id="viewReviews" class="view">
+        <div class="view__header">
+          <h2 class="view__title">Reseñas de productos</h2>
+          <p class="view__subtitle">Editá opiniones de clientes, fechas, fotos y visibilidad en la ficha de producto.</p>
+        </div>
+        <div id="reviewsAdminList" class="reviews-admin-wrap">
+          <div class="table-loading">Cargando...</div>
+        </div>
+      </section>
+
       <!-- VIEW: Settings -->
       <section id="viewSettings" class="view">
         <div class="view__header">
@@ -542,6 +556,69 @@
         </div>
       </section>
 
+    </div>
+  </div>
+
+  <!-- EDIT REVIEW MODAL -->
+  <div id="editReviewModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal__backdrop" id="editReviewBackdrop"></div>
+    <div class="modal__box modal__box--md">
+      <h3 class="modal__title">Editar reseña</h3>
+      <input type="hidden" id="erId" />
+      <div class="edit-order-grid">
+        <div class="field edit-order-full review-product-field">
+          <label for="erProductSearch">Producto</label>
+          <input type="text" id="erProductSearch" placeholder="Buscar producto…" autocomplete="off" />
+          <input type="hidden" id="erProductId" />
+          <div id="erProductDropdown" class="cp-product-dropdown hidden"></div>
+          <p id="erProductSelected" class="cp-product-selected hidden"></p>
+        </div>
+        <div class="field">
+          <label for="erName">Nombre del cliente</label>
+          <input type="text" id="erName" maxlength="80" />
+        </div>
+        <div class="field">
+          <label for="erRating">Calificación</label>
+          <select id="erRating">
+            <option value="5">5 estrellas</option>
+            <option value="4">4 estrellas</option>
+            <option value="3">3 estrellas</option>
+            <option value="2">2 estrellas</option>
+            <option value="1">1 estrella</option>
+          </select>
+        </div>
+        <div class="field edit-order-full">
+          <label for="erDate">Fecha de publicación</label>
+          <input type="datetime-local" id="erDate" />
+        </div>
+        <div class="field edit-order-full">
+          <label for="erText">Texto de la reseña</label>
+          <textarea id="erText" rows="4" maxlength="800"></textarea>
+        </div>
+        <div class="field edit-order-full">
+          <label class="checkbox-label">
+            <input type="checkbox" id="erActive" />
+            Visible en la tienda
+          </label>
+        </div>
+        <div class="field edit-order-full">
+          <label>Foto de la compra</label>
+          <div id="erPhotoCurrent" class="review-edit-photo hidden">
+            <img id="erPhotoImg" alt="Foto actual" />
+          </div>
+          <label class="checkbox-label review-edit-remove-photo hidden" id="erRemovePhotoWrap">
+            <input type="checkbox" id="erRemovePhoto" />
+            Quitar foto actual
+          </label>
+          <input type="file" id="erPhotoFile" accept="image/jpeg,image/png,image/webp,image/gif" />
+          <p class="field-hint">Opcional: reemplazá la imagen (JPG, PNG, WEBP · máx. 8 MB)</p>
+        </div>
+      </div>
+      <div id="editReviewError" class="form-error hidden" style="margin-top:12px"></div>
+      <div class="modal__actions">
+        <button class="btn btn-primary" id="confirmEditReviewBtn">Guardar cambios</button>
+        <button class="btn btn-ghost" id="cancelEditReviewBtn">Cancelar</button>
+      </div>
     </div>
   </div>
 
