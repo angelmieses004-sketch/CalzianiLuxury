@@ -167,6 +167,16 @@
         <textarea id="reviewText" class="pp-review-form__input" rows="4" minlength="10" maxlength="800" placeholder="Contanos qué te pareció el producto..." required></textarea>
         <label class="pp-review-form__label" for="reviewName">Nombre</label>
         <input type="text" id="reviewName" class="pp-review-form__input" maxlength="80" placeholder="Tu nombre" required />
+        <label class="pp-review-form__label" for="reviewPhoto">Foto de tu compra <span class="pp-review-form__optional">(opcional)</span></label>
+        <div class="pp-review-form__photo">
+          <input type="file" id="reviewPhoto" class="pp-review-form__file" accept="image/jpeg,image/png,image/webp,image/gif" />
+          <label for="reviewPhoto" class="pp-review-form__photo-btn">Elegir foto</label>
+          <div class="pp-review-form__preview hidden" id="reviewPhotoPreview">
+            <img id="reviewPhotoImg" alt="Vista previa" />
+            <button type="button" class="pp-review-form__photo-remove" id="reviewPhotoRemove" aria-label="Quitar foto">&times;</button>
+          </div>
+        </div>
+        <p class="pp-review-form__hint">JPG, PNG o WEBP · máx. 8 MB</p>
         <p class="pp-review-form__err hidden" id="reviewFormErr"></p>
         <button type="submit" class="pp-review-form__submit" id="reviewSubmitBtn">Publicar reseña</button>
       </form>

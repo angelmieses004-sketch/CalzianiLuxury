@@ -894,3 +894,95 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.pp-review-form__optional {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #aaa;
+}
+
+.pp-review-form__photo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pp-review-form__file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pp-review-form__photo-btn {
+  display: inline-block;
+  align-self: flex-start;
+  border: 1px dashed #ccc;
+  padding: 0.55rem 1rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  color: #444;
+}
+
+.pp-review-form__photo-btn:hover {
+  border-color: #111;
+  color: #111;
+}
+
+.pp-review-form__preview {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #eee;
+}
+
+.pp-review-form__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pp-review-form__photo-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pp-review-form__hint {
+  font-size: 0.72rem;
+  color: #aaa;
+  margin: -0.25rem 0 0;
+}
+
+.pp-review-card__photo {
+  margin-top: 0.65rem;
+  width: 100%;
+  max-width: 220px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #f0f0f0;
+}
+
+.pp-review-card__photo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+}

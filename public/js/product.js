@@ -107,6 +107,7 @@
   let offerCountdownTimer = null;
   let selectedReviewRating = 0;
   let reviewModalReady = false;
+  let reviewPhotoObjectUrl = null;
 
   function renderStars(rating) {
     const r = Math.max(0, Math.min(5, Number(rating) || 0));
@@ -204,6 +205,19 @@
     }
   }
 
+  function clearReviewPhoto() {
+    if (reviewPhotoObjectUrl) {
+      URL.revokeObjectURL(reviewPhotoObjectUrl);
+      reviewPhotoObjectUrl = null;
+    }
+    const input = document.getElementById('reviewPhoto');
+    const preview = document.getElementById('reviewPhotoPreview');
+    const img = document.getElementById('reviewPhotoImg');
+    if (input) input.value = '';
+    if (img) img.removeAttribute('src');
+    preview?.classList.add('hidden');
+  }
+
   function openReviewModal() {
     const modal = document.getElementById('reviewModal');
     modal?.classList.add('open');
@@ -215,6 +229,7 @@
     modal?.classList.remove('open');
     modal?.setAttribute('aria-hidden', 'true');
     document.getElementById('reviewFormErr')?.classList.add('hidden');
+    clearReviewPhoto();
   }
 
   function setReviewStars(rating) {
@@ -237,6 +252,38 @@
     document.querySelectorAll('.pp-review-star').forEach(btn => {
       btn.addEventListener('click', () => setReviewStars(Number(btn.dataset.rating)));
     });
+
+    document.getElementById('reviewPhoto')?.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      const errEl = document.getElementById('reviewFormErr');
+      errEl?.classList.add('hidden');
+      if (reviewPhotoObjectUrl) {
+        URL.revokeObjectURL(reviewPhotoObjectUrl);
+        reviewPhotoObjectUrl = null;
+      }
+      const preview = document.getElementById('reviewPhotoPreview');
+      const img = document.getElementById('reviewPhotoImg');
+      if (!file) {
+        if (img) img.removeAttribute('src');
+        preview?.classList.add('hidden');
+        return;
+      }
+      if (!/^image\/(jpeg|jpg|png|webp|gif)$/i.test(file.type)) {
+        if (errEl) { errEl.textContent = 'Formato no válido. Usá JPG, PNG o WEBP.'; errEl.classList.remove('hidden'); }
+        e.target.value = '';
+        return;
+      }
+      if (file.size > 8 * 1024 * 1024) {
+        if (errEl) { errEl.textContent = 'La imagen no puede superar 8 MB.'; errEl.classList.remove('hidden'); }
+        e.target.value = '';
+        return;
+      }
+      reviewPhotoObjectUrl = URL.createObjectURL(file);
+      if (img) img.src = reviewPhotoObjectUrl;
+      preview?.classList.remove('hidden');
+    });
+
+    document.getElementById('reviewPhotoRemove')?.addEventListener('click', clearReviewPhoto);
 
     fetch('/api/auth/me')
       .then(r => r.json())
@@ -274,15 +321,27 @@
 
       submitBtn.disabled = true;
       try {
-        const res = await fetch(`/api/products/${id}/reviews`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rating: selectedReviewRating, review_text, name }),
-        });
+        const photoFile = document.getElementById('reviewPhoto')?.files?.[0];
+        let res;
+        if (photoFile) {
+          const fd = new FormData();
+          fd.append('rating', String(selectedReviewRating));
+          fd.append('review_text', review_text);
+          fd.append('name', name);
+          fd.append('image', photoFile);
+          res = await fetch(`/api/products/${id}/reviews`, { method: 'POST', body: fd });
+        } else {
+          res = await fetch(`/api/products/${id}/reviews`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rating: selectedReviewRating, review_text, name }),
+          });
+        }
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'No se pudo publicar la reseña.');
         document.getElementById('reviewForm')?.reset();
         setReviewStars(0);
+        clearReviewPhoto();
         closeReviewModal();
         await loadProductReviews(id);
       } catch (err) {
@@ -324,6 +383,7 @@
               </div>
               ${r.rating ? `<div class="pp-reviews-stars">${renderStars(r.rating)}</div>` : ''}
               <p class="pp-review-card__text">${escHtml(r.review_text || '')}</p>
+              ${r.photo ? `<div class="pp-review-card__photo"><img src="/img/customer-photos/${escHtml(r.photo)}" alt="Foto de compra de ${escHtml(r.reviewer_name || 'cliente')}" loading="lazy" /></div>` : ''}
             </article>`).join('');
           sectionEl.hidden = false;
         } else {

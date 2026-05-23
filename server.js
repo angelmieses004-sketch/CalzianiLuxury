@@ -655,7 +655,7 @@ app.get('/api/products/:id/reviews', (req, res) => {
   }
 });
 
-app.post('/api/products/:id/reviews', (req, res) => {
+app.post('/api/products/:id/reviews', upload.single('image'), async (req, res) => {
   try {
     const productId = Number(req.params.id);
     if (!Number.isFinite(productId) || productId <= 0) {
@@ -678,16 +678,21 @@ app.post('/api/products/:id/reviews', (req, res) => {
     if (userId && !reviewer_name) reviewer_name = req.user.name || 'Cliente';
     if (!reviewer_name) return res.status(400).json({ error: 'Ingresá tu nombre.' });
 
+    let filename = '';
+    if (req.file?.buffer) {
+      filename = await processAndSaveCustomerPhoto(req.file.buffer);
+    }
+
     const maxPos = db.prepare(
       'SELECT COALESCE(MAX(position), -1) AS m FROM customer_photos WHERE product_id = ?'
     ).get(productId).m;
 
     const result = db.prepare(`
       INSERT INTO customer_photos (product_id, filename, caption, review_text, rating, reviewer_name, user_id, active, position)
-      VALUES (?, '', '', ?, ?, ?, ?, 1, ?)
-    `).run(productId, review_text, rating, reviewer_name, userId, maxPos + 1);
+      VALUES (?, ?, '', ?, ?, ?, ?, 1, ?)
+    `).run(productId, filename, review_text, rating, reviewer_name, userId, maxPos + 1);
 
-    res.status(201).json({ ok: true, id: result.lastInsertRowid });
+    res.status(201).json({ ok: true, id: result.lastInsertRowid, photo: filename || null });
   } catch (e) {
     console.error('product reviews POST:', e);
     res.status(500).json({ error: 'Error al guardar la reseña.' });
