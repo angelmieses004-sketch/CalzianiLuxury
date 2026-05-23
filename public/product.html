@@ -131,7 +131,26 @@
     </div>
   </div>
 
+  <!-- TRUST MODAL -->
+  <div id="trustModal" class="modal trust-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="trustModalTitle">
+    <div class="modal__backdrop" id="trustBackdrop"></div>
+    <div class="modal__box trust-modal__box">
+      <button type="button" class="auth-modal-close" id="trustModalClose" aria-label="Cerrar">&times;</button>
+      <div class="trust-modal__hero">
+        <p class="trust-modal__eyebrow">Calziani</p>
+        <h2 class="trust-modal__title" id="trustModalTitle">Más de 300 clientes felices</h2>
+        <p class="trust-modal__tagline">Pioneros en vender lujo exclusivo y accesible en RD</p>
+      </div>
+      <div class="trust-modal__divider"></div>
+      <p class="trust-modal__gallery-label">Testimonios reales</p>
+      <div id="trustGallery" class="trust-modal__gallery">
+        <p class="trust-modal__loading">Cargando testimonios...</p>
+      </div>
+    </div>
+  </div>
+
   <script src="/js/pixel.js"></script>
+  <script src="/js/trust.js"></script>
   <script src="/js/product.js"></script>
 </body>
 </html>

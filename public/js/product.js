@@ -355,25 +355,13 @@
         </div>
       </div>`;
 
-    const customerPhotos = p.customer_photos || [];
-    const customerPhotosHtml = p.category === 'calzado' && customerPhotos.length
-      ? `<section class="pp-customers" aria-label="Clientes reales">
-           <div class="pp-customers__head">
-             <p class="pp-customers__eyebrow">Confianza real</p>
-             <h2 class="pp-customers__title">Clientes que ya compraron</h2>
-             <p class="pp-customers__sub">Fotos reales de clientes satisfechos con este par.</p>
-           </div>
-           <div class="pp-customers__track">
-             ${customerPhotos.map(photo => `
-               <figure class="pp-customers__item">
-                 <button type="button" class="pp-customers__photo-btn" data-photo="${escHtml(photo.filename)}" aria-label="Ver foto de cliente">
-                   <img src="/img/customer-photos/${escHtml(photo.filename)}" alt="Cliente Calziani" loading="lazy" />
-                 </button>
-                 ${photo.caption ? `<figcaption>${escHtml(photo.caption)}</figcaption>` : ''}
-               </figure>`).join('')}
-           </div>
-         </section>`
-      : '';
+    const trustTeaserHtml = `
+      <div class="trust-teaser">
+        <p class="trust-teaser__label">¿Tenés dudas antes de comprar?</p>
+        <button type="button" class="trust-teaser__btn" data-trust-open data-trust-product-id="${p.id}">
+          ¿Cómo confiar en nosotros?
+        </button>
+      </div>`;
 
     page.innerHTML = `
       <div class="pp-container">
@@ -390,10 +378,18 @@
             ${ctaHtml}
             ${returnsHtml}
             ${trustHtml}
+            ${trustTeaserHtml}
             ${p.description ? `<div class="pp-desc"><p class="pp-label">Descripción</p><p>${escHtml(p.description)}</p></div>` : ''}
           </div>
         </div>
-        ${customerPhotosHtml}
+        <section class="trust-banner trust-banner--compact" aria-label="Confianza Calziani">
+          <div class="trust-banner__inner">
+            <p class="trust-banner__eyebrow">Confianza Calziani</p>
+            <h2 class="trust-banner__title">Más de 300 clientes felices</h2>
+            <p class="trust-banner__sub">Pioneros en vender lujo exclusivo y accesible en RD.</p>
+            <button type="button" class="trust-banner__btn" data-trust-open data-trust-product-id="${p.id}">¿Cómo confiar en nosotros?</button>
+          </div>
+        </section>
         <section class="pp-related" id="ppRelated" aria-label="Te podría gustar" hidden>
           <h2 class="pp-related__title">Te podría gustar</h2>
           <div class="pp-related__grid" id="ppRelatedGrid"></div>
@@ -497,23 +493,6 @@
         if (Math.abs(dx) > 50) goTo(current + (dx < 0 ? 1 : -1));
       });
     }
-
-    // ── Customer photos lightbox ───────────────────────────────────────────────
-    document.querySelectorAll('.pp-customers__photo-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const filename = btn.dataset.photo;
-        if (!filename) return;
-        const overlay = document.createElement('div');
-        overlay.className = 'pp-customers-lightbox';
-        overlay.innerHTML = `
-          <button type="button" class="pp-customers-lightbox__close" aria-label="Cerrar">×</button>
-          <img src="/img/customer-photos/${filename}" alt="Cliente Calziani" />`;
-        overlay.addEventListener('click', e => {
-          if (e.target === overlay || e.target.closest('.pp-customers-lightbox__close')) overlay.remove();
-        });
-        document.body.appendChild(overlay);
-      });
-    });
   }
 
   loadCurrencyRates().then(() => {

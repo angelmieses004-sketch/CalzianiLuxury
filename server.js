@@ -421,6 +421,38 @@ app.get('/api/products/by-ids', (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Error' }); }
 });
 
+app.get('/api/customer-photos', (req, res) => {
+  try {
+    const productId = req.query.product_id != null ? Number(req.query.product_id) : null;
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 40, 1), 60);
+
+    let rows;
+    if (Number.isFinite(productId) && productId > 0) {
+      rows = db.prepare(`
+        SELECT cp.id, cp.filename, cp.caption, cp.product_id, p.name AS product_name
+        FROM customer_photos cp
+        JOIN products p ON p.id = cp.product_id
+        WHERE cp.active = 1
+        ORDER BY CASE WHEN cp.product_id = ? THEN 0 ELSE 1 END, cp.position ASC, cp.created_at DESC
+        LIMIT ?
+      `).all(productId, limit);
+    } else {
+      rows = db.prepare(`
+        SELECT cp.id, cp.filename, cp.caption, cp.product_id, p.name AS product_name
+        FROM customer_photos cp
+        JOIN products p ON p.id = cp.product_id
+        WHERE cp.active = 1
+        ORDER BY cp.created_at DESC, cp.position ASC
+        LIMIT ?
+      `).all(limit);
+    }
+    res.json(rows);
+  } catch (e) {
+    console.error('customer-photos public:', e);
+    res.status(500).json({ error: 'Error al obtener testimonios.' });
+  }
+});
+
 app.get('/api/admin/customer-photos', requireAuth, (req, res) => {
   try {
     const rows = db.prepare(`
