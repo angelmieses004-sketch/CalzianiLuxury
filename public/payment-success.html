@@ -57,14 +57,7 @@
   </div>
   <script>
     (async () => {
-      // Personalize message per method
       const params       = new URLSearchParams(location.search);
-      const method       = params.get('method');
-      const subEl        = document.getElementById('paySuccessSub');
-      if (subEl && method === 'paypal') {
-        subEl.textContent = 'Tu pago con PayPal fue procesado correctamente. Gracias por comprar en Calziani.';
-      }
-
       // Resolve order ID: URL param → pending_purchase → pending_order
       const orderFromUrl = params.get('order');
       const purchaseRaw  = JSON.parse(localStorage.getItem('calziani_pending_purchase') || 'null');

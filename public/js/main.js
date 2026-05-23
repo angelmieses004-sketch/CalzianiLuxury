@@ -604,7 +604,6 @@
     if (cartShippingDop) cartShippingDop.textContent = formatDopCheckout(SHIPPING_USD);
     if (cartTotalUsd) cartTotalUsd.textContent = formatUsdCheckout(ct.total);
     if (cartTotalDop) cartTotalDop.textContent = formatDopCheckout(ct.total);
-    if (paypalTotalDisplay && activeMethod === 'paypal') paypalTotalDisplay.textContent = `$${ct.total.toFixed(2)} USD`;
     updateCheckoutTermsGate();
 
     // Qty buttons
@@ -624,79 +623,10 @@
   const payMethodTabs      = document.querySelectorAll('.pay-method-tab');
   const payPanelCard       = document.getElementById('payPanelCard');
   const payPanelTransfer   = document.getElementById('payPanelTransfer');
-  const payPanelPaypalme   = document.getElementById('payPanelPaypalme');
-  const payPanelPaypal     = document.getElementById('payPanelPaypal');
   const transferInfo       = document.getElementById('transferInfo');
   const btnWhatsapp        = document.getElementById('btnWhatsapp');
   const btnAzulPay         = document.getElementById('btnAzulPay');
-  const btnPaypalme        = document.getElementById('btnPaypalme');
   const azulNote           = document.getElementById('azulNote');
-  const paypalmeAmountEl   = document.getElementById('paypalmeAmount');
-  const paypalTotalDisplay = document.getElementById('paypalTotalDisplay');
-  const paypalErrEl        = document.getElementById('paypalErr');
-
-  function showPaypalError(msg) {
-    if (!paypalErrEl) return;
-    paypalErrEl.textContent = msg;
-    paypalErrEl.classList.remove('hidden');
-  }
-  function hidePaypalError() { paypalErrEl?.classList.add('hidden'); }
-
-  // ─── PayPal.me button (tab "PayPal / Tarjeta") ────────────────────────────────
-  document.getElementById('btnPaypalSDK')?.addEventListener('click', async () => {
-    hidePaypalError();
-    if (!validateShipping()) { showPaypalError('Completá los datos de envío antes de continuar.'); return; }
-    if (!validateTerms())    { showPaypalError('Aceptá los términos y condiciones para continuar.'); return; }
-    const cart = getCart();
-    if (!cart.length) return;
-    const ship = getShippingInfo();
-    const ct   = cartTotals();
-    const btn  = document.getElementById('btnPaypalSDK');
-    const prev = btn.innerHTML;
-    btn.disabled = true;
-    btn.textContent = 'Guardando pedido...';
-    try {
-      const saveRes = await fetch('/api/orders/paypalme-submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          cart, shipping: ship,
-          subtotal: ct.subtotal,
-          shippingFee: SHIPPING_USD,
-          total: ct.total,
-          promoCode: activePromoCode() || undefined,
-        }),
-      });
-      const saveData = await saveRes.json().catch(() => ({}));
-      if (!saveRes.ok) { showPaypalError(saveData.error || 'No se pudo guardar el pedido.'); btn.disabled = false; btn.innerHTML = prev; return; }
-
-      const paypalUrl = `https://paypal.me/Calziani/${ct.total.toFixed(2)}`;
-      window.open(paypalUrl, '_blank', 'noopener');
-      localStorage.removeItem('calziani_cart');
-      setPromoData(null);
-
-      const cartBody = document.getElementById('cartBody');
-      if (cartBody) {
-        const trackingUrl = saveData.trackingUrl || '';
-        const orderNum    = saveData.orderNumber  || '';
-        cartBody.innerHTML = `
-          <div style="padding:28px 20px;text-align:center">
-            <div style="width:52px;height:52px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.4rem">✓</div>
-            <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px">¡Pedido registrado!</h3>
-            <p style="font-size:0.82rem;color:#555;margin-bottom:4px">Pedido: <strong>${orderNum}</strong></p>
-            <p style="font-size:0.82rem;color:#555;margin-bottom:16px">Completá el pago en la ventana de PayPal y envianos el comprobante por WhatsApp.</p>
-            ${trackingUrl ? `<a href="${trackingUrl}" target="_blank" style="font-size:0.8rem;color:#111;text-decoration:underline;display:block;margin-bottom:14px">Ver seguimiento de pedido</a>` : ''}
-            <button onclick="location.href='/'" style="background:#111;color:#fff;border:none;padding:10px 24px;font-size:0.8rem;font-weight:700;letter-spacing:0.08em;cursor:pointer;border-radius:2px">Seguir comprando</button>
-          </div>`;
-      }
-      updateCartUI();
-    } catch {
-      showPaypalError('Error de conexión. Intentá nuevamente.');
-      btn.disabled = false;
-      btn.innerHTML = prev;
-    }
-  });
 
   payMethodTabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -705,12 +635,6 @@
       activeMethod = tab.dataset.method;
       payPanelCard?.classList.toggle('active', activeMethod === 'card');
       payPanelTransfer?.classList.toggle('active', activeMethod === 'transfer');
-      payPanelPaypalme?.classList.toggle('active', activeMethod === 'paypalme');
-      payPanelPaypal?.classList.toggle('active', activeMethod === 'paypal');
-      if (activeMethod === 'paypal') {
-        const { total } = cartTotals();
-        if (paypalTotalDisplay) paypalTotalDisplay.textContent = `$${total.toFixed(2)} USD`;
-      }
     });
   });
 
@@ -762,7 +686,7 @@
 
   function updateCheckoutTermsGate() {
     const ok = !!document.getElementById('acceptTerms')?.checked;
-    ['btnWhatsapp', 'btnAzulPay', 'btnPaypalme', 'btnPaypalSDK'].forEach(id => {
+    ['btnWhatsapp', 'btnAzulPay'].forEach(id => {
       const btn = document.getElementById(id);
       if (!btn) return;
       btn.disabled = !ok;
@@ -992,74 +916,6 @@
     updateCartUI();
   });
 
-  // ─── PayPal.me payment ───────────────────────────────────────────────────────
-  btnPaypalme?.addEventListener('click', async () => {
-    const cart = getCart();
-    if (!cart.length) return;
-    if (!validateShipping()) return;
-    if (!validateTerms()) return;
-    const ship = getShippingInfo();
-    const ct = cartTotals();
-    const btn = btnPaypalme;
-    const prevHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.textContent = 'Guardando pedido...';
-
-    try {
-      const saveRes = await fetch('/api/orders/paypalme-submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          cart,
-          shipping: ship,
-          subtotal: ct.subtotal,
-          shippingFee: SHIPPING_USD,
-          total: ct.total,
-          promoCode: activePromoCode() || undefined,
-        }),
-      });
-      const saveData = await saveRes.json().catch(() => ({}));
-      if (!saveRes.ok) {
-        alert(saveData.error || 'No se pudo guardar el pedido.');
-        btn.disabled = false;
-        btn.innerHTML = prevHtml;
-        updateCheckoutTermsGate();
-        return;
-      }
-
-      // Clear cart before redirect
-      localStorage.removeItem('calziani_cart');
-      setPromoCalziani(false);
-
-      // Open PayPal.me in new tab
-      const paypalUrl = saveData.paypalmeUrl || `https://paypal.me/Calziani/${ct.total.toFixed(2)}`;
-      window.open(paypalUrl, '_blank', 'noopener');
-
-      // Show confirmation in cart panel
-      const trackingUrl = saveData.trackingUrl || '';
-      const orderNum    = saveData.orderNumber  || '';
-      const cartBody = document.getElementById('cartBody');
-      if (cartBody) {
-        cartBody.innerHTML = `
-          <div style="padding:28px 20px;text-align:center">
-            <div style="width:52px;height:52px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.4rem">✓</div>
-            <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px">¡Pedido registrado!</h3>
-            <p style="font-size:0.82rem;color:#555;margin-bottom:4px">Pedido: <strong>${orderNum}</strong></p>
-            <p style="font-size:0.82rem;color:#555;margin-bottom:16px">Completá el pago en la ventana de PayPal y envianos el comprobante por WhatsApp.</p>
-            ${trackingUrl ? `<a href="${trackingUrl}" target="_blank" style="font-size:0.8rem;color:#111;text-decoration:underline;display:block;margin-bottom:14px">Ver seguimiento de pedido</a>` : ''}
-            <button onclick="location.href='/'" style="background:#111;color:#fff;border:none;padding:10px 24px;font-size:0.8rem;font-weight:700;letter-spacing:0.08em;cursor:pointer;border-radius:2px">Seguir comprando</button>
-          </div>`;
-      }
-      updateCartUI();
-    } catch {
-      alert('Error de conexión.');
-      btn.disabled = false;
-      btn.innerHTML = prevHtml;
-      updateCheckoutTermsGate();
-    }
-  });
-
   // ─── Size filter bar ────────────────────────────────────────────────────────
   function renderSizeFilter(category) {
     const sizes = category !== 'all' ? SIZES_BY_CATEGORY[category] : null;
@@ -1160,6 +1016,10 @@
         ? `<span class="product-card__sale-badge">−${discount}%</span>`
         : (sl.cls === 'out' ? `<span class="product-card__stock-badge out">${t('out_of_stock')}</span>` : '');
 
+      const socialBadgeHtml = p.category === 'calzado' && p.customer_photo_count > 0
+        ? `<span class="product-card__social-badge">Clientes reales</span>`
+        : '';
+
       const priceHtml = isOffer
         ? `<span class="pc-price pc-price--sale">${formatPrice(p.price)}</span><span class="pc-price-orig">${formatPrice(p.compare_price)}</span>`
         : `<span class="pc-price">${formatPrice(p.price)}</span>`;
@@ -1176,6 +1036,7 @@
           <div class="product-card__media">
             ${imgHtml}
             ${badgeHtml}
+            ${socialBadgeHtml}
             <button class="pc-fav-btn${fav ? ' active' : ''}" data-id="${p.id}" aria-label="Favorito" title="Favorito">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             </button>
@@ -1531,11 +1392,15 @@
           ? `<img src="/img/products/${escHtml(p.cover)}" alt="${escHtml(p.name)}" class="product-card__img" loading="lazy" />`
           : `<div class="product-card__img-empty"><span>CALZIANI</span></div>`;
         const fav = isFav(p.id);
+        const socialBadgeHtml = p.category === 'calzado' && p.customer_photo_count > 0
+          ? `<span class="product-card__social-badge">Clientes reales</span>`
+          : '';
         return `<div class="product-card-wrap">
           <a class="product-card" href="/product/${p.id}">
             <div class="product-card__media">
               ${imgHtml}
               <span class="product-card__sale-badge">−${discount}%</span>
+              ${socialBadgeHtml}
               <button class="pc-fav-btn${fav ? ' active' : ''}" data-id="${p.id}" aria-label="Favorito">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
               </button>

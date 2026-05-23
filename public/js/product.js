@@ -104,6 +104,57 @@
   let selectedSize = '';
   let product = null;
 
+  function aggregateStock(prod) {
+    if (prod.sizes?.length && prod.sizes_stock) {
+      return prod.sizes.reduce((sum, sz) => sum + (Number(prod.sizes_stock[sz]) || 0), 0);
+    }
+    return Number(prod.stock) || 0;
+  }
+
+  function renderRelatedCard(item) {
+    const isOffer = item.compare_price && item.compare_price > item.price;
+    const imgHtml = item.cover
+      ? `<img src="/img/products/${escHtml(item.cover)}" alt="${escHtml(item.name)}" class="pp-related-card__img" loading="lazy" />`
+      : `<div class="pp-related-card__empty">CALZIANI</div>`;
+    const priceHtml = isOffer
+      ? `<span class="pp-related-card__price pp-related-card__price--sale">${formatPrice(item.price)}</span>
+         <span class="pp-related-card__orig">${formatPrice(item.compare_price)}</span>`
+      : `<span class="pp-related-card__price">${formatPrice(item.price)}</span>`;
+    const socialBadge = item.category === 'calzado' && item.customer_photo_count > 0
+      ? `<span class="pp-related-card__badge">Clientes reales</span>`
+      : '';
+
+    return `<a class="pp-related-card" href="/product/${item.id}">
+      <div class="pp-related-card__media">
+        ${imgHtml}
+        ${socialBadge}
+      </div>
+      <div class="pp-related-card__info">
+        <p class="pp-related-card__cat">${CATEGORY_LABELS[item.category] || item.category}</p>
+        <h3 class="pp-related-card__name">${escHtml(item.name)}</h3>
+        <div class="pp-related-card__pricing">${priceHtml}</div>
+      </div>
+    </a>`;
+  }
+
+  async function loadRelatedProducts(productId) {
+    const section = document.getElementById('ppRelated');
+    const grid = document.getElementById('ppRelatedGrid');
+    if (!section || !grid) return;
+
+    try {
+      const res = await fetch(`/api/products/${productId}/related?limit=8`);
+      if (!res.ok) return;
+      const items = await res.json();
+      const inStock = items.filter(i => aggregateStock(i) > 0);
+      const list = (inStock.length ? inStock : items).slice(0, 8);
+      if (!list.length) return;
+
+      grid.innerHTML = list.map(renderRelatedCard).join('');
+      section.hidden = false;
+    } catch { /* ignore */ }
+  }
+
   async function loadProduct() {
     try {
       const res = await fetch(`/api/products/${id}`);
@@ -279,6 +330,15 @@
         </button>
       </div>`;
 
+    const returnsHtml = `
+      <div class="pp-returns">
+        <p class="pp-returns__title">Devoluciones fáciles</p>
+        <p class="pp-returns__text">
+          Si hay algún problema con tu pedido, te ayudamos a resolverlo de forma sencilla.
+          <button type="button" class="pp-returns__link" id="ppReturnsLink">Ver política de devoluciones</button>
+        </p>
+      </div>`;
+
     const trustHtml = `
       <div class="pp-trust">
         <div class="pp-trust__item">
@@ -295,6 +355,26 @@
         </div>
       </div>`;
 
+    const customerPhotos = p.customer_photos || [];
+    const customerPhotosHtml = p.category === 'calzado' && customerPhotos.length
+      ? `<section class="pp-customers" aria-label="Clientes reales">
+           <div class="pp-customers__head">
+             <p class="pp-customers__eyebrow">Confianza real</p>
+             <h2 class="pp-customers__title">Clientes que ya compraron</h2>
+             <p class="pp-customers__sub">Fotos reales de clientes satisfechos con este par.</p>
+           </div>
+           <div class="pp-customers__track">
+             ${customerPhotos.map(photo => `
+               <figure class="pp-customers__item">
+                 <button type="button" class="pp-customers__photo-btn" data-photo="${escHtml(photo.filename)}" aria-label="Ver foto de cliente">
+                   <img src="/img/customer-photos/${escHtml(photo.filename)}" alt="Cliente Calziani" loading="lazy" />
+                 </button>
+                 ${photo.caption ? `<figcaption>${escHtml(photo.caption)}</figcaption>` : ''}
+               </figure>`).join('')}
+           </div>
+         </section>`
+      : '';
+
     page.innerHTML = `
       <div class="pp-container">
         <a href="/" class="pp-back">← Volver</a>
@@ -308,11 +388,33 @@
             ${stockHtml}
             ${sizesHtml}
             ${ctaHtml}
+            ${returnsHtml}
             ${trustHtml}
             ${p.description ? `<div class="pp-desc"><p class="pp-label">Descripción</p><p>${escHtml(p.description)}</p></div>` : ''}
           </div>
         </div>
+        ${customerPhotosHtml}
+        <section class="pp-related" id="ppRelated" aria-label="Te podría gustar" hidden>
+          <h2 class="pp-related__title">Te podría gustar</h2>
+          <div class="pp-related__grid" id="ppRelatedGrid"></div>
+        </section>
       </div>`;
+
+    // ── Returns policy modal ───────────────────────────────────────────────────
+    const returnsModal = document.getElementById('returnsModal');
+    const openReturns = () => {
+      returnsModal?.classList.add('open');
+      returnsModal?.setAttribute('aria-hidden', 'false');
+    };
+    const closeReturns = () => {
+      returnsModal?.classList.remove('open');
+      returnsModal?.setAttribute('aria-hidden', 'true');
+    };
+    document.getElementById('ppReturnsLink')?.addEventListener('click', openReturns);
+    document.getElementById('returnsBackdrop')?.addEventListener('click', closeReturns);
+    document.getElementById('returnsModalClose')?.addEventListener('click', closeReturns);
+
+    loadRelatedProducts(p.id);
 
     // ── Size selection ────────────────────────────────────────────────────────
     document.querySelectorAll('.pp-size-btn').forEach(btn => {
@@ -395,6 +497,23 @@
         if (Math.abs(dx) > 50) goTo(current + (dx < 0 ? 1 : -1));
       });
     }
+
+    // ── Customer photos lightbox ───────────────────────────────────────────────
+    document.querySelectorAll('.pp-customers__photo-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const filename = btn.dataset.photo;
+        if (!filename) return;
+        const overlay = document.createElement('div');
+        overlay.className = 'pp-customers-lightbox';
+        overlay.innerHTML = `
+          <button type="button" class="pp-customers-lightbox__close" aria-label="Cerrar">×</button>
+          <img src="/img/customer-photos/${filename}" alt="Cliente Calziani" />`;
+        overlay.addEventListener('click', e => {
+          if (e.target === overlay || e.target.closest('.pp-customers-lightbox__close')) overlay.remove();
+        });
+        document.body.appendChild(overlay);
+      });
+    });
   }
 
   loadCurrencyRates().then(() => {

@@ -311,6 +311,7 @@
     if (name === 'orders')   loadOrders();
     if (name === 'promos')   loadPromos();
     if (name === 'brands')   loadBrandsView();
+    if (name === 'customers') loadCustomersView();
   }
 
   function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -759,6 +760,178 @@
         if (!res.ok) { const d = await res.json(); showToast(d.error || 'Error.', true); return; }
         showToast(`Marca "${name}" eliminada.`);
         loadBrandsView();
+      } catch { showToast('Error de conexión.', true); }
+    }
+  });
+
+  // ─── Customer photos ─────────────────────────────────────────────────────────
+  const cpProductSearch   = document.getElementById('cpProductSearch');
+  const cpProductId       = document.getElementById('cpProductId');
+  const cpProductDropdown = document.getElementById('cpProductDropdown');
+  const cpProductSelected = document.getElementById('cpProductSelected');
+  const cpCaption         = document.getElementById('cpCaption');
+  const cpImage           = document.getElementById('cpImage');
+  const cpAddBtn          = document.getElementById('cpAddBtn');
+  const cpFormError       = document.getElementById('cpFormError');
+  const customerPhotoList = document.getElementById('customerPhotoList');
+  let cpSearchTimer = null;
+
+  function clearCpProductSelection() {
+    if (cpProductId) cpProductId.value = '';
+    if (cpProductSelected) {
+      cpProductSelected.textContent = '';
+      cpProductSelected.classList.add('hidden');
+    }
+  }
+
+  function selectCpProduct(product) {
+    if (cpProductId) cpProductId.value = product.id;
+    if (cpProductSearch) cpProductSearch.value = product.name;
+    if (cpProductSelected) {
+      cpProductSelected.textContent = `Producto seleccionado: ${product.name}`;
+      cpProductSelected.classList.remove('hidden');
+    }
+    cpProductDropdown?.classList.add('hidden');
+  }
+
+  cpProductSearch?.addEventListener('input', () => {
+    clearTimeout(cpSearchTimer);
+    clearCpProductSelection();
+    const q = cpProductSearch.value.trim();
+    if (!q) {
+      cpProductDropdown?.classList.add('hidden');
+      return;
+    }
+    cpSearchTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/products?category=calzado&search=${encodeURIComponent(q)}&limit=8`);
+        const data = await res.json();
+        const products = data.products || data;
+        if (!products.length) {
+          cpProductDropdown.innerHTML = '<div class="cp-product-empty">Sin resultados</div>';
+        } else {
+          cpProductDropdown.innerHTML = products.map(p => `
+            <button type="button" class="cp-product-option" data-id="${p.id}">
+              ${p.cover ? `<img src="/img/products/${escHtml(p.cover)}" alt="" />` : ''}
+              <span>${escHtml(p.name)}</span>
+            </button>`).join('');
+        }
+        cpProductDropdown.classList.remove('hidden');
+      } catch {
+        cpProductDropdown.classList.add('hidden');
+      }
+    }, 220);
+  });
+
+  cpProductDropdown?.addEventListener('click', e => {
+    const btn = e.target.closest('.cp-product-option');
+    if (!btn) return;
+    selectCpProduct({ id: btn.dataset.id, name: btn.querySelector('span')?.textContent || '' });
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.customer-photo-product-field')) {
+      cpProductDropdown?.classList.add('hidden');
+    }
+  }, { passive: true });
+
+  async function loadCustomersView() {
+    if (!customerPhotoList) return;
+    customerPhotoList.innerHTML = '<div class="table-loading">Cargando...</div>';
+    try {
+      const res = await fetch('/api/admin/customer-photos', { headers: authHeaders() });
+      const rows = await res.json();
+      if (!res.ok) {
+        customerPhotoList.innerHTML = `<div class="table-empty">${escHtml(rows.error || 'Error al cargar.')}</div>`;
+        return;
+      }
+      if (!rows.length) {
+        customerPhotoList.innerHTML = '<div class="table-empty">Todavía no hay fotos de clientes. Subí la primera arriba.</div>';
+        return;
+      }
+      customerPhotoList.innerHTML = rows.map(r => `
+        <div class="customer-photo-card${r.active ? '' : ' customer-photo-card--hidden'}" data-id="${r.id}">
+          <img src="/img/customer-photos/${escHtml(r.filename)}" alt="Cliente" class="customer-photo-card__img" />
+          <div class="customer-photo-card__body">
+            <p class="customer-photo-card__product">${escHtml(r.product_name)}</p>
+            ${r.caption ? `<p class="customer-photo-card__caption">${escHtml(r.caption)}</p>` : ''}
+            <div class="customer-photo-card__actions">
+              <button type="button" class="btn btn-ghost btn-sm" data-cp-toggle="${r.id}" data-active="${r.active ? '1' : '0'}">
+                ${r.active ? 'Ocultar' : 'Mostrar'}
+              </button>
+              <button type="button" class="btn btn-danger btn-sm" data-cp-delete="${r.id}">Eliminar</button>
+            </div>
+          </div>
+        </div>`).join('');
+    } catch {
+      customerPhotoList.innerHTML = '<div class="table-empty">Error de conexión.</div>';
+    }
+  }
+
+  cpAddBtn?.addEventListener('click', async () => {
+    cpFormError.classList.add('hidden');
+    const productId = cpProductId?.value;
+    const file = cpImage?.files?.[0];
+    if (!productId) { showError(cpFormError, 'Seleccioná un producto de calzado.'); return; }
+    if (!file) { showError(cpFormError, 'Elegí una imagen.'); return; }
+
+    const fd = new FormData();
+    fd.append('product_id', productId);
+    fd.append('caption', cpCaption?.value.trim() || '');
+    fd.append('image', file);
+
+    cpAddBtn.disabled = true;
+    try {
+      const res = await fetch('/api/admin/customer-photos', {
+        method: 'POST',
+        headers: { 'x-admin-token': token },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) { showError(cpFormError, data.error || 'Error al subir.'); return; }
+      cpCaption.value = '';
+      cpImage.value = '';
+      cpProductSearch.value = '';
+      clearCpProductSelection();
+      showToast('Foto de cliente agregada.');
+      loadCustomersView();
+    } catch {
+      showError(cpFormError, 'Error de conexión.');
+    } finally {
+      cpAddBtn.disabled = false;
+    }
+  });
+
+  customerPhotoList?.addEventListener('click', async e => {
+    const toggleBtn = e.target.closest('[data-cp-toggle]');
+    const deleteBtn = e.target.closest('[data-cp-delete]');
+
+    if (toggleBtn) {
+      const id = toggleBtn.dataset.cpToggle;
+      const active = toggleBtn.dataset.active !== '1';
+      try {
+        const res = await fetch(`/api/admin/customer-photos/${id}`, {
+          method: 'PUT',
+          headers: authHeaders(),
+          body: JSON.stringify({ active }),
+        });
+        if (!res.ok) { const d = await res.json(); showToast(d.error || 'Error.', true); return; }
+        showToast(active ? 'Foto visible en la tienda.' : 'Foto oculta.');
+        loadCustomersView();
+      } catch { showToast('Error de conexión.', true); }
+    }
+
+    if (deleteBtn) {
+      const id = deleteBtn.dataset.cpDelete;
+      if (!confirm('¿Eliminar esta foto de cliente?')) return;
+      try {
+        const res = await fetch(`/api/admin/customer-photos/${id}`, {
+          method: 'DELETE',
+          headers: authHeaders(),
+        });
+        if (!res.ok) { const d = await res.json(); showToast(d.error || 'Error.', true); return; }
+        showToast('Foto eliminada.');
+        loadCustomersView();
       } catch { showToast('Error de conexión.', true); }
     }
   });

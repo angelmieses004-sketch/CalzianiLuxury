@@ -1079,3 +1079,106 @@ input:focus, textarea:focus, select:focus {
 }
 
 .no-item-remove:hover { color: var(--danger); background: var(--danger-light); }
+
+/* ─── Customer photos admin ─────────────────────────────────────────────────── */
+.view__subtitle {
+  font-size: 0.85rem;
+  color: var(--gray-500);
+  margin-top: 0.35rem;
+}
+
+.customer-photo-form { max-width: 720px; margin-bottom: 1.5rem; }
+
+.customer-photo-product-field { position: relative; }
+
+.cp-product-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.cp-product-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.84rem;
+}
+
+.cp-product-option:hover { background: var(--gray-100); }
+
+.cp-product-option img {
+  width: 34px;
+  height: 34px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.cp-product-empty {
+  padding: 12px;
+  font-size: 0.82rem;
+  color: var(--gray-500);
+}
+
+.cp-product-selected {
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  color: #15803d;
+  font-weight: 600;
+}
+
+.customer-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.customer-photo-card {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #fff;
+}
+
+.customer-photo-card--hidden { opacity: 0.55; }
+
+.customer-photo-card__img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  display: block;
+}
+
+.customer-photo-card__body { padding: 0.85rem; }
+
+.customer-photo-card__product {
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.customer-photo-card__caption {
+  font-size: 0.76rem;
+  color: var(--gray-500);
+  margin-bottom: 0.65rem;
+}
+
+.customer-photo-card__actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}

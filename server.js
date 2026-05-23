@@ -15,7 +15,9 @@ const db = require('./database');
 // In production use /data/img/products (persistent volume); locally use public/img/products
 const DATA_DIR   = process.env.DATA_DIR || path.join(__dirname, 'public');
 const UPLOAD_DIR = path.join(DATA_DIR, 'img', 'products');
+const CUSTOMER_PHOTOS_DIR = path.join(DATA_DIR, 'img', 'customer-photos');
 if (!require('fs').existsSync(UPLOAD_DIR)) require('fs').mkdirSync(UPLOAD_DIR, { recursive: true });
+if (!fs.existsSync(CUSTOMER_PHOTOS_DIR)) fs.mkdirSync(CUSTOMER_PHOTOS_DIR, { recursive: true });
 
 // Multer: memory storage, multiple files under field name "images"
 const upload = multer({
@@ -38,6 +40,35 @@ async function processAndSaveImage(buffer) {
 
 function deleteImageFile(filename) {
   if (filename) fs.unlink(path.join(UPLOAD_DIR, filename), () => {});
+}
+
+async function processAndSaveCustomerPhoto(buffer) {
+  const filename = `c_${Date.now()}_${Math.random().toString(36).slice(2)}.webp`;
+  await sharp(buffer)
+    .resize(720, 900, { fit: 'cover', position: 'centre' })
+    .webp({ quality: 85 })
+    .toFile(path.join(CUSTOMER_PHOTOS_DIR, filename));
+  return filename;
+}
+
+function deleteCustomerPhotoFile(filename) {
+  if (filename) fs.unlink(path.join(CUSTOMER_PHOTOS_DIR, filename), () => {});
+}
+
+function getCustomerPhotos(productId, activeOnly = true) {
+  const whereActive = activeOnly ? ' AND active = 1' : '';
+  return db.prepare(
+    `SELECT id, product_id, filename, caption, position, active
+     FROM customer_photos
+     WHERE product_id = ?${whereActive}
+     ORDER BY position ASC, id ASC`
+  ).all(productId);
+}
+
+function customerPhotoCount(productId) {
+  return db.prepare(
+    'SELECT COUNT(*) AS n FROM customer_photos WHERE product_id = ? AND active = 1'
+  ).get(productId).n;
 }
 
 // Fetch ordered images for a product
@@ -93,6 +124,11 @@ function attachImages(product) {
     sizes: JSON.parse(product.sizes || '[]'),
     sizes_stock: JSON.parse(product.sizes_stock || '{}'),
     images: imgs.map(i => ({ id: i.id, filename: i.filename })),
+    customer_photos: getCustomerPhotos(product.id).map(p => ({
+      id: p.id,
+      filename: p.filename,
+      caption: p.caption || '',
+    })),
   };
 }
 
@@ -242,6 +278,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // In production, serve uploaded images from the persistent volume
 if (process.env.DATA_DIR) {
   app.use('/img/products', express.static(path.join(process.env.DATA_DIR, 'img', 'products')));
+  app.use('/img/customer-photos', express.static(path.join(process.env.DATA_DIR, 'img', 'customer-photos')));
 }
 
 // Clean expired sessions every hour
@@ -339,11 +376,13 @@ app.get('/api/products', (req, res) => {
       const firstImg = db.prepare(
         'SELECT filename FROM product_images WHERE product_id = ? ORDER BY position ASC, id ASC LIMIT 1'
       ).get(p.id);
+      const photoCount = p.category === 'calzado' ? customerPhotoCount(p.id) : 0;
       return {
         ...p,
         sizes: JSON.parse(p.sizes || '[]'),
         sizes_stock: JSON.parse(p.sizes_stock || '{}'),
         cover: firstImg ? firstImg.filename : null,
+        customer_photo_count: photoCount,
       };
     });
 
@@ -369,21 +408,155 @@ app.get('/api/products/by-ids', (req, res) => {
       const firstImg = db.prepare(
         'SELECT filename FROM product_images WHERE product_id = ? ORDER BY position ASC, id ASC LIMIT 1'
       ).get(p.id);
+      const photoCount = p.category === 'calzado' ? customerPhotoCount(p.id) : 0;
       return {
         ...p,
         sizes: JSON.parse(p.sizes || '[]'),
         sizes_stock: JSON.parse(p.sizes_stock || '{}'),
         cover: firstImg ? firstImg.filename : null,
+        customer_photo_count: photoCount,
       };
     });
     res.json(products);
   } catch (e) { res.status(500).json({ error: 'Error' }); }
 });
 
+app.get('/api/admin/customer-photos', requireAuth, (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT cp.*, p.name AS product_name, p.category AS product_category
+      FROM customer_photos cp
+      JOIN products p ON p.id = cp.product_id
+      ORDER BY cp.created_at DESC, cp.id DESC
+    `).all();
+    res.json(rows);
+  } catch (e) {
+    console.error('customer-photos list:', e);
+    res.status(500).json({ error: 'Error al obtener fotos de clientes.' });
+  }
+});
+
+app.post('/api/admin/customer-photos', requireAuth, upload.single('image'), async (req, res) => {
+  try {
+    const productId = Number(req.body?.product_id);
+    if (!Number.isFinite(productId) || productId <= 0) {
+      return res.status(400).json({ error: 'Seleccioná un producto.' });
+    }
+    const product = db.prepare('SELECT id, category FROM products WHERE id = ?').get(productId);
+    if (!product) return res.status(404).json({ error: 'Producto no encontrado.' });
+    if (product.category !== 'calzado') {
+      return res.status(400).json({ error: 'Solo podés asociar fotos a productos de calzado.' });
+    }
+    if (!req.file?.buffer) return res.status(400).json({ error: 'Subí una imagen.' });
+
+    const caption = String(req.body?.caption || '').trim().slice(0, 120);
+    const maxPos = db.prepare(
+      'SELECT COALESCE(MAX(position), -1) AS m FROM customer_photos WHERE product_id = ?'
+    ).get(productId).m;
+    const filename = await processAndSaveCustomerPhoto(req.file.buffer);
+    const result = db.prepare(`
+      INSERT INTO customer_photos (product_id, filename, caption, position, active)
+      VALUES (?, ?, ?, ?, 1)
+    `).run(productId, filename, caption, maxPos + 1);
+
+    res.status(201).json({
+      id: result.lastInsertRowid,
+      product_id: productId,
+      filename,
+      caption,
+      position: maxPos + 1,
+      active: 1,
+    });
+  } catch (e) {
+    console.error('customer-photos create:', e);
+    res.status(500).json({ error: e.message || 'Error al guardar la foto.' });
+  }
+});
+
+app.put('/api/admin/customer-photos/:id', requireAuth, (req, res) => {
+  try {
+    const row = db.prepare('SELECT * FROM customer_photos WHERE id = ?').get(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Foto no encontrada.' });
+
+    const caption = req.body?.caption != null ? String(req.body.caption).trim().slice(0, 120) : row.caption;
+    const active = req.body?.active != null ? (req.body.active ? 1 : 0) : row.active;
+    let productId = row.product_id;
+
+    if (req.body?.product_id != null) {
+      productId = Number(req.body.product_id);
+      if (!Number.isFinite(productId) || productId <= 0) {
+        return res.status(400).json({ error: 'Producto inválido.' });
+      }
+      const product = db.prepare('SELECT id, category FROM products WHERE id = ?').get(productId);
+      if (!product) return res.status(404).json({ error: 'Producto no encontrado.' });
+      if (product.category !== 'calzado') {
+        return res.status(400).json({ error: 'Solo podés asociar fotos a productos de calzado.' });
+      }
+    }
+
+    db.prepare(`
+      UPDATE customer_photos SET product_id = ?, caption = ?, active = ? WHERE id = ?
+    `).run(productId, caption, active, req.params.id);
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('customer-photos update:', e);
+    res.status(500).json({ error: 'Error al actualizar la foto.' });
+  }
+});
+
+app.delete('/api/admin/customer-photos/:id', requireAuth, (req, res) => {
+  try {
+    const row = db.prepare('SELECT * FROM customer_photos WHERE id = ?').get(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Foto no encontrada.' });
+    db.prepare('DELETE FROM customer_photos WHERE id = ?').run(req.params.id);
+    deleteCustomerPhotoFile(row.filename);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('customer-photos delete:', e);
+    res.status(500).json({ error: 'Error al eliminar la foto.' });
+  }
+});
+
 app.get('/api/products/:id', (req, res) => {
   const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
   res.json(attachImages(product));
+});
+
+app.get('/api/products/:id/related', (req, res) => {
+  const productId = Number(req.params.id);
+  if (!Number.isFinite(productId) || productId <= 0) {
+    return res.status(400).json({ error: 'Producto inválido.' });
+  }
+  const product = db.prepare('SELECT id, category, brand_id FROM products WHERE id = ?').get(productId);
+  if (!product) return res.status(404).json({ error: 'Producto no encontrado.' });
+
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 8, 1), 12);
+  let related = db.prepare(`
+    SELECT * FROM products
+    WHERE id != ? AND category = ?
+    ORDER BY
+      CASE WHEN brand_id IS NOT NULL AND brand_id = ? THEN 0 ELSE 1 END,
+      created_at DESC
+    LIMIT ?
+  `).all(productId, product.category, product.brand_id || -1, limit);
+
+  related = related.map(p => {
+    const firstImg = db.prepare(
+      'SELECT filename FROM product_images WHERE product_id = ? ORDER BY position ASC, id ASC LIMIT 1'
+    ).get(p.id);
+    const photoCount = p.category === 'calzado' ? customerPhotoCount(p.id) : 0;
+    return {
+      ...p,
+      sizes: JSON.parse(p.sizes || '[]'),
+      sizes_stock: JSON.parse(p.sizes_stock || '{}'),
+      cover: firstImg ? firstImg.filename : null,
+      customer_photo_count: photoCount,
+    };
+  });
+
+  res.json(related);
 });
 
 // ─── User auth routes ──────────────────────────────────────────────────────────
@@ -766,7 +939,6 @@ app.get('/api/currency-rates', (req, res) => {
 // ─── Payment config (public, for frontend) ────────────────────────────────────
 app.get('/api/payment-config', (req, res) => {
   res.json({
-    paypalClientId: process.env.PAYPAL_CLIENT_ID || '',
     usdRate: Number(process.env.USD_RATE) || 57,
     bankName:   process.env.BANK_NAME   || '',
     bankAccount:process.env.BANK_ACCOUNT|| '',
@@ -1065,95 +1237,6 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
   }
 });
 
-// ─── PayPal.me order submit ────────────────────────────────────────────────────
-app.post('/api/orders/paypalme-submit', (req, res) => {
-  try {
-    const { cart, shipping, subtotal, shippingFee, total, promoCode } = req.body || {};
-    if (!Array.isArray(cart) || !cart.length) {
-      return res.status(400).json({ error: 'Carrito vacío.' });
-    }
-    const s = shipping || {};
-    if (!String(s.name || '').trim() || !String(s.phone || '').trim() || !String(s.country || '').trim()
-        || !String(s.province || '').trim() || !String(s.address || '').trim()) {
-      return res.status(400).json({ error: 'Datos de envío incompletos.' });
-    }
-
-    const fee = Number(shippingFee);
-    const shipFee = Number.isFinite(fee) && fee >= 0 ? fee : CHECKOUT_SHIPPING_USD;
-    if (Math.abs(shipFee - CHECKOUT_SHIPPING_USD) > 0.02) {
-      return res.status(400).json({ error: 'Costo de envío no válido.' });
-    }
-
-    const stockCheck = validateCartStock(cart);
-    if (!stockCheck.ok) return res.status(400).json({ error: stockCheck.error });
-
-    const promoRes = applyPromoCalziani(cart, promoCode, s.phone);
-    if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
-
-    const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
-    const discountedSubtotal = promoRes.discountedSubtotal;
-    const totalCheck = Math.round((discountedSubtotal + shipFee) * 100) / 100;
-    const clientTotal = Number(total);
-    if (!Number.isFinite(clientTotal) || Math.abs(totalCheck - clientTotal) > 0.02) {
-      return res.status(400).json({ error: 'Total no coincide.' });
-    }
-
-    const orderNum = `CAL-P${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.toUpperCase();
-    const trackingCode = uniqueTrackingCode();
-
-    const payload = {
-      cart,
-      shipping: {
-        name:     String(s.name).trim(),
-        phone:    String(s.phone).trim(),
-        country:  String(s.country).trim(),
-        province: String(s.province).trim(),
-        address:  String(s.address).trim(),
-      },
-      subtotal: discountedSubtotal,
-      subtotalBeforeDiscount: promoRes.redeem ? lineSubtotal : undefined,
-      promoCode: promoRes.redeem ? promoRes.code : undefined,
-      promoPercent: promoRes.redeem ? promoRes.percent : undefined,
-      shippingFee: shipFee,
-      total: totalCheck,
-      paymentMethod: 'paypalme',
-    };
-
-    const insertOrder = db.prepare(`
-      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status,
-        customer_name, customer_email, tracking_code, tracking_stage)
-      VALUES (?, ?, ?, ?, 0, ?, 'pending_paypalme', ?, ?, ?, 'received')
-    `);
-    const insertPromo = db.prepare(`
-      INSERT INTO promo_redemptions (promo_code, phone_key, order_number) VALUES (?, ?, ?)
-    `);
-
-    const userId = req.user?.id || null;
-    const tx = db.transaction(() => {
-      insertOrder.run(orderNum, userId, JSON.stringify(payload), discountedSubtotal, totalCheck,
-        payload.shipping.name, null, trackingCode);
-      if (promoRes.redeem && promoRes.phoneKey) {
-        insertPromo.run(promoRes.code, promoRes.phoneKey, orderNum);
-      }
-    });
-    tx();
-
-    res.json({
-      ok: true,
-      orderNumber: orderNum,
-      trackingCode,
-      trackingUrl: trackingUrlFromCode(req, trackingCode),
-      paypalmeUrl: `https://paypal.me/Calziani/${totalCheck.toFixed(2)}`,
-    });
-  } catch (e) {
-    console.error('paypalme-submit:', e);
-    if (String(e.message).includes('UNIQUE')) {
-      return res.status(409).json({ error: 'Reintentá en un momento.' });
-    }
-    res.status(500).json({ error: 'Error al guardar el pedido.' });
-  }
-});
-
 // ─── AZUL Payment Page ────────────────────────────────────────────────────────
 const AZUL_ENV  = process.env.AZUL_ENV === 'production' ? 'production' : 'sandbox';
 const AZUL_URL  = AZUL_ENV === 'production'
@@ -1276,212 +1359,6 @@ app.post('/api/azul/checkout', (req, res) => {
     },
   });
 });
-
-// ─── PayPal ────────────────────────────────────────────────────────────────────
-// Accept both PAYPAL_CLIENT_SECRET (standard PayPal naming) and PAYPAL_SECRET (legacy)
-const PAYPAL_CLIENT_SECRET_VALUE = process.env.PAYPAL_CLIENT_SECRET || process.env.PAYPAL_SECRET || '';
-// Default to 'production'; only use sandbox when PAYPAL_ENV is explicitly set to 'sandbox'
-const PAYPAL_ENV      = process.env.PAYPAL_ENV === 'sandbox' ? 'sandbox' : 'production';
-const PAYPAL_API_BASE = PAYPAL_ENV === 'production'
-  ? 'https://api-m.paypal.com'
-  : 'https://api-m.sandbox.paypal.com';
-
-console.log(`[PayPal] env=${PAYPAL_ENV} | base=${PAYPAL_API_BASE} | clientId=${process.env.PAYPAL_CLIENT_ID ? 'SET' : 'MISSING'} | secret=${PAYPAL_CLIENT_SECRET_VALUE ? 'SET' : 'MISSING'}`);
-
-async function getPayPalToken() {
-  const clientId = process.env.PAYPAL_CLIENT_ID || '';
-  const secret   = PAYPAL_CLIENT_SECRET_VALUE;
-  const creds    = Buffer.from(`${clientId}:${secret}`).toString('base64');
-  const res = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${creds}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'grant_type=client_credentials',
-  });
-  const data = await res.json();
-  if (!data.access_token) {
-    console.error('[PayPal] getToken failed (status', res.status, '):', JSON.stringify(data).slice(0, 400));
-    throw new Error('PayPal auth failed: ' + (data.error_description || data.error || 'unknown'));
-  }
-  return data.access_token;
-}
-
-app.get('/api/paypal/debug', async (req, res) => {
-  const t = req.query.token || req.headers['x-admin-token'] || '';
-  const parts = Buffer.from(t, 'base64').toString('utf8').split(':');
-  if (parts.length !== 2) return res.status(401).json({ error: 'No autorizado. Usá ?token=TU_TOKEN' });
-  const [u, p] = parts;
-  if (!db.prepare('SELECT 1 FROM admin WHERE username=? AND password=?').get(u, p)) {
-    return res.status(401).json({ error: 'Credenciales incorrectas.' });
-  }
-  const clientId = process.env.PAYPAL_CLIENT_ID || '';
-  const secret   = PAYPAL_CLIENT_SECRET_VALUE;
-  const preview  = (s) => s.length > 10 ? `${s.slice(0,8)}...${s.slice(-6)} (${s.length} chars)` : `(${s.length} chars)`;
-  const b64creds = Buffer.from(`${clientId}:${secret}`).toString('base64');
-
-  // Make the token request ourselves and capture the raw response
-  let rawPaypalResponse = null;
-  let rawStatus = null;
-  try {
-    const tokenRes = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${b64creds}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: 'grant_type=client_credentials',
-    });
-    rawStatus = tokenRes.status;
-    rawPaypalResponse = await tokenRes.json();
-  } catch (e) {
-    rawPaypalResponse = { fetchError: e.message };
-  }
-
-  res.json({
-    env:      PAYPAL_ENV,
-    apiBase:  PAYPAL_API_BASE,
-    clientId: preview(clientId),
-    secret:   preview(secret),
-    b64preview: b64creds.slice(0, 20) + '...',
-    envVars: {
-      PAYPAL_CLIENT_ID:     clientId ? 'present' : 'MISSING',
-      PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET ? 'present' : 'MISSING',
-      PAYPAL_SECRET:        process.env.PAYPAL_SECRET        ? 'present' : 'MISSING',
-      PAYPAL_ENV:           process.env.PAYPAL_ENV || '(not set)',
-    },
-    paypalHttpStatus: rawStatus,
-    paypalResponse: rawPaypalResponse?.access_token
-      ? { result: 'SUCCESS', token_type: rawPaypalResponse.token_type, expires_in: rawPaypalResponse.expires_in }
-      : rawPaypalResponse,
-  });
-});
-
-app.post('/api/paypal/create-order', async (req, res) => {
-  const { cart, shippingFee, shipping, promoCode } = req.body || {};
-  if (!cart?.length) return res.status(400).json({ error: 'Carrito vacío.' });
-  if (!process.env.PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET_VALUE)
-    return res.status(503).json({ error: 'PayPal no configurado. Verificá las variables PAYPAL_CLIENT_ID y PAYPAL_CLIENT_SECRET en Railway.' });
-
-  const stockPp = validateCartStock(cart);
-  if (!stockPp.ok) return res.status(400).json({ error: stockPp.error });
-
-  const promoRes = applyPromoCalziani(cart, promoCode, shipping?.phone);
-  if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
-
-  const lineSubtotal = cart.reduce((s, i) => s + Number(i.price) * Number(i.qty), 0);
-  const shipFee = Number.isFinite(Number(shippingFee)) ? Number(shippingFee) : CHECKOUT_SHIPPING_USD;
-  const totalUSDNum = Math.round((promoRes.discountedSubtotal + shipFee) * 100) / 100;
-  const totalUSD = totalUSDNum.toFixed(2);
-
-  if (isNaN(Number(totalUSD)) || Number(totalUSD) <= 0) {
-    return res.status(400).json({ error: 'Total inválido: ' + totalUSD });
-  }
-
-  const orderNum = `CAL-PP${Date.now().toString(36).toUpperCase()}`;
-  const ppPayload = {
-    intent: 'CAPTURE',
-    purchase_units: [{
-      reference_id: orderNum,
-      amount: { currency_code: 'USD', value: totalUSD },
-    }],
-  };
-
-  try {
-    const token  = await getPayPalToken();
-    const ppRes  = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'PayPal-Request-Id': orderNum,
-      },
-      body: JSON.stringify(ppPayload),
-    });
-    const ppData = await ppRes.json();
-
-    if (!ppData.id) {
-      const ppMsg = ppData.message || ppData.error_description || ppData.error || JSON.stringify(ppData).slice(0, 200);
-      console.error('[PayPal] create-order API error:', ppMsg, '| full:', JSON.stringify(ppData).slice(0, 600));
-      return res.status(502).json({ error: `Error de PayPal: ${ppMsg}` });
-    }
-
-    const ppPayloadItems = {
-      cart,
-      shipping,
-      promoCode: promoRes.redeem ? promoRes.code : undefined,
-      subtotalBeforeDiscount: promoRes.redeem ? lineSubtotal : undefined,
-      promoPercent: promoRes.redeem ? promoRes.percent : undefined,
-      shippingFee: shipFee,
-      total: totalUSDNum,
-      paymentMethod: 'paypal',
-    };
-
-    const paypalTrackingCode = uniqueTrackingCode();
-    const insertPp = db.prepare(`
-      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status,
-        cardnet_session, customer_name, customer_email, tracking_code, tracking_stage)
-      VALUES (?, ?, ?, ?, 0, ?, 'pending_paypal', ?, ?, ?, ?, 'received')
-    `);
-    const insertPromoPp = db.prepare(`
-      INSERT INTO promo_redemptions (promo_code, phone_key, order_number) VALUES (?, ?, ?)
-    `);
-
-    try {
-      const tx = db.transaction(() => {
-        insertPp.run(
-          orderNum,
-          req.user?.id || null,
-          JSON.stringify(ppPayloadItems),
-          promoRes.discountedSubtotal,
-          totalUSDNum,
-          ppData.id,
-          shipping?.name || null,
-          null,
-          paypalTrackingCode,
-        );
-        if (promoRes.redeem && promoRes.phoneKey) {
-          insertPromoPp.run(promoRes.code, promoRes.phoneKey, orderNum);
-        }
-      });
-      tx();
-    } catch (dbErr) {
-      console.error('[PayPal] DB save error:', dbErr.message);
-      return res.status(500).json({ error: 'No se pudo guardar el pedido.' });
-    }
-
-    res.json({
-      orderId: ppData.id,
-      orderNumber: orderNum,
-      trackingCode: paypalTrackingCode,
-      trackingUrl: trackingUrlFromCode(req, paypalTrackingCode),
-    });
-  } catch (e) {
-    console.error('[PayPal] create-order error:', e);
-    res.status(500).json({ error: 'Error al conectar con PayPal.' });
-  }
-});
-
-app.post('/api/paypal/capture-order/:orderId', async (req, res) => {
-  if (!process.env.PAYPAL_CLIENT_ID) return res.status(503).json({ error: 'PayPal no configurado.' });
-  try {
-    const token  = await getPayPalToken();
-    const capRes = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders/${req.params.orderId}/capture`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-    });
-    const capData = await capRes.json();
-    if (capData.status === 'COMPLETED') {
-      db.prepare(`UPDATE orders SET status = 'paid_paypal' WHERE cardnet_session = ?`).run(req.params.orderId);
-    }
-    res.json(capData);
-  } catch (e) {
-    console.error('PayPal capture error:', e);
-    res.status(500).json({ error: 'Error al capturar el pago.' });
-  }
-});
-
 
 // ─── Order tracking endpoints ──────────────────────────────────────────────────
 

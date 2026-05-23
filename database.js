@@ -156,6 +156,20 @@ try {
   seedPromo.run('EXCLUSIVE', 25, 1, null);
 } catch (_) {}
 
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS customer_photos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      filename TEXT NOT NULL,
+      caption TEXT DEFAULT '',
+      position INTEGER DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+  `);
+} catch (_) {}
+
 const existingAdmin = db.prepare('SELECT id FROM admin WHERE id = 1').get();
 if (!existingAdmin) {
   db.prepare("INSERT INTO admin (id, username, password) VALUES (1, 'admin', 'calziani2024')").run();

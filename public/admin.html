@@ -165,6 +165,9 @@
         <button class="sidebar__link" data-view="brands">
           <span class="sidebar__icon">◉</span> Marcas
         </button>
+        <button class="sidebar__link" data-view="customers">
+          <span class="sidebar__icon">◎</span> Clientes
+        </button>
         <button class="sidebar__link" data-view="settings">
           <span class="sidebar__icon">⚙</span> Ajustes
         </button>
@@ -371,7 +374,6 @@
                 <option value="whatsapp">WhatsApp / Transferencia</option>
                 <option value="cash">Efectivo</option>
                 <option value="card">Tarjeta</option>
-                <option value="paypal">PayPal</option>
                 <option value="other">Otro</option>
               </select>
             </div>
@@ -473,6 +475,45 @@
           <div id="brandFormError" class="form-error hidden" style="margin-top:0.6rem"></div>
         </div>
         <div id="brandList" class="product-table-wrap" style="max-width:520px;margin-top:1rem">
+          <div class="table-loading">Cargando...</div>
+        </div>
+      </section>
+
+      <!-- VIEW: Clientes -->
+      <section id="viewCustomers" class="view">
+        <div class="view__header">
+          <h2 class="view__title">Fotos de clientes</h2>
+          <p class="view__subtitle">Mostrá clientes reales en la página de cada calzado para generar confianza.</p>
+        </div>
+
+        <div class="settings-card customer-photo-form">
+          <h3 class="settings-card__title">Agregar foto</h3>
+          <div class="form-row">
+            <div class="field customer-photo-product-field">
+              <label for="cpProductSearch">Producto (calzado)</label>
+              <input type="text" id="cpProductSearch" placeholder="Buscar por nombre…" autocomplete="off" />
+              <input type="hidden" id="cpProductId" />
+              <div id="cpProductDropdown" class="cp-product-dropdown hidden"></div>
+              <p id="cpProductSelected" class="cp-product-selected hidden"></p>
+            </div>
+            <div class="field">
+              <label for="cpCaption">Nota (opcional)</label>
+              <input type="text" id="cpCaption" placeholder="Ej: Cliente en RD" maxlength="120" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="cpImage">Imagen del cliente</label>
+              <input type="file" id="cpImage" accept="image/jpeg,image/png,image/webp,image/gif" />
+            </div>
+          </div>
+          <div id="cpFormError" class="form-error hidden"></div>
+          <div class="form-btns">
+            <button type="button" class="btn btn-primary" id="cpAddBtn">Subir foto</button>
+          </div>
+        </div>
+
+        <div id="customerPhotoList" class="customer-photo-grid">
           <div class="table-loading">Cargando...</div>
         </div>
       </section>
