@@ -120,14 +120,9 @@
       ? `<span class="pp-related-card__price pp-related-card__price--sale">${formatPrice(item.price)}</span>
          <span class="pp-related-card__orig">${formatPrice(item.compare_price)}</span>`
       : `<span class="pp-related-card__price">${formatPrice(item.price)}</span>`;
-    const socialBadge = item.category === 'calzado' && item.customer_photo_count > 0
-      ? `<span class="pp-related-card__badge">Clientes reales</span>`
-      : '';
-
     return `<a class="pp-related-card" href="/product/${item.id}">
       <div class="pp-related-card__media">
         ${imgHtml}
-        ${socialBadge}
       </div>
       <div class="pp-related-card__info">
         <p class="pp-related-card__cat">${CATEGORY_LABELS[item.category] || item.category}</p>
@@ -315,6 +310,11 @@
       : '';
     const stockHtml = `<p class="pp-stock pp-stock--${sl.cls || 'ok'}">${sl.text}</p>`;
 
+    const trustTeaserHtml = `
+      <button type="button" class="trust-teaser__link" data-trust-open data-trust-product-id="${p.id}">
+        ¿Cómo confiar en nosotros?
+      </button>`;
+
     // ── CTA Buttons ──────────────────────────────────────────────────────────
     const outOfStock = p.stock === 0;
     const ctaHtml = `
@@ -355,14 +355,6 @@
         </div>
       </div>`;
 
-    const trustTeaserHtml = `
-      <div class="trust-teaser">
-        <p class="trust-teaser__label">¿Tenés dudas antes de comprar?</p>
-        <button type="button" class="trust-teaser__btn" data-trust-open data-trust-product-id="${p.id}">
-          ¿Cómo confiar en nosotros?
-        </button>
-      </div>`;
-
     page.innerHTML = `
       <div class="pp-container">
         <a href="/" class="pp-back">← Volver</a>
@@ -375,21 +367,13 @@
             ${shipHtml}
             ${stockHtml}
             ${sizesHtml}
+            ${trustTeaserHtml}
             ${ctaHtml}
             ${returnsHtml}
             ${trustHtml}
-            ${trustTeaserHtml}
             ${p.description ? `<div class="pp-desc"><p class="pp-label">Descripción</p><p>${escHtml(p.description)}</p></div>` : ''}
           </div>
         </div>
-        <section class="trust-banner trust-banner--compact" aria-label="Confianza Calziani">
-          <div class="trust-banner__inner">
-            <p class="trust-banner__eyebrow">Confianza Calziani</p>
-            <h2 class="trust-banner__title">Más de 300 clientes felices</h2>
-            <p class="trust-banner__sub">Pioneros en vender lujo exclusivo y accesible en RD.</p>
-            <button type="button" class="trust-banner__btn" data-trust-open data-trust-product-id="${p.id}">¿Cómo confiar en nosotros?</button>
-          </div>
-        </section>
         <section class="pp-related" id="ppRelated" aria-label="Te podría gustar" hidden>
           <h2 class="pp-related__title">Te podría gustar</h2>
           <div class="pp-related__grid" id="ppRelatedGrid"></div>

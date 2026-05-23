@@ -1016,10 +1016,6 @@
         ? `<span class="product-card__sale-badge">−${discount}%</span>`
         : (sl.cls === 'out' ? `<span class="product-card__stock-badge out">${t('out_of_stock')}</span>` : '');
 
-      const socialBadgeHtml = p.category === 'calzado' && p.customer_photo_count > 0
-        ? `<span class="product-card__social-badge">Clientes reales</span>`
-        : '';
-
       const priceHtml = isOffer
         ? `<span class="pc-price pc-price--sale">${formatPrice(p.price)}</span><span class="pc-price-orig">${formatPrice(p.compare_price)}</span>`
         : `<span class="pc-price">${formatPrice(p.price)}</span>`;
@@ -1036,7 +1032,6 @@
           <div class="product-card__media">
             ${imgHtml}
             ${badgeHtml}
-            ${socialBadgeHtml}
             <button class="pc-fav-btn${fav ? ' active' : ''}" data-id="${p.id}" aria-label="Favorito" title="Favorito">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             </button>
@@ -1392,15 +1387,11 @@
           ? `<img src="/img/products/${escHtml(p.cover)}" alt="${escHtml(p.name)}" class="product-card__img" loading="lazy" />`
           : `<div class="product-card__img-empty"><span>CALZIANI</span></div>`;
         const fav = isFav(p.id);
-        const socialBadgeHtml = p.category === 'calzado' && p.customer_photo_count > 0
-          ? `<span class="product-card__social-badge">Clientes reales</span>`
-          : '';
         return `<div class="product-card-wrap">
           <a class="product-card" href="/product/${p.id}">
             <div class="product-card__media">
               ${imgHtml}
               <span class="product-card__sale-badge">−${discount}%</span>
-              ${socialBadgeHtml}
               <button class="pc-fav-btn${fav ? ' active' : ''}" data-id="${p.id}" aria-label="Favorito">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
               </button>

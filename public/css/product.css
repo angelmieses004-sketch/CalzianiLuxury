@@ -483,35 +483,40 @@
   color: #111;
 }
 
-/* ─── Trust teaser (product info column) ─────────────────────────────────────── */
-.trust-teaser {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #f0f0f0;
-}
-
-.trust-teaser__label {
-  font-size: 0.78rem;
-  color: #777;
-  margin-bottom: 0.55rem;
-}
-
-.trust-teaser__btn {
-  width: 100%;
-  padding: 0.72rem 1rem;
-  background: #f5f5f5;
-  border: 1px solid #e8e8e8;
-  border-radius: 10px;
-  font-size: 0.82rem;
+/* ─── Trust teaser (above add to cart) ───────────────────────────────────────── */
+.trust-teaser__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.65rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.76rem;
   font-weight: 600;
-  color: #111;
+  color: #555;
+  text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: color 0.15s;
 }
 
-.trust-teaser__btn:hover {
-  background: #efefef;
-  border-color: #ddd;
+.trust-teaser__link::before {
+  content: '✓';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #f0fdf4;
+  color: #15803d;
+  font-size: 0.62rem;
+  text-decoration: none;
+}
+
+.trust-teaser__link:hover {
+  color: #111;
 }
 
 /* ─── Related products ───────────────────────────────────────────────────────── */
@@ -565,20 +570,6 @@
   font-size: 0.65rem;
   letter-spacing: 0.18em;
   color: #bbb;
-}
-
-.pp-related-card__badge {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  background: rgba(255, 255, 255, 0.94);
-  color: #111;
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  padding: 0.18rem 0.4rem;
-  border-radius: 3px;
-  text-transform: uppercase;
 }
 
 .pp-related-card__cat {

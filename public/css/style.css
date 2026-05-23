@@ -1183,22 +1183,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   z-index: 2;
   pointer-events: none;
 }
-.product-card__social-badge {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  background: rgba(255, 255, 255, 0.94);
-  color: #111;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  padding: 0.22rem 0.45rem;
-  border-radius: var(--radius);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  z-index: 2;
-  pointer-events: none;
-  text-transform: uppercase;
-}
 /* ─── Main / Products ──────────────────────────────────────────────────────── */
 .main {
   flex: 1;
