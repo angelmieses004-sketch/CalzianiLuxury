@@ -55,6 +55,58 @@ function deleteCustomerPhotoFile(filename) {
   if (filename) fs.unlink(path.join(CUSTOMER_PHOTOS_DIR, filename), () => {});
 }
 
+function metaSha256(value) {
+  if (!value) return null;
+  return crypto.createHash('sha256').update(String(value).trim().toLowerCase()).digest('hex');
+}
+
+async function sendMetaPurchaseEvent({ orderNumber, total, numItems, email, phone, req }) {
+  const pixelId = process.env.META_PIXEL_ID || process.env.FACEBOOK_PIXEL_ID;
+  const token = process.env.META_ACCESS_TOKEN || process.env.FACEBOOK_ACCESS_TOKEN;
+  if (!pixelId || !token) return;
+
+  const userData = {};
+  const em = metaSha256(email);
+  const ph = phone ? metaSha256(String(phone).replace(/\D/g, '')) : null;
+  if (em) userData.em = em;
+  if (ph) userData.ph = ph;
+  if (req) {
+    const fwd = req.headers['x-forwarded-for'];
+    userData.client_ip_address = (typeof fwd === 'string' ? fwd.split(',')[0] : '')?.trim()
+      || req.socket?.remoteAddress || '';
+    userData.client_user_agent = req.headers['user-agent'] || '';
+  }
+
+  try {
+    const url = `https://graph.facebook.com/v18.0/${pixelId}/events?access_token=${encodeURIComponent(token)}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        data: [{
+          event_name: 'Purchase',
+          event_time: Math.floor(Date.now() / 1000),
+          event_id: String(orderNumber),
+          action_source: 'website',
+          user_data: userData,
+          custom_data: {
+            value: Number(total),
+            currency: 'USD',
+            num_items: Number(numItems) || 1,
+            order_id: String(orderNumber),
+          },
+        }],
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error('[Meta CAPI] Purchase failed:', res.status, body.slice(0, 300));
+    }
+  } catch (e) {
+    console.error('[Meta CAPI] Purchase error:', e.message);
+  }
+}
+
 function getCustomerPhotos(productId, activeOnly = true) {
   const whereActive = activeOnly ? ' AND active = 1' : '';
   return db.prepare(
@@ -554,6 +606,92 @@ app.get('/api/products/:id', (req, res) => {
   const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
   res.json(attachImages(product));
+});
+
+app.get('/api/products/:id/stock', (req, res) => {
+  const product = db.prepare('SELECT id, stock, sizes, sizes_stock FROM products WHERE id = ?').get(req.params.id);
+  if (!product) return res.status(404).json({ error: 'Producto no encontrado.' });
+  let sizes_stock = {};
+  let sizes = [];
+  try { sizes_stock = JSON.parse(product.sizes_stock || '{}'); } catch { sizes_stock = {}; }
+  try { sizes = JSON.parse(product.sizes || '[]'); } catch { sizes = []; }
+  res.json({ stock: product.stock, sizes, by_size: sizes_stock });
+});
+
+app.get('/api/products/:id/reviews', (req, res) => {
+  try {
+    const productId = Number(req.params.id);
+    if (!Number.isFinite(productId) || productId <= 0) {
+      return res.status(400).json({ error: 'Producto inválido.' });
+    }
+    const rows = db.prepare(`
+      SELECT id, rating, review_text, reviewer_name, caption, filename, created_at
+      FROM customer_photos
+      WHERE product_id = ? AND active = 1
+        AND (rating IS NOT NULL OR trim(COALESCE(review_text, '')) != '')
+      ORDER BY created_at DESC
+    `).all(productId);
+
+    const rated = rows.filter(r => r.rating >= 1 && r.rating <= 5);
+    const avg_rating = rated.length
+      ? Math.round(rated.reduce((s, r) => s + r.rating, 0) / rated.length * 10) / 10
+      : 0;
+
+    res.json({
+      avg_rating,
+      count: rows.length,
+      reviews: rows.map(r => ({
+        id: r.id,
+        rating: r.rating,
+        review_text: r.review_text || r.caption || '',
+        reviewer_name: r.reviewer_name || 'Cliente',
+        photo: r.filename || null,
+        created_at: r.created_at,
+      })),
+    });
+  } catch (e) {
+    console.error('product reviews GET:', e);
+    res.status(500).json({ error: 'Error al obtener reseñas.' });
+  }
+});
+
+app.post('/api/products/:id/reviews', (req, res) => {
+  try {
+    const productId = Number(req.params.id);
+    if (!Number.isFinite(productId) || productId <= 0) {
+      return res.status(400).json({ error: 'Producto inválido.' });
+    }
+    const product = db.prepare('SELECT id FROM products WHERE id = ?').get(productId);
+    if (!product) return res.status(404).json({ error: 'Producto no encontrado.' });
+
+    const rating = Number(req.body?.rating);
+    const review_text = String(req.body?.review_text || '').trim();
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Calificación inválida (1-5).' });
+    }
+    if (review_text.length < 10) {
+      return res.status(400).json({ error: 'La reseña debe tener al menos 10 caracteres.' });
+    }
+
+    let reviewer_name = String(req.body?.name || '').trim();
+    const userId = req.user?.id || null;
+    if (userId && !reviewer_name) reviewer_name = req.user.name || 'Cliente';
+    if (!reviewer_name) return res.status(400).json({ error: 'Ingresá tu nombre.' });
+
+    const maxPos = db.prepare(
+      'SELECT COALESCE(MAX(position), -1) AS m FROM customer_photos WHERE product_id = ?'
+    ).get(productId).m;
+
+    const result = db.prepare(`
+      INSERT INTO customer_photos (product_id, filename, caption, review_text, rating, reviewer_name, user_id, active, position)
+      VALUES (?, '', '', ?, ?, ?, ?, 1, ?)
+    `).run(productId, review_text, rating, reviewer_name, userId, maxPos + 1);
+
+    res.status(201).json({ ok: true, id: result.lastInsertRowid });
+  } catch (e) {
+    console.error('product reviews POST:', e);
+    res.status(500).json({ error: 'Error al guardar la reseña.' });
+  }
 });
 
 app.get('/api/products/:id/related', (req, res) => {
@@ -1253,6 +1391,16 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
       }
     });
     tx();
+
+    const numItems = cart.reduce((s, i) => s + (Number(i.qty) || 1), 0);
+    sendMetaPurchaseEvent({
+      orderNumber: orderNum,
+      total: totalCheck,
+      numItems,
+      email: null,
+      phone: payload.shipping.phone,
+      req,
+    }).catch(() => {});
 
     res.json({
       ok: true,

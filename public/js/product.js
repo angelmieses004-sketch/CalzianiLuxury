@@ -103,6 +103,236 @@
   const id   = location.pathname.split('/').pop();
   let selectedSize = '';
   let product = null;
+  let stockBySize = null;
+  let offerCountdownTimer = null;
+  let selectedReviewRating = 0;
+  let reviewModalReady = false;
+
+  function renderStars(rating) {
+    const r = Math.max(0, Math.min(5, Number(rating) || 0));
+    let html = '<span class="pp-reviews-stars__icons" aria-hidden="true">';
+    for (let i = 1; i <= 5; i++) {
+      const filled = i <= Math.round(r);
+      html += `<span class="${filled ? '' : 'pp-star--empty'}">★</span>`;
+    }
+    html += '</span>';
+    return html;
+  }
+
+  function formatReviewDate(iso) {
+    if (!iso) return '';
+    try {
+      return new Intl.DateTimeFormat('es-DO', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(iso));
+    } catch { return ''; }
+  }
+
+  function msUntilMidnightRD() {
+    const now = Date.now();
+    const utc = now + new Date().getTimezoneOffset() * 60000;
+    const rd = new Date(utc - 4 * 3600000);
+    const nextMidnightUtc = Date.UTC(rd.getFullYear(), rd.getMonth(), rd.getDate() + 1, 4, 0, 0);
+    return Math.max(0, nextMidnightUtc - now);
+  }
+
+  function formatCountdown(ms) {
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    return [h, m, s].map(n => String(n).padStart(2, '0')).join(':');
+  }
+
+  function clearOfferCountdown() {
+    if (offerCountdownTimer) {
+      clearInterval(offerCountdownTimer);
+      offerCountdownTimer = null;
+    }
+  }
+
+  function initOfferCountdown() {
+    clearOfferCountdown();
+    const el = document.getElementById('ppOfferCountdown');
+    if (!el) return;
+    el.hidden = false;
+    const tick = () => {
+      const ms = msUntilMidnightRD();
+      el.textContent = ms <= 0
+        ? '🕐 Precio especial termina pronto'
+        : `🕐 Precio especial termina en ${formatCountdown(ms)}`;
+    };
+    tick();
+    offerCountdownTimer = setInterval(tick, 1000);
+    const pageEl = document.getElementById('productPage');
+    if (pageEl) {
+      const mo = new MutationObserver(() => {
+        if (!document.getElementById('ppOfferCountdown')) {
+          clearOfferCountdown();
+          mo.disconnect();
+        }
+      });
+      mo.observe(pageEl, { childList: true, subtree: true });
+    }
+  }
+
+  async function fetchProductStock(productId) {
+    if (stockBySize) return stockBySize;
+    try {
+      const res = await fetch(`/api/products/${productId}/stock`);
+      if (!res.ok) return {};
+      const data = await res.json();
+      stockBySize = data.by_size || {};
+      return stockBySize;
+    } catch {
+      return {};
+    }
+  }
+
+  async function updateSizeUrgency(productId, size) {
+    const el = document.getElementById('ppSizeUrgency');
+    if (!el) return;
+    if (!size) {
+      el.classList.add('hidden');
+      return;
+    }
+    const bySize = await fetchProductStock(productId);
+    const n = Number(bySize[size]);
+    if (Number.isFinite(n) && n > 0 && n <= 3) {
+      el.textContent = `⚡ Solo quedan ${n} en talla ${size}`;
+      el.classList.remove('hidden');
+    } else {
+      el.classList.add('hidden');
+    }
+  }
+
+  function openReviewModal() {
+    const modal = document.getElementById('reviewModal');
+    modal?.classList.add('open');
+    modal?.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeReviewModal() {
+    const modal = document.getElementById('reviewModal');
+    modal?.classList.remove('open');
+    modal?.setAttribute('aria-hidden', 'true');
+    document.getElementById('reviewFormErr')?.classList.add('hidden');
+  }
+
+  function setReviewStars(rating) {
+    selectedReviewRating = rating;
+    document.querySelectorAll('.pp-review-star').forEach(btn => {
+      btn.classList.toggle('active', Number(btn.dataset.rating) <= rating);
+    });
+  }
+
+  function setupReviewModalOnce() {
+    if (reviewModalReady) return;
+    reviewModalReady = true;
+
+    page?.addEventListener('click', (e) => {
+      if (e.target.closest('[data-review-open]')) openReviewModal();
+    });
+    document.getElementById('reviewBackdrop')?.addEventListener('click', closeReviewModal);
+    document.getElementById('reviewModalClose')?.addEventListener('click', closeReviewModal);
+
+    document.querySelectorAll('.pp-review-star').forEach(btn => {
+      btn.addEventListener('click', () => setReviewStars(Number(btn.dataset.rating)));
+    });
+
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(data => {
+        if (data?.user?.name) {
+          const nameInput = document.getElementById('reviewName');
+          if (nameInput) {
+            nameInput.value = data.user.name;
+            nameInput.readOnly = true;
+          }
+        }
+      })
+      .catch(() => {});
+
+    document.getElementById('reviewForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errEl = document.getElementById('reviewFormErr');
+      const submitBtn = document.getElementById('reviewSubmitBtn');
+      const review_text = document.getElementById('reviewText')?.value?.trim() || '';
+      const name = document.getElementById('reviewName')?.value?.trim() || '';
+
+      errEl?.classList.add('hidden');
+      if (!selectedReviewRating) {
+        if (errEl) { errEl.textContent = 'Seleccioná una calificación.'; errEl.classList.remove('hidden'); }
+        return;
+      }
+      if (review_text.length < 10) {
+        if (errEl) { errEl.textContent = 'La reseña debe tener al menos 10 caracteres.'; errEl.classList.remove('hidden'); }
+        return;
+      }
+      if (!name) {
+        if (errEl) { errEl.textContent = 'Ingresá tu nombre.'; errEl.classList.remove('hidden'); }
+        return;
+      }
+
+      submitBtn.disabled = true;
+      try {
+        const res = await fetch(`/api/products/${id}/reviews`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rating: selectedReviewRating, review_text, name }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'No se pudo publicar la reseña.');
+        document.getElementById('reviewForm')?.reset();
+        setReviewStars(0);
+        closeReviewModal();
+        await loadProductReviews(id);
+      } catch (err) {
+        if (errEl) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
+  async function loadProductReviews(productId) {
+    const summaryEl = document.getElementById('ppReviewsSummary');
+    const sectionEl = document.getElementById('ppReviewsSection');
+    const listEl = document.getElementById('ppReviewsList');
+    if (!summaryEl) return;
+
+    try {
+      const data = await (await fetch(`/api/products/${productId}/reviews`)).json();
+      const count = Number(data.count) || 0;
+      const avg = Number(data.avg_rating) || 0;
+
+      if (count > 0 && avg > 0) {
+        summaryEl.innerHTML = `
+          <div class="pp-reviews-stars">
+            ${renderStars(avg)}
+            <span class="pp-reviews-count">(${count} reseña${count !== 1 ? 's' : ''})</span>
+          </div>`;
+      } else {
+        summaryEl.innerHTML = `<p class="pp-reviews-empty">Sé el primero en <button type="button" class="pp-reviews-first" data-review-open>opinar</button></p>`;
+      }
+
+      if (sectionEl && listEl) {
+        if (data.reviews?.length) {
+          listEl.innerHTML = data.reviews.map(r => `
+            <article class="pp-review-card">
+              <div class="pp-review-card__head">
+                <span class="pp-review-card__name">${escHtml(r.reviewer_name || 'Cliente')}</span>
+                <span class="pp-review-card__date">${formatReviewDate(r.created_at)}</span>
+              </div>
+              ${r.rating ? `<div class="pp-reviews-stars">${renderStars(r.rating)}</div>` : ''}
+              <p class="pp-review-card__text">${escHtml(r.review_text || '')}</p>
+            </article>`).join('');
+          sectionEl.hidden = false;
+        } else {
+          sectionEl.hidden = true;
+          listEl.innerHTML = '';
+        }
+      }
+    } catch { /* ignore */ }
+  }
 
   function aggregateStock(prod) {
     if (prod.sizes?.length && prod.sizes_stock) {
@@ -173,6 +403,9 @@
   }
 
   function render(p) {
+    clearOfferCountdown();
+    stockBySize = null;
+    selectedSize = '';
     const isOffer  = p.compare_price && p.compare_price > p.price;
     const discount = isOffer ? Math.round((1 - p.price / p.compare_price) * 100) : 0;
     const sl       = stockLabel(p.stock);
@@ -287,6 +520,7 @@
            <span class="pp-badge-offer">−${discount}% OFERTA</span>
            <span class="pp-price pp-price--sale">${formatPrice(p.price)}</span>
            <span class="pp-price-orig">${formatPrice(p.compare_price)}</span>
+           <p class="pp-offer-countdown" id="ppOfferCountdown" hidden></p>
          </div>`
       : `<div class="pp-pricing"><span class="pp-price">${formatPrice(p.price)}</span></div>`;
 
@@ -297,6 +531,7 @@
            <div class="pp-sizes-list" id="ppSizesList">
              ${p.sizes.map(s => `<button class="pp-size-tag pp-size-btn" data-size="${escHtml(s)}" type="button">${escHtml(s)}</button>`).join('')}
            </div>
+           <p class="pp-size-urgency hidden" id="ppSizeUrgency"></p>
            <p class="pp-size-err hidden" id="ppSizeErr">Seleccioná un talle para continuar.</p>
          </div>`
       : '';
@@ -363,6 +598,7 @@
           <div class="pp-info">
             <p class="pp-category">${CATEGORY_LABELS[p.category] || p.category}</p>
             <h1 class="pp-name">${escHtml(p.name)}</h1>
+            <div class="pp-reviews-summary" id="ppReviewsSummary"></div>
             ${priceHtml}
             ${shipHtml}
             ${stockHtml}
@@ -374,6 +610,11 @@
             ${p.description ? `<div class="pp-desc"><p class="pp-label">Descripción</p><p>${escHtml(p.description)}</p></div>` : ''}
           </div>
         </div>
+        <section class="pp-reviews-section" id="ppReviewsSection" aria-label="Reseñas de clientes" hidden>
+          <h2 class="pp-reviews-section__title">Opiniones de clientes</h2>
+          <div class="pp-reviews-list" id="ppReviewsList"></div>
+          <button type="button" class="pp-reviews-write" data-review-open>Escribir reseña</button>
+        </section>
         <section class="pp-related" id="ppRelated" aria-label="Te podría gustar" hidden>
           <h2 class="pp-related__title">Te podría gustar</h2>
           <div class="pp-related__grid" id="ppRelatedGrid"></div>
@@ -394,7 +635,10 @@
     document.getElementById('returnsBackdrop')?.addEventListener('click', closeReturns);
     document.getElementById('returnsModalClose')?.addEventListener('click', closeReturns);
 
-    loadRelatedProducts(p.id);
+      loadRelatedProducts(p.id);
+      loadProductReviews(p.id);
+      if (isOffer) initOfferCountdown();
+      fetchProductStock(p.id);
 
     // ── Size selection ────────────────────────────────────────────────────────
     document.querySelectorAll('.pp-size-btn').forEach(btn => {
@@ -405,6 +649,7 @@
         const label = document.getElementById('ppSizeSelected');
         if (label) label.textContent = `— ${selectedSize}`;
         document.getElementById('ppSizeErr')?.classList.add('hidden');
+        updateSizeUrgency(p.id, selectedSize);
         // Show stock for selected size
         const sizeStock = p.sizes_stock?.[selectedSize];
         const stockEl = document.querySelector('.pp-stock');
@@ -480,6 +725,7 @@
   }
 
   loadCurrencyRates().then(() => {
+    setupReviewModalOnce();
     loadProduct();
     initCurrencySelect();
   });

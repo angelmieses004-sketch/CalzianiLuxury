@@ -118,6 +118,7 @@
       const params = {
         content_name: String(product.name),
         content_ids:  [String(product.id)],
+        content_type: 'product',
         value:        Number(product.price),
         currency:     'USD',
       };
@@ -136,6 +137,7 @@
       const params = {
         content_name: String(item.name),
         content_ids:  [String(item.id)],
+        content_type: 'product',
         value:        Number(item.price),
         currency:     'USD',
         num_items:    1,
@@ -165,7 +167,13 @@
       sessionStorage.setItem('fbq_ic_fp', fp);
 
       const num_items = cart.reduce((s, i) => s + i.qty, 0);
-      const eventData = { value: Number(total), currency: 'USD', num_items };
+      const eventData = {
+        value: Number(total),
+        currency: 'USD',
+        num_items,
+        content_type: 'product',
+        content_ids: cart.map(i => String(i.id)),
+      };
 
       console.log('[CalzianiPixel] ▶ InitiateCheckout', eventData);
       try {
@@ -183,6 +191,7 @@
         value:     Number(orderData.total),
         currency:  'USD',
         num_items: Number(orderData.numItems),
+        content_type: 'product',
       };
       if (orderData.orderId) eventData.order_id = String(orderData.orderId);
 

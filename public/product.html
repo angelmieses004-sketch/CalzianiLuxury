@@ -149,6 +149,31 @@
     </div>
   </div>
 
+  <!-- Reseñas -->
+  <div id="reviewModal" class="modal modal--terms" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal__backdrop" id="reviewBackdrop"></div>
+    <div class="modal__box terms-modal-box pp-review-modal">
+      <button type="button" class="auth-modal-close" id="reviewModalClose" aria-label="Cerrar">&times;</button>
+      <h2 class="terms-modal__title">Dejá tu opinión</h2>
+      <form id="reviewForm" class="pp-review-form">
+        <div class="pp-review-form__stars" id="reviewStarsPick" role="group" aria-label="Calificación">
+          <button type="button" class="pp-review-star" data-rating="1" aria-label="1 estrella">★</button>
+          <button type="button" class="pp-review-star" data-rating="2" aria-label="2 estrellas">★</button>
+          <button type="button" class="pp-review-star" data-rating="3" aria-label="3 estrellas">★</button>
+          <button type="button" class="pp-review-star" data-rating="4" aria-label="4 estrellas">★</button>
+          <button type="button" class="pp-review-star" data-rating="5" aria-label="5 estrellas">★</button>
+        </div>
+        <label class="pp-review-form__label" for="reviewText">Tu reseña</label>
+        <textarea id="reviewText" class="pp-review-form__input" rows="4" minlength="10" maxlength="800" placeholder="Contanos qué te pareció el producto..." required></textarea>
+        <label class="pp-review-form__label" for="reviewName">Nombre</label>
+        <input type="text" id="reviewName" class="pp-review-form__input" maxlength="80" placeholder="Tu nombre" required />
+        <p class="pp-review-form__err hidden" id="reviewFormErr"></p>
+        <button type="submit" class="pp-review-form__submit" id="reviewSubmitBtn">Publicar reseña</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/whatsapp-float.js"></script>
   <script src="/js/pixel.js"></script>
   <script src="/js/trust.js"></script>
   <script src="/js/product.js"></script>

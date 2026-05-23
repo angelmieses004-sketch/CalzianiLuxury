@@ -170,6 +170,11 @@ try {
   `);
 } catch (_) {}
 
+try { db.exec(`ALTER TABLE customer_photos ADD COLUMN rating INTEGER`); } catch (_) {}
+try { db.exec(`ALTER TABLE customer_photos ADD COLUMN review_text TEXT DEFAULT ''`); } catch (_) {}
+try { db.exec(`ALTER TABLE customer_photos ADD COLUMN reviewer_name TEXT DEFAULT ''`); } catch (_) {}
+try { db.exec(`ALTER TABLE customer_photos ADD COLUMN user_id INTEGER REFERENCES users(id)`); } catch (_) {}
+
 const existingAdmin = db.prepare('SELECT id FROM admin WHERE id = 1').get();
 if (!existingAdmin) {
   db.prepare("INSERT INTO admin (id, username, password) VALUES (1, 'admin', 'calziani2024')").run();

@@ -2574,3 +2574,71 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   transition: background var(--transition);
 }
 .btn-browse:hover { background: var(--gray-700); }
+
+/* ─── WhatsApp floating button ─────────────────────────────────────────────── */
+.wa-float {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 900;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.wa-float--hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+}
+
+.wa-float__btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #25D366;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(37, 211, 102, 0.45);
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.wa-float__btn:hover {
+  transform: scale(1.06);
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.55);
+}
+
+.wa-float__tooltip {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  background: #111;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.4rem 0.65rem;
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.wa-float__btn:hover .wa-float__tooltip,
+.wa-float__btn:focus-visible .wa-float__tooltip {
+  opacity: 1;
+}
+
+@media (max-width: 480px) {
+  .wa-float {
+    bottom: 18px;
+    right: 18px;
+  }
+
+  .wa-float__tooltip {
+    display: none;
+  }
+}
