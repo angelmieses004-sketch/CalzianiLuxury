@@ -295,6 +295,67 @@ function generateCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
+function isValidEmail(email) {
+  return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+// Recibo / comprobante de pedido enviado al cliente por email
+async function sendOrderReceiptEmail({ to, order }) {
+  if (!isValidEmail(to)) return;
+  const dopRate = Number(process.env.USD_RATE) || 59.48;
+  const fmtUsd = (n) => 'US$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtDop = (n) => 'RD$' + Math.round(Number(n) * dopRate).toLocaleString('es-DO');
+
+  const itemsRows = (order.items || []).map(i => `
+    <tr>
+      <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:13px;color:#333">${i.name}${i.size ? ` <span style="color:#999">(${i.size})</span>` : ''} × ${i.qty}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:13px;color:#333;text-align:right;white-space:nowrap">${fmtUsd(i.price * i.qty)}<br><span style="color:#999;font-size:11px">${fmtDop(i.price * i.qty)}</span></td>
+    </tr>`).join('');
+
+  const html = `
+  <div style="font-family:Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:0;background:#fff;border:1px solid #e8e8e8">
+    <div style="background:#111;padding:24px;text-align:center">
+      <h1 style="color:#fff;font-size:20px;font-weight:700;letter-spacing:0.14em;margin:0">CALZIANI</h1>
+      <p style="color:#bbb;font-size:12px;margin:6px 0 0;letter-spacing:0.08em">COMPROBANTE DE PEDIDO</p>
+    </div>
+    <div style="padding:24px">
+      <p style="font-size:14px;color:#111;margin:0 0 4px">Hola ${order.name || 'cliente'},</p>
+      <p style="font-size:13px;color:#666;margin:0 0 18px">Gracias por tu compra en Calziani. Este es el comprobante de tu pedido.</p>
+
+      <table style="width:100%;font-size:13px;color:#333;margin:0 0 16px">
+        <tr><td style="padding:3px 0;color:#888">N.° de pedido</td><td style="padding:3px 0;text-align:right;font-weight:700">${order.orderNumber || '—'}</td></tr>
+        ${order.trackingCode ? `<tr><td style="padding:3px 0;color:#888">Código de tracking</td><td style="padding:3px 0;text-align:right;font-weight:700">${order.trackingCode}</td></tr>` : ''}
+        <tr><td style="padding:3px 0;color:#888">Fecha</td><td style="padding:3px 0;text-align:right">${order.dateStr || ''}</td></tr>
+        <tr><td style="padding:3px 0;color:#888">Método de pago</td><td style="padding:3px 0;text-align:right">${order.method || '—'}</td></tr>
+        <tr><td style="padding:3px 0;color:#888">Estado</td><td style="padding:3px 0;text-align:right">${order.statusLabel || 'Recibido'}</td></tr>
+      </table>
+
+      <table style="width:100%;border-collapse:collapse;margin:0 0 8px">${itemsRows}</table>
+
+      <table style="width:100%;font-size:13px;color:#333;margin:8px 0 0">
+        <tr><td style="padding:3px 0;color:#888">Subtotal</td><td style="padding:3px 0;text-align:right">${fmtUsd(order.lineSubtotal)} <span style="color:#999">/ ${fmtDop(order.lineSubtotal)}</span></td></tr>
+        ${order.discountAmt ? `<tr><td style="padding:3px 0;color:#888">Descuento${order.promoPct ? ` (−${order.promoPct}%)` : ''}</td><td style="padding:3px 0;text-align:right;color:#16a34a">− ${fmtUsd(order.discountAmt)}</td></tr>` : ''}
+        <tr><td style="padding:3px 0;color:#888">Envío</td><td style="padding:3px 0;text-align:right">${fmtUsd(order.shippingFee)} <span style="color:#999">/ ${fmtDop(order.shippingFee)}</span></td></tr>
+        <tr><td style="padding:10px 0 0;font-weight:700;font-size:15px;border-top:2px solid #111">Total</td><td style="padding:10px 0 0;text-align:right;font-weight:700;font-size:15px;border-top:2px solid #111">${fmtUsd(order.total)}<br><span style="color:#666;font-size:12px">${fmtDop(order.total)} DOP</span></td></tr>
+      </table>
+
+      ${order.address ? `<p style="font-size:12px;color:#888;margin:18px 0 0;line-height:1.6"><strong style="color:#555">Envío a:</strong><br>${order.name || ''}<br>${order.address}, ${order.province || ''}<br>${order.country || ''}</p>` : ''}
+
+      <p style="font-size:12px;color:#aaa;margin:22px 0 0;line-height:1.6;border-top:1px solid #eee;padding-top:14px">
+        Calziani · Los Jardines Metropolitanos, Santiago de los Caballeros, República Dominicana<br>
+        info@calziani.com · +1 809 307-6122<br>
+        Consultá nuestras <a href="${process.env.BASE_URL || 'https://calziani.com'}/politicas" style="color:#888">políticas de devolución, envío y seguridad</a>.
+      </p>
+    </div>
+  </div>`;
+
+  try {
+    await sendEmail({ to: to.trim(), subject: `Comprobante de tu pedido ${order.orderNumber || ''} — Calziani`, html });
+  } catch (e) {
+    console.error('[Receipt email]', e.message);
+  }
+}
+
 async function sendVerificationEmail(toEmail, code) {
   const html = `
     <div style="font-family:Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#fff;border:1px solid #e8e8e8">
@@ -1462,12 +1523,14 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
       });
     }
 
+    const customerEmail = isValidEmail(s.email) ? String(s.email).trim() : null;
     const orderNum = `CAL-W${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.toUpperCase();
     const payload = {
       cart,
       shipping: {
         name: String(s.name).trim(),
         phone: String(s.phone).trim().replace(/\D/g, ''),
+        email: customerEmail || undefined,
         country: String(s.country).trim(),
         province: String(s.province).trim(),
         address: String(s.address).trim(),
@@ -1500,7 +1563,7 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
         discountedSubtotal,
         totalCheck,
         payload.shipping.name,
-        null,
+        customerEmail,
         trackingCode,
       );
       if (promoRes.redeem && promoRes.phoneKey) {
@@ -1514,9 +1577,31 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
       orderNumber: orderNum,
       total: totalCheck,
       numItems,
-      email: null,
+      email: customerEmail,
       phone: payload.shipping.phone,
       req,
+    }).catch(() => {});
+
+    const receiptEmail = customerEmail || (userId ? req.user?.email : null);
+    sendOrderReceiptEmail({
+      to: receiptEmail,
+      order: {
+        orderNumber: orderNum,
+        trackingCode,
+        name: payload.shipping.name,
+        country: payload.shipping.country,
+        province: payload.shipping.province,
+        address: payload.shipping.address,
+        method: 'Transferencia / WhatsApp',
+        statusLabel: 'Pendiente de confirmación de pago',
+        dateStr: new Date().toLocaleString('es-DO', { dateStyle: 'long', timeStyle: 'short' }),
+        items: cart.map(i => ({ name: i.name, size: i.size || '', qty: Number(i.qty) || 1, price: Number(i.price) })),
+        lineSubtotal,
+        discountAmt: promoRes.redeem ? Math.round((lineSubtotal - discountedSubtotal) * 100) / 100 : 0,
+        promoPct: promoRes.redeem ? promoRes.percent : 0,
+        shippingFee: shipFee,
+        total: totalCheck,
+      },
     }).catch(() => {});
 
     res.json({
@@ -1607,6 +1692,8 @@ app.post('/api/azul/checkout', (req, res) => {
 
   const azulTrackingCode = uniqueTrackingCode();
 
+  const azulEmail = isValidEmail(shipping?.email) ? String(shipping.email).trim() : null;
+
   try {
     const tx = db.transaction(() => {
       insertAzulOrder.run(
@@ -1617,7 +1704,7 @@ app.post('/api/azul/checkout', (req, res) => {
         0,
         totalUSDCheck,
         shipping?.name || null,
-        null,
+        azulEmail,
         azulTrackingCode,
       );
       if (promoRes.redeem && promoRes.phoneKey) {
@@ -1629,6 +1716,28 @@ app.post('/api/azul/checkout', (req, res) => {
     console.error('AZUL DB save:', e.message);
     return res.status(500).json({ error: 'No se pudo crear el pedido.' });
   }
+
+  const azulReceiptEmail = azulEmail || (req.user?.email || null);
+  sendOrderReceiptEmail({
+    to: azulReceiptEmail,
+    order: {
+      orderNumber: orderNum,
+      trackingCode: azulTrackingCode,
+      name: shipping?.name || '',
+      country: shipping?.country || '',
+      province: shipping?.province || '',
+      address: shipping?.address || '',
+      method: 'Tarjeta de crédito/débito (AZUL)',
+      statusLabel: 'Pago en proceso',
+      dateStr: new Date().toLocaleString('es-DO', { dateStyle: 'long', timeStyle: 'short' }),
+      items: cart.map(i => ({ name: i.name, size: i.size || '', qty: Number(i.qty) || 1, price: Number(i.price) })),
+      lineSubtotal,
+      discountAmt: promoRes.redeem ? Math.round((lineSubtotal - promoRes.discountedSubtotal) * 100) / 100 : 0,
+      promoPct: promoRes.redeem ? promoRes.percent : 0,
+      shippingFee: CHECKOUT_SHIPPING_USD,
+      total: totalUSDCheck,
+    },
+  }).catch(() => {});
 
   res.json({
     azulUrl: AZUL_URL,
@@ -1933,6 +2042,7 @@ app.get('/tracking', (req, res) => res.sendFile(path.join(__dirname, 'public', '
 app.get('/product/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'product.html')));
 app.get('/favoritos',        (req, res) => res.sendFile(path.join(__dirname, 'public', 'favoritos.html')));
 app.get('/reset-password',   (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
+app.get('/politicas',        (req, res) => res.sendFile(path.join(__dirname, 'public', 'politicas.html')));
 app.get('/payment/success', (req, res) => res.sendFile(path.join(__dirname, 'public', 'payment-success.html')));
 app.get('/payment/cancel',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'payment-cancel.html')));
 app.get('/{*splat}', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));

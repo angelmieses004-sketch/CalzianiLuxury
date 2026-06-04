@@ -664,6 +664,7 @@
     return {
       name:     (document.getElementById('shipName')?.value     || '').trim(),
       phone:    (document.getElementById('shipPhone')?.value    || '').trim(),
+      email:    (document.getElementById('shipEmail')?.value    || '').trim(),
       country:  (document.getElementById('shipCountry')?.value  || '').trim(),
       province: (document.getElementById('shipProvince')?.value || '').trim(),
       address:  (document.getElementById('shipAddress')?.value  || '').trim(),
@@ -760,7 +761,8 @@
     const cart     = getCart();
     if (!cart.length) return;
     const shipping = getShippingInfo();
-    const { total } = cartTotals();
+    const ctAzul   = cartTotals();
+    const { total } = ctAzul;
 
     btnAzulPay.disabled = true;
     btnAzulPay.textContent = 'Procesando...';
@@ -803,7 +805,18 @@
         trackingUrl: data.trackingUrl || '',
         name:     shipping.name,
         phone:    shipping.phone,
+        email:    shipping.email,
         country:  shipping.country,
+        province: shipping.province,
+        address:  shipping.address,
+        method:   'Tarjeta (AZUL)',
+        dopRate:  (currencyRates && currencyRates.DOP) || 59.48,
+        items:    cart.map(i => ({ name: i.name, size: i.size || '', qty: i.qty, price: i.price })),
+        lineSubtotal: ctAzul.lineSubtotal,
+        discountAmt:  ctAzul.promoOn ? ctAzul.discountAmt : 0,
+        promoPct:     ctAzul.promoOn ? ctAzul.promoPct : 0,
+        shippingFee:  SHIPPING_USD,
+        date: new Date().toISOString(),
       }));
       await window.CalzianiPixel?.trackInitiateCheckout(cart, total);
       form.submit();

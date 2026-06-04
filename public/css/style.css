@@ -2259,6 +2259,77 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 }
 .footer__contact-link:hover { color: var(--black); }
 
+/* ─── Footer legal + payment badges ────────────────────────────────────────── */
+.footer__legal {
+  max-width: 1280px;
+  margin: 1.5rem auto 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--gray-200);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.2rem;
+}
+.footer__link {
+  font-size: 0.76rem;
+  color: var(--gray-500);
+  text-decoration: none;
+  letter-spacing: 0.03em;
+}
+.footer__link:hover { color: var(--black); text-decoration: underline; }
+.footer__address {
+  width: 100%;
+  font-size: 0.74rem;
+  color: var(--gray-400);
+  letter-spacing: 0.02em;
+}
+.footer__pay {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+.footer__pay img {
+  height: 26px;
+  width: auto;
+  object-fit: contain;
+}
+.footer__pay .footer__pay-3ds img { height: 30px; }
+@media (max-width: 600px) {
+  .footer__pay img { height: 22px; }
+  .footer__pay .footer__pay-3ds img { height: 26px; }
+}
+
+/* ─── Checkout payment badges ──────────────────────────────────────────────── */
+.cart-pay-badges {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.5rem 0 0.25rem;
+  padding: 0.75rem;
+  background: var(--gray-50, #f7f7f7);
+  border-radius: 6px;
+}
+.cart-pay-badges img { height: 24px; width: auto; object-fit: contain; }
+.cart-pay-badges .cart-pay-3ds img { height: 28px; }
+.cart-pay-badges__label {
+  width: 100%;
+  text-align: center;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gray-400);
+  margin-bottom: 0.15rem;
+}
+
 /* ─── Storefront Pagination ────────────────────────────────────────────────── */
 #storefrontPagination {
   display: flex;

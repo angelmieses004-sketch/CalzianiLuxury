@@ -20,6 +20,27 @@
     .pay-btn-primary:hover { opacity: 0.85; }
     .pay-btn-secondary { border: 1px solid #e0e0e0; color: #111; }
     .pay-btn-secondary:hover { background: #f5f5f5; }
+
+    /* Recibo */
+    .receipt { width: 100%; max-width: 460px; margin: 0 auto 1.75rem; border: 1px solid #ececec; border-radius: 10px; text-align: left; overflow: hidden; }
+    .receipt__head { background: #111; color: #fff; padding: 1rem 1.25rem; }
+    .receipt__head h2 { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em; margin: 0; }
+    .receipt__head p { font-size: 0.72rem; color: #bbb; margin: 0.25rem 0 0; }
+    .receipt__body { padding: 1.1rem 1.25rem; }
+    .receipt__meta { font-size: 0.78rem; color: #555; margin-bottom: 0.9rem; }
+    .receipt__meta div { display: flex; justify-content: space-between; padding: 2px 0; }
+    .receipt__meta span:last-child { font-weight: 600; color: #111; text-align: right; }
+    .receipt__items { list-style: none; margin: 0 0 0.6rem; padding: 0.6rem 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
+    .receipt__items li { display: flex; justify-content: space-between; gap: 0.75rem; font-size: 0.8rem; color: #333; padding: 4px 0; }
+    .receipt__items .ri-amt { white-space: nowrap; text-align: right; }
+    .receipt__items .ri-dop { display: block; color: #999; font-size: 0.7rem; }
+    .receipt__totals { font-size: 0.8rem; color: #444; }
+    .receipt__totals div { display: flex; justify-content: space-between; padding: 2px 0; }
+    .receipt__totals .rt-total { font-size: 0.98rem; font-weight: 800; color: #111; border-top: 2px solid #111; margin-top: 4px; padding-top: 8px; }
+    .receipt__totals .rt-total .rt-dop { display: block; font-size: 0.72rem; font-weight: 600; color: #666; }
+    .receipt__foot { font-size: 0.68rem; color: #aaa; padding: 0 1.25rem 1.1rem; line-height: 1.6; }
+    .receipt__foot a { color: #888; }
+    @media print { .pay-actions, .wa-float { display: none !important; } }
   </style>
 
   <!-- Meta Pixel Code -->
@@ -50,9 +71,26 @@
     <p class="pay-sub" id="paySuccessSub">Tu pedido fue procesado correctamente. Gracias por comprar en Calziani.</p>
     <p class="pay-order" id="orderRef"></p>
     <p class="pay-track" id="trackRef" hidden></p>
+
+    <div class="receipt" id="receiptCard" hidden>
+      <div class="receipt__head">
+        <h2>COMPROBANTE DE PEDIDO · CALZIANI</h2>
+        <p id="receiptDate"></p>
+      </div>
+      <div class="receipt__body">
+        <div class="receipt__meta" id="receiptMeta"></div>
+        <ul class="receipt__items" id="receiptItems"></ul>
+        <div class="receipt__totals" id="receiptTotals"></div>
+      </div>
+      <div class="receipt__foot">
+        Calziani · Los Jardines Metropolitanos, Santiago de los Caballeros, República Dominicana · info@calziani.com · +1 809 307-6122<br>
+        <a href="/politicas" target="_blank">Ver políticas de devolución, envío y seguridad</a>
+      </div>
+    </div>
+
     <div class="pay-actions">
       <a href="/" class="pay-btn pay-btn-primary">Seguir comprando</a>
-      <a href="https://www.instagram.com/calziani.luxury" target="_blank" class="pay-btn pay-btn-secondary">Seguinos en Instagram</a>
+      <button type="button" onclick="window.print()" class="pay-btn pay-btn-secondary">Imprimir / Guardar recibo</button>
     </div>
   </div>
   <script>
@@ -74,6 +112,49 @@
         const trk = document.getElementById('trackRef');
         trk.innerHTML = `Seguimiento de pedido: <a href="${trackingUrl}">${trackingCode || 'Ver tracking'}</a>`;
         trk.hidden = false;
+      }
+
+      // ─── Render on-screen receipt ───
+      if (purchaseRaw && Array.isArray(purchaseRaw.items) && purchaseRaw.items.length) {
+        const rate = Number(purchaseRaw.dopRate) || 59.48;
+        const usd = (n) => 'US$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const dop = (n) => 'RD$' + Math.round(Number(n || 0) * rate).toLocaleString('es-DO');
+        const esc = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+        const dt = purchaseRaw.date ? new Date(purchaseRaw.date) : new Date();
+        document.getElementById('receiptDate').textContent =
+          dt.toLocaleString('es-DO', { dateStyle: 'long', timeStyle: 'short' });
+
+        document.getElementById('receiptMeta').innerHTML = [
+          orderId ? `<div><span>N.° de pedido</span><span>${esc(orderId)}</span></div>` : '',
+          trackingCode ? `<div><span>Tracking</span><span>${esc(trackingCode)}</span></div>` : '',
+          purchaseRaw.method ? `<div><span>Método de pago</span><span>${esc(purchaseRaw.method)}</span></div>` : '',
+          purchaseRaw.name ? `<div><span>Cliente</span><span>${esc(purchaseRaw.name)}</span></div>` : '',
+        ].filter(Boolean).join('');
+
+        document.getElementById('receiptItems').innerHTML = purchaseRaw.items.map(i => `
+          <li>
+            <span>${esc(i.name)}${i.size ? ` (${esc(i.size)})` : ''} × ${i.qty}</span>
+            <span class="ri-amt">${usd(i.price * i.qty)}<span class="ri-dop">${dop(i.price * i.qty)}</span></span>
+          </li>`).join('');
+
+        const sub = Number(purchaseRaw.lineSubtotal) || 0;
+        const disc = Number(purchaseRaw.discountAmt) || 0;
+        const ship = Number(purchaseRaw.shippingFee) || 0;
+        const tot = Number(purchaseRaw.total) || (sub - disc + ship);
+        document.getElementById('receiptTotals').innerHTML = [
+          `<div><span>Subtotal</span><span>${usd(sub)} / ${dop(sub)}</span></div>`,
+          disc ? `<div><span>Descuento${purchaseRaw.promoPct ? ` (−${purchaseRaw.promoPct}%)` : ''}</span><span style="color:#16a34a">− ${usd(disc)}</span></div>` : '',
+          `<div><span>Envío</span><span>${usd(ship)} / ${dop(ship)}</span></div>`,
+          `<div class="rt-total"><span>Total</span><span>${usd(tot)}<span class="rt-dop">${dop(tot)} DOP</span></span></div>`,
+        ].filter(Boolean).join('');
+
+        document.getElementById('receiptCard').hidden = false;
+
+        if (purchaseRaw.email) {
+          document.getElementById('paySuccessSub').textContent =
+            `Tu pedido fue procesado correctamente. Enviamos una copia del comprobante a ${purchaseRaw.email}.`;
+        }
       }
 
       // Clear cart

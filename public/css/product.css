@@ -721,6 +721,15 @@
   cursor: pointer;
 }
 
+/* ─── DOP reference price ───────────────────────────────────────────────────── */
+.pp-price-dop {
+  display: block;
+  width: 100%;
+  font-size: 0.82rem;
+  color: #777;
+  margin-top: 0.15rem;
+}
+
 /* ─── Offer countdown ───────────────────────────────────────────────────────── */
 .pp-offer-countdown {
   font-size: 0.78rem;

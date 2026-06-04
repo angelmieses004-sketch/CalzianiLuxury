@@ -16,6 +16,12 @@
     return sym + new Intl.NumberFormat(loc, { maximumFractionDigits: dec, minimumFractionDigits: dec }).format(converted);
   }
 
+  // Equivalente en pesos dominicanos (moneda de cobro vía AZUL)
+  function formatDop(priceUSD) {
+    const converted = priceUSD * (currencyRates.DOP || 59.48);
+    return 'RD$' + new Intl.NumberFormat('es-DO', { maximumFractionDigits: 0 }).format(converted);
+  }
+
   async function loadCurrencyRates() {
     try {
       const data = await (await fetch('/api/currency-rates')).json();
@@ -575,14 +581,18 @@
     }
 
     // ── Price HTML ────────────────────────────────────────────────────────────
+    const dopRefHtml = activeCurrency !== 'DOP'
+      ? `<span class="pp-price-dop" id="ppPriceDop">≈ ${formatDop(p.price)} DOP</span>`
+      : '';
     const priceHtml = isOffer
       ? `<div class="pp-pricing">
            <span class="pp-badge-offer">−${discount}% OFERTA</span>
            <span class="pp-price pp-price--sale">${formatPrice(p.price)}</span>
            <span class="pp-price-orig">${formatPrice(p.compare_price)}</span>
+           ${dopRefHtml}
            <p class="pp-offer-countdown" id="ppOfferCountdown" hidden></p>
          </div>`
-      : `<div class="pp-pricing"><span class="pp-price">${formatPrice(p.price)}</span></div>`;
+      : `<div class="pp-pricing"><span class="pp-price">${formatPrice(p.price)}</span>${dopRefHtml}</div>`;
 
     // ── Sizes HTML (selectable) ───────────────────────────────────────────────
     const sizesHtml = p.sizes && p.sizes.length
