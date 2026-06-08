@@ -1340,6 +1340,38 @@ function normalizePhoneKey(phone) {
  * cart: array de { id, price, qty }
  * Una vez por teléfono en BD.
  */
+// Marcas con piso de precio: nunca se venden por debajo de este monto (USD), aunque un código dé menos.
+const GOLDEN_FLOOR_USD = 350;
+function getGoldenFloorIds() {
+  try {
+    const rows = db.prepare(`
+      SELECT p.id FROM products p
+      JOIN brands b ON b.id = p.brand_id
+      WHERE LOWER(b.name) LIKE '%golden%'
+    `).all();
+    return new Set(rows.map(r => Number(r.id)));
+  } catch { return new Set(); }
+}
+
+// Subtotal con descuento aplicando exclusiones y piso de precio por marca (Golden $350).
+// Misma fórmula exacta que el cliente, para que el total validado coincida.
+function computeDiscountedSubtotal(cart, percent, excludedIds, floorIds) {
+  let subtotal = 0;
+  for (const i of cart) {
+    const unit = Number(i.price);
+    const qty  = Number(i.qty);
+    let lineUnit = unit;
+    if (!excludedIds.includes(Number(i.id))) {
+      lineUnit = unit * (100 - percent) / 100;
+      if (floorIds.has(Number(i.id))) {
+        lineUnit = Math.max(lineUnit, Math.min(unit, GOLDEN_FLOOR_USD));
+      }
+    }
+    subtotal += lineUnit * qty;
+  }
+  return Math.round(subtotal * 100) / 100;
+}
+
 function applyPromoCalziani(cart, promoCodeRaw, phone) {
   const lineSubtotal = cart.reduce((s, i) => s + Number(i.price) * Number(i.qty), 0);
   const code = normalizePromoCode(promoCodeRaw);
@@ -1364,15 +1396,9 @@ function applyPromoCalziani(cart, promoCodeRaw, phone) {
   }
 
   const excludedIds = JSON.parse(promo.excluded_product_ids || '[]').map(Number);
-  const eligibleSubtotal = cart.reduce((s, i) => {
-    if (excludedIds.includes(Number(i.id))) return s;
-    return s + Number(i.price) * Number(i.qty);
-  }, 0);
-  const ineligibleSubtotal = lineSubtotal - eligibleSubtotal;
+  const floorIds = getGoldenFloorIds();
   const { percent } = promo;
-  const discountedSubtotal = Math.round(
-    (eligibleSubtotal * (100 - percent) / 100 + ineligibleSubtotal) * 100
-  ) / 100;
+  const discountedSubtotal = computeDiscountedSubtotal(cart, percent, excludedIds, floorIds);
   return { ok: true, discountedSubtotal, redeem: true, phoneKey, code, percent };
 }
 
@@ -1388,10 +1414,13 @@ app.get('/api/promos/active', (req, res) => {
         AND (expires_at IS NULL OR expires_at > ?)
       ORDER BY percent DESC
     `).all(now);
+    const floorIds = [...getGoldenFloorIds()];
     res.json(promos.map(p => ({
       code:               p.code,
       percent:            p.percent,
       excludedProductIds: JSON.parse(p.excluded_product_ids || '[]').map(Number),
+      floorProductIds:    floorIds,
+      floorAmount:        GOLDEN_FLOOR_USD,
     })));
   } catch (e) {
     res.json([]);
@@ -1409,7 +1438,11 @@ app.post('/api/promo/validate', (req, res) => {
   }
 
   const excludedProductIds = JSON.parse(promo.excluded_product_ids || '[]').map(Number);
-  res.json({ ok: true, code, percent: promo.percent, excludedProductIds });
+  res.json({
+    ok: true, code, percent: promo.percent, excludedProductIds,
+    floorProductIds: [...getGoldenFloorIds()],
+    floorAmount: GOLDEN_FLOOR_USD,
+  });
 });
 
 // ─── Admin: promo codes CRUD ───────────────────────────────────────────────────

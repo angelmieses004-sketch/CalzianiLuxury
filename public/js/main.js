@@ -461,7 +461,13 @@
         }
         promoClearBtn?.classList.add('hidden');
       } else {
-        setPromoData({ code: data.code, percent: data.percent, excludedProductIds: data.excludedProductIds || [] });
+        setPromoData({
+          code: data.code,
+          percent: data.percent,
+          excludedProductIds: data.excludedProductIds || [],
+          floorProductIds: data.floorProductIds || [],
+          floorAmount: data.floorAmount || 0,
+        });
         promoMsg?.classList.add('hidden');
         promoClearBtn?.classList.remove('hidden');
         if (promoCodeInput) promoCodeInput.value = '';
@@ -730,17 +736,26 @@
     const promoOn  = !!promoData;
     const promoPct = promoData?.percent || 0;
     const excludedIds = promoData ? (promoData.excludedProductIds || []).map(Number) : [];
+    const floorIds    = promoData ? (promoData.floorProductIds || []).map(Number) : [];
+    const floorAmount = promoData ? Number(promoData.floorAmount) || 0 : 0;
 
-    const eligibleSubtotal = promoOn
-      ? cart.reduce((s, i) => excludedIds.includes(Number(i.id)) ? s : s + i.price * i.qty, 0)
-      : 0;
-    const ineligibleSubtotal = lineSubtotal - eligibleSubtotal;
-    const discountAmt = promoOn
-      ? Math.round(eligibleSubtotal * promoPct / 100 * 100) / 100
-      : 0;
+    // Subtotal con descuento por ítem, aplicando exclusiones y piso de precio por marca.
+    // Debe coincidir EXACTAMENTE con computeDiscountedSubtotal del servidor.
     const subtotalAfter = promoOn
-      ? Math.round((eligibleSubtotal * (100 - promoPct) / 100 + ineligibleSubtotal) * 100) / 100
+      ? Math.round(cart.reduce((s, i) => {
+          const unit = Number(i.price);
+          const qty  = Number(i.qty);
+          let lineUnit = unit;
+          if (!excludedIds.includes(Number(i.id))) {
+            lineUnit = unit * (100 - promoPct) / 100;
+            if (floorIds.includes(Number(i.id)) && floorAmount > 0) {
+              lineUnit = Math.max(lineUnit, Math.min(unit, floorAmount));
+            }
+          }
+          return s + lineUnit * qty;
+        }, 0) * 100) / 100
       : lineSubtotal;
+    const discountAmt = Math.round((lineSubtotal - subtotalAfter) * 100) / 100;
     const total = Math.round((subtotalAfter + SHIPPING_USD) * 100) / 100;
     return {
       lineSubtotal,
@@ -1007,6 +1022,8 @@
     const _bestPromo    = _appliedPromo || _bestAvailablePromo;
     const _promo        = _bestPromo;
     const _promoExcIds  = _promo ? (_promo.excludedProductIds || []).map(Number) : [];
+    const _promoFloorIds = _promo ? (_promo.floorProductIds || []).map(Number) : [];
+    const _promoFloorAmt = _promo ? Number(_promo.floorAmount) || 0 : 0;
 
     grid.innerHTML = products.map(p => {
       const isOffer  = p.compare_price && p.compare_price > p.price;
@@ -1016,10 +1033,19 @@
       const fav      = isFav(p.id);
 
       // Coupon eligibility
-      const promoEligible = _promo && !_promoExcIds.includes(Number(p.id));
       const basePrice     = isOffer ? p.price : p.price; // price after any compare_price offer
-      const couponAmt     = promoEligible ? Math.round(basePrice * _promo.percent / 100 * 100) / 100 : 0;
-      const priceAfterCoupon = promoEligible ? Math.round((basePrice - couponAmt) * 100) / 100 : 0;
+      let priceAfterCoupon = 0;
+      let couponAmt        = 0;
+      let promoEligible    = _promo && !_promoExcIds.includes(Number(p.id));
+      if (promoEligible) {
+        priceAfterCoupon = Math.round((basePrice * (100 - _promo.percent) / 100) * 100) / 100;
+        // Piso de precio por marca (Golden $350): el cupón no puede bajar de ese monto.
+        if (_promoFloorIds.includes(Number(p.id)) && _promoFloorAmt > 0) {
+          priceAfterCoupon = Math.max(priceAfterCoupon, Math.min(basePrice, _promoFloorAmt));
+        }
+        couponAmt = Math.round((basePrice - priceAfterCoupon) * 100) / 100;
+        if (couponAmt <= 0) promoEligible = false; // piso alcanzado: sin descuento que mostrar
+      }
 
       const imgHtml = p.cover
         ? `<img src="/img/products/${escHtml(p.cover)}" alt="${escHtml(p.name)}" class="product-card__img" loading="lazy" />`
