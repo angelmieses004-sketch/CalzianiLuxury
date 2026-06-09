@@ -15,32 +15,20 @@
   let searchTimer        = null;
   let _bestAvailablePromo = null; // best active promo from server (for card badges)
 
-  const GOLDEN_FLOOR_USD = 350;
-
-  function isGoldenProduct(p) {
-    if (!p) return false;
-    if (p.brand_name && /golden/i.test(p.brand_name)) return true;
-    return /golden goose/i.test(p.name || '');
-  }
-
-  function isPhilippeProduct(p) {
-    if (!p) return false;
-    if (p.brand_name && /philippe/i.test(p.brand_name)) return true;
-    return /philippe model/i.test(p.name || '');
-  }
-
-  function promoUnitAfterDiscount(unitPrice, percent, item, floorIds, floorAmount) {
-    let after = unitPrice * (100 - percent) / 100;
-    const floorAmt = Number(floorAmount) || GOLDEN_FLOOR_USD;
-    const needsFloor = (floorIds || []).map(Number).includes(Number(item.id)) || isGoldenProduct(item);
-    if (needsFloor && floorAmt > 0) {
-      after = Math.max(after, Math.min(unitPrice, floorAmt));
-    }
-    return after;
+  function promoFloorForProduct(productId, floorProductPrices) {
+    const floor = (floorProductPrices || {})[Number(productId)];
+    return Number.isFinite(Number(floor)) && Number(floor) > 0 ? Number(floor) : null;
   }
 
   function isPromoExcludedProduct(item, excludedIds) {
-    return (excludedIds || []).map(Number).includes(Number(item.id)) || isPhilippeProduct(item);
+    return (excludedIds || []).map(Number).includes(Number(item.id));
+  }
+
+  function promoUnitAfterDiscount(unitPrice, percent, item, floorProductPrices) {
+    let after = unitPrice * (100 - percent) / 100;
+    const floor = promoFloorForProduct(item.id, floorProductPrices);
+    if (floor != null) after = Math.max(after, Math.min(unitPrice, floor));
+    return after;
   }
 
   // ─── Translations ─────────────────────────────────────────────────────────────
@@ -493,8 +481,7 @@
           code: data.code,
           percent: data.percent,
           excludedProductIds: data.excludedProductIds || [],
-          floorProductIds: data.floorProductIds || [],
-          floorAmount: data.floorAmount || 0,
+          floorProductPrices: data.floorProductPrices || {},
         });
         promoMsg?.classList.add('hidden');
         promoClearBtn?.classList.remove('hidden');
@@ -764,18 +751,15 @@
     const promoOn  = !!promoData;
     const promoPct = promoData?.percent || 0;
     const excludedIds = promoData ? (promoData.excludedProductIds || []).map(Number) : [];
-    const floorIds    = promoData ? (promoData.floorProductIds || []).map(Number) : [];
-    const floorAmount = promoData ? Number(promoData.floorAmount) || 0 : 0;
+    const floorPrices = promoData ? (promoData.floorProductPrices || {}) : {};
 
-    // Subtotal con descuento por ítem, aplicando exclusiones y piso de precio por marca.
-    // Debe coincidir EXACTAMENTE con computeDiscountedSubtotal del servidor.
     const subtotalAfter = promoOn
       ? Math.round(cart.reduce((s, i) => {
           const unit = Number(i.price);
           const qty  = Number(i.qty);
           let lineUnit = unit;
           if (!isPromoExcludedProduct(i, excludedIds)) {
-            lineUnit = promoUnitAfterDiscount(unit, promoPct, i, floorIds, floorAmount);
+            lineUnit = promoUnitAfterDiscount(unit, promoPct, i, floorPrices);
           }
           return s + lineUnit * qty;
         }, 0) * 100) / 100
@@ -1047,8 +1031,7 @@
     const _bestPromo    = _appliedPromo || _bestAvailablePromo;
     const _promo        = _bestPromo;
     const _promoExcIds  = _promo ? (_promo.excludedProductIds || []).map(Number) : [];
-    const _promoFloorIds = _promo ? (_promo.floorProductIds || []).map(Number) : [];
-    const _promoFloorAmt = _promo ? Number(_promo.floorAmount) || 0 : 0;
+    const _promoFloors  = _promo ? (_promo.floorProductPrices || {}) : {};
 
     grid.innerHTML = products.map(p => {
       const isOffer  = p.compare_price && p.compare_price > p.price;
@@ -1057,13 +1040,13 @@
       const sl       = stockLabel(avail);
       const fav      = isFav(p.id);
 
-      // Coupon eligibility (Philippe excluido; Golden con piso $350)
+      // Coupon eligibility (exclusiones y piso por marca desde admin)
       const basePrice = p.price;
       let priceAfterCoupon = 0;
       let couponAmt        = 0;
       let promoEligible    = _promo && !isPromoExcludedProduct(p, _promoExcIds);
       if (promoEligible) {
-        priceAfterCoupon = Math.round(promoUnitAfterDiscount(basePrice, _promo.percent, p, _promoFloorIds, _promoFloorAmt) * 100) / 100;
+        priceAfterCoupon = Math.round(promoUnitAfterDiscount(basePrice, _promo.percent, p, _promoFloors) * 100) / 100;
         couponAmt = Math.round((basePrice - priceAfterCoupon) * 100) / 100;
         if (couponAmt <= 0) promoEligible = false;
       }

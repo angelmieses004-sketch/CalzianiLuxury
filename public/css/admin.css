@@ -989,6 +989,21 @@ input:focus, textarea:focus, select:focus {
 }
 .promo-chip-remove:hover { background: var(--danger); }
 
+.brand-promo-rules-card { margin-top: 2rem; max-width: 720px; }
+.brand-promo-rules-table .admin-input-inline {
+  width: 110px;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+.brand-promo-rules-table .admin-input-inline:disabled {
+  background: var(--gray-100);
+  color: var(--gray-400);
+  cursor: not-allowed;
+}
+.brand-promo-rules-table td { vertical-align: middle; }
+
 /* ─── Manual order items ─────────────────────────────────────────────────────── */
 .no-item-row {
   display: grid;

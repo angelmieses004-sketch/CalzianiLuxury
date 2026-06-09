@@ -309,7 +309,7 @@
     sidebarLinks.forEach(l => l.classList.toggle('active', l.dataset.view === name));
     if (name === 'products') loadProducts();
     if (name === 'orders')   loadOrders();
-    if (name === 'promos')   loadPromos();
+    if (name === 'promos')   { loadPromos(); loadBrandPromoRules(); }
     if (name === 'brands')   loadBrandsView();
     if (name === 'customers') loadCustomersView();
     if (name === 'reviews')   loadReviewsView();
@@ -1996,6 +1996,135 @@
     pfExcludeSearch.value = '';
     pfExcludeDropdown.classList.add('hidden');
     pfExcludeSearch.focus();
+  });
+
+  // ─── Brand promo rules (Descuentos) ──────────────────────────────────────────
+  const brandPromoRulesList    = document.getElementById('brandPromoRulesList');
+  const brandPromoRulesSaveBtn = document.getElementById('brandPromoRulesSaveBtn');
+  const brandPromoRulesError   = document.getElementById('brandPromoRulesError');
+  let brandPromoRulesDraft     = [];
+
+  async function loadBrandPromoRules() {
+    if (!brandPromoRulesList) return;
+    brandPromoRulesList.innerHTML = '<div class="table-loading">Cargando...</div>';
+    brandPromoRulesError?.classList.add('hidden');
+    try {
+      const res  = await fetch('/api/admin/brands/promo-rules', { headers: authHeaders() });
+      const data = await res.json();
+      if (!res.ok) {
+        brandPromoRulesList.innerHTML = `<div class="table-empty">${data.error || 'Error al cargar.'}</div>`;
+        return;
+      }
+      brandPromoRulesDraft = data.map(b => ({
+        id: b.id,
+        name: b.name,
+        product_count: b.product_count,
+        promo_excluded: !!b.promo_excluded,
+        promo_min_price_usd: b.promo_min_price_usd != null ? b.promo_min_price_usd : '',
+      }));
+      renderBrandPromoRules();
+    } catch {
+      brandPromoRulesList.innerHTML = '<div class="table-empty">Error de conexión.</div>';
+    }
+  }
+
+  function renderBrandPromoRules() {
+    if (!brandPromoRulesList) return;
+    if (!brandPromoRulesDraft.length) {
+      brandPromoRulesList.innerHTML = '<div class="table-empty">No hay marcas. Creá marcas en la sección Marcas y asignalas a tus productos.</div>';
+      return;
+    }
+    brandPromoRulesList.innerHTML = `<table class="promo-table brand-promo-rules-table">
+      <thead><tr>
+        <th>Marca</th>
+        <th>Productos</th>
+        <th>Sin cupón</th>
+        <th>Precio mínimo (USD)</th>
+      </tr></thead>
+      <tbody>
+        ${brandPromoRulesDraft.map(b => `
+          <tr data-brand-rule-id="${b.id}">
+            <td><strong>${escHtml(b.name)}</strong></td>
+            <td>${b.product_count || 0}</td>
+            <td>
+              <label class="promo-toggle-label">
+                <input type="checkbox" class="brand-rule-excluded" data-id="${b.id}" ${b.promo_excluded ? 'checked' : ''} />
+                <span>No aplica</span>
+              </label>
+            </td>
+            <td>
+              <input type="number" class="brand-rule-min admin-input-inline"
+                data-id="${b.id}" min="1" step="0.01" placeholder="Ej: 350"
+                value="${b.promo_excluded ? '' : (b.promo_min_price_usd !== '' ? escHtml(String(b.promo_min_price_usd)) : '')}"
+                ${b.promo_excluded ? 'disabled' : ''} />
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+    brandPromoRulesList.querySelectorAll('.brand-rule-excluded').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const id = Number(cb.dataset.id);
+        const row = brandPromoRulesDraft.find(r => r.id === id);
+        if (!row) return;
+        row.promo_excluded = cb.checked;
+        const minInput = brandPromoRulesList.querySelector(`.brand-rule-min[data-id="${id}"]`);
+        if (minInput) {
+          minInput.disabled = cb.checked;
+          if (cb.checked) minInput.value = '';
+        }
+      });
+    });
+
+    brandPromoRulesList.querySelectorAll('.brand-rule-min').forEach(input => {
+      input.addEventListener('input', () => {
+        const id = Number(input.dataset.id);
+        const row = brandPromoRulesDraft.find(r => r.id === id);
+        if (row) row.promo_min_price_usd = input.value;
+      });
+    });
+  }
+
+  brandPromoRulesSaveBtn?.addEventListener('click', async () => {
+    brandPromoRulesError?.classList.add('hidden');
+    brandPromoRulesList.querySelectorAll('.brand-rule-min').forEach(input => {
+      const id = Number(input.dataset.id);
+      const row = brandPromoRulesDraft.find(r => r.id === id);
+      if (row && !row.promo_excluded) row.promo_min_price_usd = input.value;
+    });
+    brandPromoRulesList.querySelectorAll('.brand-rule-excluded').forEach(cb => {
+      const id = Number(cb.dataset.id);
+      const row = brandPromoRulesDraft.find(r => r.id === id);
+      if (row) row.promo_excluded = cb.checked;
+    });
+
+    brandPromoRulesSaveBtn.disabled = true;
+    brandPromoRulesSaveBtn.textContent = 'Guardando...';
+    try {
+      const res = await fetch('/api/admin/brands/promo-rules', {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          rules: brandPromoRulesDraft.map(r => ({
+            id: r.id,
+            promo_excluded: r.promo_excluded,
+            promo_min_price_usd: r.promo_excluded ? null : (r.promo_min_price_usd === '' ? null : r.promo_min_price_usd),
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showError(brandPromoRulesError, data.error || 'Error al guardar.');
+        return;
+      }
+      showToast('Límites por marca guardados.');
+      loadBrandPromoRules();
+    } catch {
+      showError(brandPromoRulesError, 'Error de conexión.');
+    } finally {
+      brandPromoRulesSaveBtn.disabled = false;
+      brandPromoRulesSaveBtn.textContent = 'Guardar límites';
+    }
   });
 
   document.addEventListener('click', e => {

@@ -459,6 +459,22 @@
         <div id="promoList" class="product-table-wrap">
           <div class="table-loading">Cargando...</div>
         </div>
+
+        <!-- Brand promo limits -->
+        <div class="settings-card brand-promo-rules-card">
+          <h3 class="settings-card__title">Límites de descuento por marca</h3>
+          <p class="field-hint">
+            Define el precio mínimo en USD que puede quedar un producto con cupón, o desactiva el cupón para toda la marca.
+            Los productos deben tener la marca asignada en el catálogo.
+          </p>
+          <div id="brandPromoRulesList" class="product-table-wrap">
+            <div class="table-loading">Cargando...</div>
+          </div>
+          <div class="form-btns" style="margin-top:1rem">
+            <button class="btn btn-primary btn-sm" id="brandPromoRulesSaveBtn">Guardar límites</button>
+          </div>
+          <div id="brandPromoRulesError" class="form-error hidden" style="margin-top:0.75rem"></div>
+        </div>
       </section>
 
       <!-- VIEW: Marcas -->

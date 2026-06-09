@@ -107,6 +107,13 @@ try {
   `);
 } catch (_) {}
 try { db.exec(`ALTER TABLE products ADD COLUMN brand_id INTEGER REFERENCES brands(id) ON DELETE SET NULL`); } catch (_) {}
+try { db.exec(`ALTER TABLE brands ADD COLUMN promo_min_price_usd REAL`); } catch (_) {}
+try { db.exec(`ALTER TABLE brands ADD COLUMN promo_excluded INTEGER NOT NULL DEFAULT 0`); } catch (_) {}
+// Valores iniciales sugeridos (solo si aún no están configurados)
+try {
+  db.prepare(`UPDATE brands SET promo_min_price_usd = 350 WHERE LOWER(name) LIKE '%golden%' AND promo_min_price_usd IS NULL AND promo_excluded = 0`).run();
+  db.prepare(`UPDATE brands SET promo_excluded = 1 WHERE LOWER(name) LIKE '%philippe%' AND promo_excluded = 0`).run();
+} catch (_) {}
 
 // Migrate old single `image` column into product_images table (run once)
 const productsWithLegacyImage = db.prepare(

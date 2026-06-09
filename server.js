@@ -449,6 +449,62 @@ app.delete('/api/admin/brands/:id', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/api/admin/brands/promo-rules', requireAuth, (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT b.id, b.name, b.promo_min_price_usd, b.promo_excluded,
+        (SELECT COUNT(*) FROM products p WHERE p.brand_id = b.id) AS product_count
+      FROM brands b
+      ORDER BY b.name ASC
+    `).all();
+    res.json(rows.map(b => ({
+      id: b.id,
+      name: b.name,
+      promo_min_price_usd: b.promo_min_price_usd,
+      promo_excluded: !!b.promo_excluded,
+      product_count: b.product_count,
+    })));
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener reglas por marca.' });
+  }
+});
+
+app.put('/api/admin/brands/promo-rules', requireAuth, (req, res) => {
+  const rules = req.body?.rules;
+  if (!Array.isArray(rules)) return res.status(400).json({ error: 'Formato inválido.' });
+
+  const update = db.prepare(`
+    UPDATE brands SET promo_min_price_usd = ?, promo_excluded = ? WHERE id = ?
+  `);
+
+  try {
+    const tx = db.transaction(() => {
+      for (const r of rules) {
+        const id = Number(r.id);
+        if (!id) continue;
+        const brand = db.prepare('SELECT id FROM brands WHERE id = ?').get(id);
+        if (!brand) continue;
+        const excluded = r.promo_excluded ? 1 : 0;
+        let minPrice = null;
+        if (!excluded) {
+          const raw = r.promo_min_price_usd;
+          if (raw !== '' && raw != null) {
+            minPrice = Math.round(Number(raw) * 100) / 100;
+            if (!Number.isFinite(minPrice) || minPrice <= 0) {
+              throw new Error('El precio mínimo debe ser un número mayor a 0.');
+            }
+          }
+        }
+        update.run(minPrice, excluded, id);
+      }
+    });
+    tx();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Error al guardar reglas.' });
+  }
+});
+
 app.get('/api/products', (req, res) => {
   const { category, search, size, brand_id } = req.query;
   const pageNum  = parseInt(req.query.page);
@@ -1344,52 +1400,61 @@ function normalizePhoneKey(phone) {
  * cart: array de { id, price, qty }
  * Una vez por teléfono en BD.
  */
-// Marcas con piso de precio: nunca se venden por debajo de este monto (USD), aunque un código dé menos.
-const GOLDEN_FLOOR_USD = 350;
-
-function getGoldenFloorIds() {
+// Reglas de descuento por marca (configurables en admin → Descuentos).
+function getBrandPromoProductSets() {
+  const excludedIds = new Set();
+  const floorPrices = {};
   try {
-    const rows = db.prepare(`
-      SELECT p.id FROM products p
-      LEFT JOIN brands b ON b.id = p.brand_id
-      WHERE LOWER(b.name) LIKE '%golden%'
-         OR LOWER(p.name) LIKE '%golden goose%'
+    const brands = db.prepare(`
+      SELECT id, promo_min_price_usd, promo_excluded
+      FROM brands
+      WHERE promo_excluded = 1 OR promo_min_price_usd IS NOT NULL
     `).all();
-    return new Set(rows.map(r => Number(r.id)));
-  } catch { return new Set(); }
-}
-
-// Philippe Model: el cupón no aplica (ni en checkout ni en precio mostrado).
-function getPhilippeExcludedIds() {
-  try {
-    const rows = db.prepare(`
-      SELECT p.id FROM products p
-      LEFT JOIN brands b ON b.id = p.brand_id
-      WHERE LOWER(b.name) LIKE '%philippe%'
-         OR LOWER(p.name) LIKE '%philippe model%'
-    `).all();
-    return new Set(rows.map(r => Number(r.id)));
-  } catch { return new Set(); }
+    const productsByBrand = db.prepare('SELECT id FROM products WHERE brand_id = ?');
+    for (const b of brands) {
+      const products = productsByBrand.all(b.id);
+      for (const p of products) {
+        const pid = Number(p.id);
+        if (b.promo_excluded) excludedIds.add(pid);
+        else if (b.promo_min_price_usd != null) {
+          floorPrices[pid] = Number(b.promo_min_price_usd);
+        }
+      }
+    }
+  } catch (_) { /* ignore */ }
+  return { excludedIds, floorPrices };
 }
 
 function mergePromoExcludedIds(promoExcluded = []) {
+  const { excludedIds: brandExcluded } = getBrandPromoProductSets();
   const ids = new Set((promoExcluded || []).map(Number).filter(Boolean));
-  for (const id of getPhilippeExcludedIds()) ids.add(id);
+  for (const id of brandExcluded) ids.add(id);
   return [...ids];
 }
 
-// Subtotal con descuento aplicando exclusiones y piso de precio por marca (Golden $350).
-// Misma fórmula exacta que el cliente, para que el total validado coincida.
-function computeDiscountedSubtotal(cart, percent, excludedIds, floorIds) {
+function buildPromoClientPayload(promoRow) {
+  const { floorPrices } = getBrandPromoProductSets();
+  return {
+    code:               promoRow.code,
+    percent:            promoRow.percent,
+    excludedProductIds: mergePromoExcludedIds(JSON.parse(promoRow.excluded_product_ids || '[]')),
+    floorProductPrices: floorPrices,
+  };
+}
+
+// Subtotal con descuento aplicando exclusiones y piso de precio por producto/marca.
+function computeDiscountedSubtotal(cart, percent, excludedIds, floorPrices) {
   let subtotal = 0;
   for (const i of cart) {
     const unit = Number(i.price);
     const qty  = Number(i.qty);
+    const pid  = Number(i.id);
     let lineUnit = unit;
-    if (!excludedIds.includes(Number(i.id))) {
+    if (!excludedIds.includes(pid)) {
       lineUnit = unit * (100 - percent) / 100;
-      if (floorIds.has(Number(i.id))) {
-        lineUnit = Math.max(lineUnit, Math.min(unit, GOLDEN_FLOOR_USD));
+      const floor = floorPrices[pid];
+      if (floor != null && Number.isFinite(floor) && floor > 0) {
+        lineUnit = Math.max(lineUnit, Math.min(unit, floor));
       }
     }
     subtotal += lineUnit * qty;
@@ -1421,9 +1486,9 @@ function applyPromoCalziani(cart, promoCodeRaw, phone) {
   }
 
   const excludedIds = mergePromoExcludedIds(JSON.parse(promo.excluded_product_ids || '[]'));
-  const floorIds = getGoldenFloorIds();
+  const { floorPrices } = getBrandPromoProductSets();
   const { percent } = promo;
-  const discountedSubtotal = computeDiscountedSubtotal(cart, percent, excludedIds, floorIds);
+  const discountedSubtotal = computeDiscountedSubtotal(cart, percent, excludedIds, floorPrices);
   return { ok: true, discountedSubtotal, redeem: true, phoneKey, code, percent };
 }
 
@@ -1439,14 +1504,7 @@ app.get('/api/promos/active', (req, res) => {
         AND (expires_at IS NULL OR expires_at > ?)
       ORDER BY percent DESC
     `).all(now);
-    const floorIds = [...getGoldenFloorIds()];
-    res.json(promos.map(p => ({
-      code:               p.code,
-      percent:            p.percent,
-      excludedProductIds: mergePromoExcludedIds(JSON.parse(p.excluded_product_ids || '[]')),
-      floorProductIds:    floorIds,
-      floorAmount:        GOLDEN_FLOOR_USD,
-    })));
+    res.json(promos.map(p => buildPromoClientPayload(p)));
   } catch (e) {
     res.json([]);
   }
@@ -1462,12 +1520,7 @@ app.post('/api/promo/validate', (req, res) => {
     return res.status(400).json({ error: `El código ${code} ha expirado.` });
   }
 
-  const excludedProductIds = mergePromoExcludedIds(JSON.parse(promo.excluded_product_ids || '[]'));
-  res.json({
-    ok: true, code, percent: promo.percent, excludedProductIds,
-    floorProductIds: [...getGoldenFloorIds()],
-    floorAmount: GOLDEN_FLOOR_USD,
-  });
+  res.json({ ok: true, ...buildPromoClientPayload(promo) });
 });
 
 // ─── Admin: promo codes CRUD ───────────────────────────────────────────────────
