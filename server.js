@@ -455,18 +455,22 @@ app.get('/api/products', (req, res) => {
   const limitNum = parseInt(req.query.limit) || 12;
   const paginate = !isNaN(pageNum) && pageNum >= 1;
 
-  let query = 'SELECT * FROM products';
+  let query = `
+    SELECT p.*, b.name AS brand_name
+    FROM products p
+    LEFT JOIN brands b ON b.id = p.brand_id
+  `;
   const params = [];
   const conditions = [];
 
-  if (category && category !== 'all') { conditions.push('category = ?'); params.push(category); }
-  if (brand_id && brand_id !== 'all') { conditions.push('brand_id = ?'); params.push(Number(brand_id)); }
+  if (category && category !== 'all') { conditions.push('p.category = ?'); params.push(category); }
+  if (brand_id && brand_id !== 'all') { conditions.push('p.brand_id = ?'); params.push(Number(brand_id)); }
   if (search && search.trim()) {
-    conditions.push('(name LIKE ? OR description LIKE ?)');
+    conditions.push('(p.name LIKE ? OR p.description LIKE ?)');
     params.push(`%${search.trim()}%`, `%${search.trim()}%`);
   }
   if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
-  query += ' ORDER BY created_at DESC';
+  query += ' ORDER BY p.created_at DESC';
 
   try {
     let products = db.prepare(query).all(...params);
@@ -1342,15 +1346,36 @@ function normalizePhoneKey(phone) {
  */
 // Marcas con piso de precio: nunca se venden por debajo de este monto (USD), aunque un código dé menos.
 const GOLDEN_FLOOR_USD = 350;
+
 function getGoldenFloorIds() {
   try {
     const rows = db.prepare(`
       SELECT p.id FROM products p
-      JOIN brands b ON b.id = p.brand_id
+      LEFT JOIN brands b ON b.id = p.brand_id
       WHERE LOWER(b.name) LIKE '%golden%'
+         OR LOWER(p.name) LIKE '%golden goose%'
     `).all();
     return new Set(rows.map(r => Number(r.id)));
   } catch { return new Set(); }
+}
+
+// Philippe Model: el cupón no aplica (ni en checkout ni en precio mostrado).
+function getPhilippeExcludedIds() {
+  try {
+    const rows = db.prepare(`
+      SELECT p.id FROM products p
+      LEFT JOIN brands b ON b.id = p.brand_id
+      WHERE LOWER(b.name) LIKE '%philippe%'
+         OR LOWER(p.name) LIKE '%philippe model%'
+    `).all();
+    return new Set(rows.map(r => Number(r.id)));
+  } catch { return new Set(); }
+}
+
+function mergePromoExcludedIds(promoExcluded = []) {
+  const ids = new Set((promoExcluded || []).map(Number).filter(Boolean));
+  for (const id of getPhilippeExcludedIds()) ids.add(id);
+  return [...ids];
 }
 
 // Subtotal con descuento aplicando exclusiones y piso de precio por marca (Golden $350).
@@ -1395,7 +1420,7 @@ function applyPromoCalziani(cart, promoCodeRaw, phone) {
     return { ok: false, error: 'Este código ya fue utilizado con este número de teléfono.' };
   }
 
-  const excludedIds = JSON.parse(promo.excluded_product_ids || '[]').map(Number);
+  const excludedIds = mergePromoExcludedIds(JSON.parse(promo.excluded_product_ids || '[]'));
   const floorIds = getGoldenFloorIds();
   const { percent } = promo;
   const discountedSubtotal = computeDiscountedSubtotal(cart, percent, excludedIds, floorIds);
@@ -1418,7 +1443,7 @@ app.get('/api/promos/active', (req, res) => {
     res.json(promos.map(p => ({
       code:               p.code,
       percent:            p.percent,
-      excludedProductIds: JSON.parse(p.excluded_product_ids || '[]').map(Number),
+      excludedProductIds: mergePromoExcludedIds(JSON.parse(p.excluded_product_ids || '[]')),
       floorProductIds:    floorIds,
       floorAmount:        GOLDEN_FLOOR_USD,
     })));
@@ -1437,7 +1462,7 @@ app.post('/api/promo/validate', (req, res) => {
     return res.status(400).json({ error: `El código ${code} ha expirado.` });
   }
 
-  const excludedProductIds = JSON.parse(promo.excluded_product_ids || '[]').map(Number);
+  const excludedProductIds = mergePromoExcludedIds(JSON.parse(promo.excluded_product_ids || '[]'));
   res.json({
     ok: true, code, percent: promo.percent, excludedProductIds,
     floorProductIds: [...getGoldenFloorIds()],

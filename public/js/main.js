@@ -15,6 +15,34 @@
   let searchTimer        = null;
   let _bestAvailablePromo = null; // best active promo from server (for card badges)
 
+  const GOLDEN_FLOOR_USD = 350;
+
+  function isGoldenProduct(p) {
+    if (!p) return false;
+    if (p.brand_name && /golden/i.test(p.brand_name)) return true;
+    return /golden goose/i.test(p.name || '');
+  }
+
+  function isPhilippeProduct(p) {
+    if (!p) return false;
+    if (p.brand_name && /philippe/i.test(p.brand_name)) return true;
+    return /philippe model/i.test(p.name || '');
+  }
+
+  function promoUnitAfterDiscount(unitPrice, percent, item, floorIds, floorAmount) {
+    let after = unitPrice * (100 - percent) / 100;
+    const floorAmt = Number(floorAmount) || GOLDEN_FLOOR_USD;
+    const needsFloor = (floorIds || []).map(Number).includes(Number(item.id)) || isGoldenProduct(item);
+    if (needsFloor && floorAmt > 0) {
+      after = Math.max(after, Math.min(unitPrice, floorAmt));
+    }
+    return after;
+  }
+
+  function isPromoExcludedProduct(item, excludedIds) {
+    return (excludedIds || []).map(Number).includes(Number(item.id)) || isPhilippeProduct(item);
+  }
+
   // ─── Translations ─────────────────────────────────────────────────────────────
   const T = {
     es: {
@@ -564,7 +592,7 @@
     const _promoData    = activePromoData();
     const _excludedIds  = _promoData ? (_promoData.excludedProductIds || []).map(Number) : [];
     cartItems.innerHTML = cart.map(item => {
-      const excluded = _promoData && _excludedIds.includes(Number(item.id));
+      const excluded = _promoData && isPromoExcludedProduct(item, _excludedIds);
       return `
       <li class="cart-item">
         <div class="cart-item__img">
@@ -746,11 +774,8 @@
           const unit = Number(i.price);
           const qty  = Number(i.qty);
           let lineUnit = unit;
-          if (!excludedIds.includes(Number(i.id))) {
-            lineUnit = unit * (100 - promoPct) / 100;
-            if (floorIds.includes(Number(i.id)) && floorAmount > 0) {
-              lineUnit = Math.max(lineUnit, Math.min(unit, floorAmount));
-            }
+          if (!isPromoExcludedProduct(i, excludedIds)) {
+            lineUnit = promoUnitAfterDiscount(unit, promoPct, i, floorIds, floorAmount);
           }
           return s + lineUnit * qty;
         }, 0) * 100) / 100
@@ -1032,19 +1057,15 @@
       const sl       = stockLabel(avail);
       const fav      = isFav(p.id);
 
-      // Coupon eligibility
-      const basePrice     = isOffer ? p.price : p.price; // price after any compare_price offer
+      // Coupon eligibility (Philippe excluido; Golden con piso $350)
+      const basePrice = p.price;
       let priceAfterCoupon = 0;
       let couponAmt        = 0;
-      let promoEligible    = _promo && !_promoExcIds.includes(Number(p.id));
+      let promoEligible    = _promo && !isPromoExcludedProduct(p, _promoExcIds);
       if (promoEligible) {
-        priceAfterCoupon = Math.round((basePrice * (100 - _promo.percent) / 100) * 100) / 100;
-        // Piso de precio por marca (Golden $350): el cupón no puede bajar de ese monto.
-        if (_promoFloorIds.includes(Number(p.id)) && _promoFloorAmt > 0) {
-          priceAfterCoupon = Math.max(priceAfterCoupon, Math.min(basePrice, _promoFloorAmt));
-        }
+        priceAfterCoupon = Math.round(promoUnitAfterDiscount(basePrice, _promo.percent, p, _promoFloorIds, _promoFloorAmt) * 100) / 100;
         couponAmt = Math.round((basePrice - priceAfterCoupon) * 100) / 100;
-        if (couponAmt <= 0) promoEligible = false; // piso alcanzado: sin descuento que mostrar
+        if (couponAmt <= 0) promoEligible = false;
       }
 
       const imgHtml = p.cover
