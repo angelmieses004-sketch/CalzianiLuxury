@@ -96,7 +96,7 @@
   }
   </script>
 
-  <link rel="stylesheet" href="/css/style.css?v=20260426g" />
+  <link rel="stylesheet" href="/css/style.css?v=20260620" />
   <link rel="icon" href="/img/587730407_17843809347618797_3290323688225420457_n.jpg" />
 
   <!-- Meta Pixel Code -->
@@ -433,11 +433,79 @@
 
   <!-- HERO -->
   <section class="hero">
+    <div class="hero__overlay"></div>
     <div class="hero__content">
       <p class="hero__eyebrow" data-i18n="hero_eyebrow">NUEVA COLECCIÓN</p>
       <h1 class="hero__title">CALZIANI</h1>
       <p class="hero__sub" data-i18n="hero_sub">LUXURY IN EACH STEP.</p>
-      <a href="#products" class="hero__cta" data-i18n="hero_cta">Explorar colección</a>
+      <div class="hero__actions">
+        <a href="#products" class="hero__cta" data-i18n="hero_cta">Explorar colección</a>
+        <a href="#products" class="hero__cta hero__cta--ghost" data-cat-click="calzado">Calzado</a>
+      </div>
+    </div>
+    <div class="hero__scroll-hint">
+      <span></span>
+    </div>
+  </section>
+
+  <!-- TRUST STRIP -->
+  <section class="trust-strip">
+    <div class="trust-strip__inner">
+      <div class="trust-strip__item">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        <div>
+          <strong>Envío Mundial</strong>
+          <span>Gratis en pedidos +$150</span>
+        </div>
+      </div>
+      <div class="trust-strip__item">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <div>
+          <strong>Pago 100% Seguro</strong>
+          <span>SSL · 3D Secure · AZUL</span>
+        </div>
+      </div>
+      <div class="trust-strip__item">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <div>
+          <strong>Tracking en Tiempo Real</strong>
+          <span>Seguí tu pedido al instante</span>
+        </div>
+      </div>
+      <div class="trust-strip__item">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+        <div>
+          <strong>Productos Auténticos</strong>
+          <span>Marcas certificadas</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CATEGORY SHOWCASE -->
+  <section class="cat-showcase">
+    <div class="cat-showcase__inner">
+      <button class="cat-card" data-cat-click="calzado">
+        <div class="cat-card__icon">
+          <svg width="32" height="32" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 44c0 0 8-4 14-4s10 3 16 3 14-4 22-4v4c0 2-2 4-4 4H10c-2.2 0-4-1.8-4-4v0z"/><path d="M20 40v-6c0-4 4-8 10-10l8-3c4-1.5 8-1 12 1l4 2"/><path d="M6 48h52"/></svg>
+        </div>
+        <p class="cat-card__label">Calzado</p>
+        <span class="cat-card__cta">Ver colección →</span>
+      </button>
+      <button class="cat-card" data-cat-click="ropa">
+        <div class="cat-card__icon">
+          <svg width="32" height="32" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 8l-14 8 6 8 6-4v28h24V20l6 4 6-8-14-8c0 0-4 6-10 6S22 8 22 8z"/></svg>
+        </div>
+        <p class="cat-card__label">Ropa</p>
+        <span class="cat-card__cta">Ver colección →</span>
+      </button>
+      <button class="cat-card" data-cat-click="accesorio">
+        <div class="cat-card__icon">
+          <svg width="32" height="32" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="8" y="20" width="48" height="32" rx="4"/><path d="M20 20v-4a12 12 0 0 1 24 0v4"/><circle cx="32" cy="36" r="4"/></svg>
+        </div>
+        <p class="cat-card__label">Accesorios</p>
+        <span class="cat-card__cta">Ver colección →</span>
+      </button>
     </div>
   </section>
 
@@ -484,13 +552,13 @@
   <section class="sale-banner" id="saleBanner">
     <div class="sale-banner__inner">
       <div class="sale-banner__text">
-        <span class="sale-badge-big">50% OFF</span>
+        <span class="sale-badge-big">DROPS</span>
         <div>
-          <p class="sale-banner__title" data-i18n="sale_title">OFERTAS DE TEMPORADA</p>
-          <p class="sale-banner__sub" data-i18n="sale_sub">Aprovecha los mejores precios en productos seleccionados</p>
+          <p class="sale-banner__title" data-i18n="sale_title">SELECCIÓN ESPECIAL</p>
+          <p class="sale-banner__sub" data-i18n="sale_sub">Piezas cuidadosamente seleccionadas a precios exclusivos</p>
         </div>
       </div>
-      <button class="sale-banner__btn" id="saleBannerBtn" data-i18n="sale_cta">Ver ofertas</button>
+      <button class="sale-banner__btn" id="saleBannerBtn" data-i18n="sale_cta">Ver selección</button>
     </div>
   </section>
 
@@ -505,6 +573,17 @@
       </div>
     </div>
   </section>
+
+  <!-- SOCIAL PROOF BAR -->
+  <div class="proof-bar">
+    <div class="proof-bar__inner">
+      <div class="proof-bar__stars">★★★★★</div>
+      <span class="proof-bar__text"><strong>4.9</strong> · +300 clientes satisfechos</span>
+      <span class="proof-bar__sep">·</span>
+      <span class="proof-bar__tag">Golden Goose · Lacoste · Polo Ralph Lauren</span>
+      <button type="button" class="proof-bar__btn" data-trust-open>Ver reseñas →</button>
+    </div>
+  </div>
 
   <!-- PRODUCTS -->
   <main class="main" id="products">
@@ -529,6 +608,22 @@
     </div>
   </main>
 
+  <!-- NEWSLETTER -->
+  <section class="newsletter-section">
+    <div class="newsletter-inner">
+      <div class="newsletter-text">
+        <p class="newsletter-eyebrow">ACCESO EXCLUSIVO</p>
+        <h2 class="newsletter-title">Sé el primero en ver los nuevos drops</h2>
+        <p class="newsletter-sub">Ofertas exclusivas, nuevas llegadas y contenido para miembros. Sin spam.</p>
+      </div>
+      <form class="newsletter-form" id="newsletterForm">
+        <input type="email" class="newsletter-input" id="newsletterEmail" placeholder="Tu correo electrónico" autocomplete="email" required />
+        <button type="submit" class="newsletter-btn">Suscribirme</button>
+      </form>
+      <p class="newsletter-success hidden" id="newsletterSuccess">¡Listo! Te avisamos con los próximos drops.</p>
+    </div>
+  </section>
+
   <!-- TRUST / SOCIAL PROOF -->
   <section class="trust-banner" aria-label="Confianza Calziani">
     <div class="trust-banner__inner">
@@ -541,35 +636,50 @@
 
   <!-- FOOTER -->
   <footer class="footer">
-    <div class="footer__inner">
-      <span class="footer__brand">CALZIANI</span>
-      <div class="footer__contact">
-        <a class="footer__contact-link" href="https://www.instagram.com/calziani.luxury?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" target="_blank" rel="noopener">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
-          @calziani.luxury
-        </a>
-        <a class="footer__contact-link" href="tel:+18093076122">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 12a19.79 19.79 0 0 1-3-8.59A2 2 0 0 1 3.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          +1 809 307-6122
-        </a>
+    <div class="footer__top">
+      <div class="footer__col footer__col--brand">
+        <span class="footer__brand">CALZIANI</span>
+        <p class="footer__tagline">Moda luxury accesible.<br>Envío a todo el mundo.</p>
+        <div class="footer__social">
+          <a class="footer__social-link" href="https://www.instagram.com/calziani.luxury?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" target="_blank" rel="noopener" aria-label="Instagram">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          </a>
+          <a class="footer__social-link" href="https://wa.me/18093076122" target="_blank" rel="noopener" aria-label="WhatsApp">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+          </a>
+        </div>
       </div>
-      <span class="footer__copy" data-i18n="footer_copy">&copy; 2026 All rights reserved.</span>
+      <div class="footer__col">
+        <p class="footer__col-title">Ayuda</p>
+        <nav class="footer__col-links">
+          <a href="/politicas#devoluciones">Devoluciones y reembolsos</a>
+          <a href="/politicas#entrega">Entrega y envío</a>
+          <a href="/politicas#servicio-cliente">Servicio al cliente</a>
+          <a href="/politicas#seguridad">Seguridad</a>
+        </nav>
+      </div>
+      <div class="footer__col">
+        <p class="footer__col-title">Contacto</p>
+        <div class="footer__col-links">
+          <a href="mailto:info@calziani.com">info@calziani.com</a>
+          <a href="tel:+18093076122">+1 809 307-6122</a>
+          <a href="https://wa.me/18093076122" target="_blank" rel="noopener">WhatsApp</a>
+          <span style="color:#888;font-size:0.78rem">Santiago, Rep. Dominicana</span>
+        </div>
+      </div>
     </div>
     <div class="footer__legal">
-      <nav class="footer__links" aria-label="Políticas">
-        <a class="footer__link" href="/politicas#devoluciones">Devoluciones y reembolsos</a>
-        <a class="footer__link" href="/politicas#entrega">Entrega y envío</a>
-        <a class="footer__link" href="/politicas#privacidad">Privacidad</a>
-        <a class="footer__link" href="/politicas#seguridad">Seguridad</a>
-        <a class="footer__link" href="/politicas#servicio-cliente">Servicio al cliente</a>
-      </nav>
+      <span class="footer__copy" data-i18n="footer_copy">&copy; 2026 All rights reserved.</span>
       <div class="footer__pay" aria-label="Medios de pago aceptados y autenticación segura">
         <img src="/img/payment/visa.png" alt="Visa" />
         <img src="/img/payment/mastercard.png" alt="Mastercard" />
-        <span class="footer__pay-3ds"><img src="/img/payment/visa-secure.png" alt="Visa Secure (Verified by Visa)" /></span>
+        <span class="footer__pay-3ds"><img src="/img/payment/visa-secure.png" alt="Visa Secure" /></span>
         <span class="footer__pay-3ds"><img src="/img/payment/mastercard-idcheck.png" alt="Mastercard ID Check" /></span>
       </div>
-      <p class="footer__address">Calziani · Los Jardines Metropolitanos, Santiago de los Caballeros, República Dominicana · info@calziani.com · +1 809 307-6122</p>
+      <nav class="footer__links" aria-label="Legal">
+        <a class="footer__link" href="/politicas#privacidad">Privacidad</a>
+        <a class="footer__link" href="/politicas#entrega">Envío</a>
+      </nav>
     </div>
   </footer>
 
@@ -874,5 +984,38 @@
   <script src="/js/pixel.js"></script>
   <script src="/js/trust.js"></script>
   <script src="/js/main.js"></script>
+
+  <script>
+    // Category showcase + hero ghost CTA clicks
+    document.querySelectorAll('[data-cat-click]').forEach(el => {
+      el.addEventListener('click', () => {
+        const cat = el.dataset.catClick;
+        const btn = document.querySelector(`.nav-btn[data-cat="${cat}"]`);
+        if (btn) {
+          btn.click();
+          document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+
+    // Newsletter form
+    document.getElementById('newsletterForm')?.addEventListener('submit', async e => {
+      e.preventDefault();
+      const email = document.getElementById('newsletterEmail').value.trim();
+      const btn = e.target.querySelector('.newsletter-btn');
+      if (!email) return;
+      btn.disabled = true;
+      btn.textContent = '...';
+      try {
+        await fetch('/api/newsletter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+      } catch (_) { /* non-critical */ }
+      document.getElementById('newsletterForm').classList.add('hidden');
+      document.getElementById('newsletterSuccess').classList.remove('hidden');
+    });
+  </script>
 </body>
 </html>
