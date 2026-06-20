@@ -1313,6 +1313,7 @@
   function setUserUI(user) {
     currentUser = user;
     if (!user) {
+      window.CalzianiPixel?.clearAdvancedMatching();
       headerUser.innerHTML = `<button class="user-btn" id="loginTrigger">Iniciar sesión</button>`;
       document.getElementById('loginTrigger')?.addEventListener('click', () => openAuthModal('login'));
       return;

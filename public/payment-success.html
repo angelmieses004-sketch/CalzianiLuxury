@@ -53,7 +53,7 @@
   t.src=v;s=b.getElementsByTagName(e)[0];
   s.parentNode.insertBefore(t,s)}(window, document,'script',
   'https://connect.facebook.net/en_US/fbevents.js');
-  fbq('init', '1453546619905126');
+  (function(){var am={};try{am=JSON.parse(localStorage.getItem('calziani_fbq_am')||'{}')}catch(e){}fbq('init','1453546619905126',am)})();
   fbq('track', 'PageView');
   </script>
   <noscript><img height="1" width="1" style="display:none"
@@ -163,8 +163,9 @@
       // Fire Purchase exactly once per session
       if (purchaseRaw && !sessionStorage.getItem('fbq_purchase_fired')) {
         sessionStorage.setItem('fbq_purchase_fired', '1');
-        if (purchaseRaw.name || purchaseRaw.phone) {
+        if (purchaseRaw.email || purchaseRaw.name || purchaseRaw.phone) {
           window.CalzianiPixel?.setAdvancedMatching({
+            email: purchaseRaw.email   || '',
             name:  purchaseRaw.name    || '',
             phone: purchaseRaw.phone   || '',
           });

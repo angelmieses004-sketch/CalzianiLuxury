@@ -104,12 +104,17 @@
         if (parts.length > 1) raw.ln = parts.slice(1).join(' ').toLowerCase();
       }
       if (!Object.keys(raw).length) return;
+      try { localStorage.setItem('calziani_fbq_am', JSON.stringify(raw)); } catch (e) { /* ignore */ }
       console.log('[CalzianiPixel] ▶ setAdvancedMatching', Object.keys(raw));
       try {
         fbq('init', PIXEL_ID, raw);
       } catch (e) {
         console.error('[CalzianiPixel] setAdvancedMatching error:', e);
       }
+    },
+
+    clearAdvancedMatching() {
+      try { localStorage.removeItem('calziani_fbq_am'); } catch (e) { /* ignore */ }
     },
 
     // ViewContent — una vez por carga de página de producto
