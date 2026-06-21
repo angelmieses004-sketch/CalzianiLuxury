@@ -3162,3 +3162,83 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 .footer__inner { display: none; }
 .footer__address { display: none; }
 .footer__contact { display: none; }
+
+/* ─── Mobile overrides for new components (must come after base styles) ──────── */
+@media (max-width: 768px) {
+  /* Trust strip: 2×2 grid */
+  .trust-strip__inner {
+    grid-template-columns: 1fr 1fr !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+  .trust-strip__item {
+    padding: 0.9rem 1rem !important;
+    gap: 0.55rem !important;
+    border-bottom: 1px solid var(--gray-200) !important;
+  }
+  .trust-strip__item:nth-child(odd)  { border-right: 1px solid var(--gray-200); }
+  .trust-strip__item:nth-child(even) { border-right: none; }
+  .trust-strip__item svg    { width: 18px; height: 18px; flex-shrink: 0; }
+  .trust-strip__item strong { font-size: 0.73rem; }
+  .trust-strip__item span   { font-size: 0.67rem; }
+
+  /* Cat showcase: horizontal scroll */
+  .cat-showcase__inner {
+    padding: 1.25rem !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    gap: 0.75rem !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .cat-showcase__inner::-webkit-scrollbar { display: none; }
+  .cat-card {
+    flex: 0 0 44vw !important;
+    min-width: 140px !important;
+    max-width: 170px !important;
+    padding: 1.4rem 0.85rem !important;
+    gap: 0.6rem !important;
+  }
+  .cat-card__icon { width: 44px !important; height: 44px !important; }
+  .cat-card__label { font-size: 0.8rem !important; }
+  .cat-card__cta { font-size: 0.68rem !important; }
+
+  /* Proof bar: minimal */
+  .proof-bar__inner { padding: 0.6rem 1.25rem !important; flex-wrap: nowrap; gap: 0.5rem !important; }
+  .proof-bar__sep, .proof-bar__tag { display: none !important; }
+  .proof-bar__stars { font-size: 0.82rem; }
+  .proof-bar__text  { font-size: 0.75rem; }
+  .proof-bar__btn   { margin-left: auto; font-size: 0.72rem; }
+
+  /* Newsletter */
+  .newsletter-section { padding: 2.5rem 1.25rem !important; }
+  .newsletter-inner { flex-direction: column !important; gap: 1.5rem !important; }
+  .newsletter-title { font-size: 1.1rem !important; }
+  .newsletter-form  { width: 100% !important; flex-direction: row !important; }
+  .newsletter-input { font-size: 0.82rem !important; }
+
+  /* Footer */
+  .footer__top { grid-template-columns: 1fr !important; padding: 2.5rem 1.25rem 2rem !important; gap: 1.75rem !important; }
+  .footer__col--brand { padding-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .footer__legal { padding: 1rem 1.25rem !important; flex-direction: column !important; align-items: flex-start !important; gap: 0.75rem !important; }
+}
+
+@media (max-width: 480px) {
+  /* Trust strip: hide subtitle text, keep icon + title only */
+  .trust-strip__item span { display: none !important; }
+  .trust-strip__item strong { font-size: 0.7rem !important; }
+  .trust-strip__item { padding: 0.75rem 0.75rem !important; }
+
+  /* Hero */
+  .hero__title { font-size: clamp(2rem, 14vw, 3rem) !important; letter-spacing: 0.1em !important; }
+  .hero__actions { margin-top: 1.75rem !important; }
+  .hero__cta { font-size: 0.7rem !important; padding: 0.78rem 1rem !important; max-width: 100% !important; }
+
+  /* Cat cards slightly wider on tiny phones */
+  .cat-card { flex: 0 0 56vw !important; }
+
+  /* Newsletter: stack input and button */
+  .newsletter-form { flex-direction: column !important; }
+  .newsletter-input { border-right: 1px solid rgba(255,255,255,0.15) !important; border-radius: 2px !important; border-bottom: none; }
+  .newsletter-btn   { border-radius: 2px !important; width: 100% !important; }
+}
