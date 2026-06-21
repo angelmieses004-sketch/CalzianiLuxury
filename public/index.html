@@ -96,7 +96,7 @@
   }
   </script>
 
-  <link rel="stylesheet" href="/css/style.css?v=20260621b" />
+  <link rel="stylesheet" href="/css/style.css?v=20260621c" />
   <link rel="icon" href="/img/587730407_17843809347618797_3290323688225420457_n.jpg" />
 
   <!-- Meta Pixel Code -->
@@ -149,6 +149,9 @@
         <button class="lang-btn" id="langBtn" aria-label="Cambiar idioma">
           <span id="langLabel">ES</span>
         </button>
+        <button class="trk-header-btn" id="trkHeaderBtn" aria-label="Rastrear pedido" title="Rastrear pedido">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </button>
         <button class="cart-btn" id="cartBtn" aria-label="Carrito">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
           <span class="cart-badge hidden" id="cartBadge">0</span>
@@ -170,6 +173,28 @@
 
     </div>
   </header>
+
+  <!-- TRACKING DROPDOWN -->
+  <div id="trkDropdown" class="trk-dropdown" aria-hidden="true">
+    <div class="trk-dropdown__inner">
+      <p class="trk-dropdown__label">SEGUIMIENTO DE PEDIDO</p>
+      <div class="trk-dropdown__form">
+        <input type="text" id="trkHdrInput" class="trk-dropdown__input"
+          placeholder="Ej: CLZ-A1B2C3" maxlength="20" autocomplete="off" spellcheck="false" />
+        <button type="button" id="trkHdrBtn" class="trk-dropdown__btn">Rastrear</button>
+      </div>
+      <p class="trk-dropdown__error hidden" id="trkHdrError"></p>
+      <div class="trk-dropdown__result hidden" id="trkHdrResult">
+        <div class="trk-dropdown__result-head">
+          <span class="trk-dropdown__order-num" id="trkHdrOrderNum"></span>
+          <a class="trk-dropdown__full-link" id="trkHdrFullLink" href="#" target="_blank" rel="noopener">Ver detalle →</a>
+        </div>
+        <div class="trk-dropdown__steps" id="trkHdrSteps"></div>
+        <div class="trk-dropdown__notes hidden" id="trkHdrNotes"></div>
+      </div>
+    </div>
+  </div>
+  <div id="trkDropdownBackdrop" class="trk-dropdown__backdrop hidden"></div>
 
   <!-- CART DRAWER -->
   <div id="cartDrawer" class="cart-drawer" aria-hidden="true">
@@ -509,58 +534,12 @@
     </div>
   </section>
 
-  <!-- TRACKING SECTION -->
-  <section class="trk-home-section" id="trkHomeSection">
-    <div class="trk-home-inner">
-      <div class="trk-home-left">
-        <p class="trk-home-eyebrow">SEGUIMIENTO DE PEDIDO</p>
-        <h2 class="trk-home-title">¿Dónde está tu pedido?</h2>
-        <p class="trk-home-sub">Ingresá tu código de tracking para ver el estado de tu envío en tiempo real.</p>
-      </div>
-      <div class="trk-home-right">
-        <div class="trk-home-form">
-          <input
-            type="text"
-            id="trkHomeInput"
-            class="trk-home-input"
-            placeholder="Ej: CLZ-A1B2C3"
-            maxlength="20"
-            autocomplete="off"
-            spellcheck="false"
-          />
-          <button type="button" id="trkHomeBtn" class="trk-home-btn">Rastrear</button>
-        </div>
-        <p class="trk-home-error hidden" id="trkHomeError"></p>
-
-        <!-- Inline result -->
-        <div class="trk-home-result hidden" id="trkHomeResult">
-          <div class="trk-home-result__head">
-            <div>
-              <span class="trk-home-result__label">Pedido</span>
-              <span class="trk-home-result__num" id="thrOrderNum"></span>
-            </div>
-            <a class="trk-home-result__link" id="thrFullLink" href="#" target="_blank" rel="noopener">Ver detalle completo →</a>
-          </div>
-          <div class="trk-home-steps" id="thrSteps"></div>
-          <div class="trk-home-notes hidden" id="thrNotes"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- SALE BANNER -->
-  <section class="sale-banner" id="saleBanner">
-    <div class="sale-banner__inner">
-      <div class="sale-banner__text">
-        <span class="sale-badge-big">DROPS</span>
-        <div>
-          <p class="sale-banner__title" data-i18n="sale_title">SELECCIÓN ESPECIAL</p>
-          <p class="sale-banner__sub" data-i18n="sale_sub">Piezas cuidadosamente seleccionadas a precios exclusivos</p>
-        </div>
-      </div>
-      <button class="sale-banner__btn" id="saleBannerBtn" data-i18n="sale_cta">Ver selección</button>
-    </div>
-  </section>
+  <!-- SALE STRIP (thin) -->
+  <div class="sale-strip" id="saleBanner">
+    <span class="sale-strip__badge">DROPS</span>
+    <span class="sale-strip__text" data-i18n="sale_title">Selección especial — piezas a precios exclusivos</span>
+    <button class="sale-strip__btn" id="saleBannerBtn" data-i18n="sale_cta">Ver →</button>
+  </div>
 
   <!-- SALE PRODUCTS SECTION -->
   <section class="sale-section hidden" id="saleSection">
@@ -718,187 +697,12 @@
   </div>
 
   <style>
-    /* ── Tracking home section ── */
-    .trk-home-section {
-      background: #111;
-      color: #fff;
-      padding: 56px 32px;
-    }
-    .trk-home-inner {
-      max-width: 1080px;
-      margin: 0 auto;
-      display: flex;
-      align-items: flex-start;
-      gap: 48px;
-      flex-wrap: wrap;
-    }
-    .trk-home-left { flex: 1 1 260px; }
-    .trk-home-right { flex: 2 1 340px; }
-    .trk-home-eyebrow {
-      font-size: 0.68rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: #aaa;
-      margin-bottom: 10px;
-    }
-    .trk-home-title {
-      font-size: 1.55rem;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      margin-bottom: 10px;
-      line-height: 1.2;
-    }
-    .trk-home-sub {
-      font-size: 0.85rem;
-      color: #bbb;
-      line-height: 1.6;
-    }
-    .trk-home-form {
-      display: flex;
-      gap: 0;
-      margin-bottom: 10px;
-    }
-    .trk-home-input {
-      flex: 1;
-      padding: 13px 16px;
-      font-size: 0.95rem;
-      font-family: monospace;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      border: 1px solid #444;
-      border-right: none;
-      border-radius: 4px 0 0 4px;
-      background: #1e1e1e;
-      color: #fff;
-      outline: none;
-      transition: border-color .15s;
-    }
-    .trk-home-input::placeholder { text-transform: none; letter-spacing: 0; color: #666; }
-    .trk-home-input:focus { border-color: #fff; }
-    .trk-home-btn {
-      padding: 13px 22px;
-      background: #fff;
-      color: #111;
-      border: none;
-      border-radius: 0 4px 4px 0;
-      font-size: 0.82rem;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: opacity .15s;
-    }
-    .trk-home-btn:hover { opacity: .85; }
-    .trk-home-btn:disabled { opacity: .5; cursor: not-allowed; }
-    .trk-home-error {
-      font-size: 0.8rem;
-      color: #f87171;
-      margin-bottom: 8px;
-    }
-    .trk-home-error.hidden { display: none; }
-
-    /* result card */
-    .trk-home-result {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 18px 20px;
-      margin-top: 4px;
-    }
-    .trk-home-result.hidden { display: none; }
-    .trk-home-result__head {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 18px;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .trk-home-result__label { font-size: 0.68rem; color: #888; text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 2px; }
-    .trk-home-result__num { font-size: 0.9rem; font-weight: 700; font-family: monospace; letter-spacing: 0.06em; color: #fff; }
-    .trk-home-result__link { font-size: 0.75rem; color: #aaa; text-decoration: underline; white-space: nowrap; align-self: center; }
-    .trk-home-result__link:hover { color: #fff; }
-
-    /* mini timeline */
-    .trk-home-steps {
-      display: flex;
-      gap: 0;
-      position: relative;
-    }
-    .trk-home-steps::before {
-      content: '';
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      right: 10px;
-      height: 2px;
-      background: #333;
-      z-index: 0;
-    }
-    .trk-home-step {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      position: relative;
-      z-index: 1;
-    }
-    .trk-home-step__dot {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: #333;
-      border: 2px solid #111;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 9px;
-      color: #fff;
-      flex-shrink: 0;
-    }
-    .trk-home-step--done .trk-home-step__dot  { background: #16a34a; }
-    .trk-home-step--current .trk-home-step__dot {
-      background: #fff;
-      color: #111;
-      box-shadow: 0 0 0 3px #ffffff30;
-      animation: trk-pulse 1.8s ease-in-out infinite;
-    }
-    @keyframes trk-pulse {
-      0%,100% { box-shadow: 0 0 0 3px #ffffff30; }
-      50%      { box-shadow: 0 0 0 6px #ffffff10; }
-    }
-    .trk-home-step__label {
-      font-size: 0.6rem;
-      text-align: center;
-      color: #555;
-      line-height: 1.3;
-      max-width: 64px;
-    }
-    .trk-home-step--done .trk-home-step__label    { color: #4ade80; }
-    .trk-home-step--current .trk-home-step__label { color: #fff; font-weight: 700; }
-
-    .trk-home-notes {
-      margin-top: 12px;
-      padding: 10px 12px;
-      background: #0f2e1a;
-      border-left: 3px solid #16a34a;
-      border-radius: 4px;
-      font-size: 0.78rem;
-      color: #86efac;
-      line-height: 1.5;
-    }
-    .trk-home-notes.hidden { display: none; }
-
-    @media (max-width: 600px) {
-      .trk-home-section { padding: 40px 20px; }
-      .trk-home-inner { gap: 24px; }
-      .trk-home-step__label { font-size: 0.52rem; }
-      .trk-home-title { font-size: 1.2rem; }
-    }
+    /* ── Tracking dropdown ── */
+    .trk-dropdown--open { display: block !important; }
   </style>
 
   <script>
+    /* ── Tracking header dropdown ── */
     (function () {
       const STAGES = [
         { key: 'received',              label: 'Recibido' },
@@ -908,10 +712,31 @@
         { key: 'delivered',             label: 'Entregado' },
       ];
 
-      const input   = document.getElementById('trkHomeInput');
-      const btn     = document.getElementById('trkHomeBtn');
-      const errEl   = document.getElementById('trkHomeError');
-      const result  = document.getElementById('trkHomeResult');
+      const triggerBtn = document.getElementById('trkHeaderBtn');
+      const dropdown   = document.getElementById('trkDropdown');
+      const backdrop   = document.getElementById('trkDropdownBackdrop');
+      const input      = document.getElementById('trkHdrInput');
+      const searchBtn  = document.getElementById('trkHdrBtn');
+      const errEl      = document.getElementById('trkHdrError');
+      const result     = document.getElementById('trkHdrResult');
+
+      function open()  {
+        dropdown.classList.add('trk-dropdown--open');
+        dropdown.setAttribute('aria-hidden', 'false');
+        backdrop.classList.remove('hidden');
+        input.focus();
+        triggerBtn.classList.add('active');
+      }
+      function close() {
+        dropdown.classList.remove('trk-dropdown--open');
+        dropdown.setAttribute('aria-hidden', 'true');
+        backdrop.classList.add('hidden');
+        triggerBtn.classList.remove('active');
+      }
+
+      triggerBtn.addEventListener('click', e => { e.stopPropagation(); dropdown.classList.contains('trk-dropdown--open') ? close() : open(); });
+      backdrop.addEventListener('click', close);
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
 
       function showErr(msg) { errEl.textContent = msg; errEl.classList.remove('hidden'); result.classList.add('hidden'); }
       function clearErr()   { errEl.classList.add('hidden'); }
@@ -920,44 +745,36 @@
         const code = (input.value || '').trim().toUpperCase();
         if (!code) { showErr('Ingresá tu código de tracking.'); return; }
         clearErr();
-        btn.disabled = true;
-        btn.textContent = '...';
+        searchBtn.disabled = true;
+        searchBtn.textContent = '...';
         try {
           const res  = await fetch('/api/tracking/' + encodeURIComponent(code));
           const data = await res.json();
           if (!res.ok) { showErr(data.error || 'Código no encontrado.'); return; }
 
-          document.getElementById('thrOrderNum').textContent = data.order_number || '—';
-          const link = document.getElementById('thrFullLink');
+          document.getElementById('trkHdrOrderNum').textContent = 'Pedido ' + (data.order_number || '—');
+          const link = document.getElementById('trkHdrFullLink');
           link.href = '/tracking?code=' + encodeURIComponent(code);
 
           const curIdx  = STAGES.findIndex(s => s.key === data.tracking_stage);
-          const stepsEl = document.getElementById('thrSteps');
-          stepsEl.innerHTML = STAGES.map((s, i) => {
-            const done    = i < curIdx;
-            const current = i === curIdx;
-            const cls     = done ? 'trk-home-step--done' : current ? 'trk-home-step--current' : '';
-            const dot     = done ? '✓' : current ? '●' : '';
-            return `<div class="trk-home-step ${cls}">
-              <div class="trk-home-step__dot">${dot}</div>
-              <span class="trk-home-step__label">${s.label}</span>
-            </div>`;
+          document.getElementById('trkHdrSteps').innerHTML = STAGES.map((s, i) => {
+            const done = i < curIdx, cur = i === curIdx;
+            const cls  = done ? 'tds--done' : cur ? 'tds--cur' : '';
+            return `<div class="tds ${cls}"><div class="tds__dot">${done ? '✓' : cur ? '●' : ''}</div><span>${s.label}</span></div>`;
           }).join('');
 
-          const notesEl = document.getElementById('thrNotes');
-          if (data.tracking_notes && data.tracking_notes.trim()) {
-            notesEl.textContent = '📋 ' + data.tracking_notes.trim();
+          const notesEl = document.getElementById('trkHdrNotes');
+          if (data.tracking_notes?.trim()) {
+            notesEl.textContent = data.tracking_notes.trim();
             notesEl.classList.remove('hidden');
-          } else {
-            notesEl.classList.add('hidden');
-          }
+          } else { notesEl.classList.add('hidden'); }
 
           result.classList.remove('hidden');
-        } catch { showErr('Error de conexión. Intentá nuevamente.'); }
-        finally { btn.disabled = false; btn.textContent = 'Rastrear'; }
+        } catch { showErr('Error de conexión.'); }
+        finally { searchBtn.disabled = false; searchBtn.textContent = 'Rastrear'; }
       }
 
-      btn.addEventListener('click', doSearch);
+      searchBtn.addEventListener('click', doSearch);
       input.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
     })();
   </script>
