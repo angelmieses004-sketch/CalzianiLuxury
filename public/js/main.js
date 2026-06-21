@@ -1157,19 +1157,57 @@
         }
       }
 
+      const activeName = currentBrand === 'all' ? null : brands.find(b => b.id === currentBrand)?.name;
       brandFilterBtns.innerHTML =
         `<button class="brand-btn${currentBrand === 'all' ? ' active' : ''}" data-brand="all">Todas</button>` +
-        brands.map(b => `<button class="brand-btn${b.id === currentBrand ? ' active' : ''}" data-brand="${b.id}">${escHtml(b.name)}</button>`).join('');
+        `<div class="brand-dropdown-wrap">
+          <button class="brand-btn brand-dropdown-trigger${currentBrand !== 'all' ? ' active' : ''}" id="brandDropdownTrigger">
+            ${activeName ? escHtml(activeName) : 'Marcas'} <span class="brand-dropdown-arrow">▾</span>
+          </button>
+          <div class="brand-dropdown-menu hidden" id="brandDropdownMenu">
+            ${brands.map(b => `<button class="brand-dropdown-item${b.id === currentBrand ? ' active' : ''}" data-brand="${b.id}">${escHtml(b.name)}</button>`).join('')}
+          </div>
+        </div>`;
       brandFilterBar.classList.remove('hidden');
 
       if (currentBrand !== 'all') {
         fetchProducts(currentCategory, searchInput.value, currentSize, 1, currentBrand);
       }
 
+      const trigger = document.getElementById('brandDropdownTrigger');
+      const menu    = document.getElementById('brandDropdownMenu');
+
+      trigger.addEventListener('click', e => {
+        e.stopPropagation();
+        menu.classList.toggle('hidden');
+        trigger.classList.toggle('open', !menu.classList.contains('hidden'));
+      });
+      document.addEventListener('click', () => {
+        menu.classList.add('hidden');
+        trigger.classList.remove('open');
+      });
+
       brandFilterBtns.addEventListener('click', e => {
-        const btn = e.target.closest('.brand-btn');
-        if (!btn) return;
-        currentBrand = btn.dataset.brand === 'all' ? 'all' : Number(btn.dataset.brand);
+        const allBtn = e.target.closest('.brand-btn[data-brand="all"]');
+        if (allBtn) {
+          currentBrand = 'all';
+          trigger.innerHTML = 'Marcas <span class="brand-dropdown-arrow">▾</span>';
+          trigger.classList.remove('active');
+          menu.querySelectorAll('.brand-dropdown-item').forEach(i => i.classList.remove('active'));
+          currentProductsPage = 1;
+          updateBrandFilterActive();
+          fetchProducts(currentCategory, searchInput.value, currentSize, 1, currentBrand);
+          return;
+        }
+        const item = e.target.closest('.brand-dropdown-item');
+        if (!item) return;
+        currentBrand = Number(item.dataset.brand);
+        const name = item.textContent.trim();
+        trigger.innerHTML = escHtml(name) + ' <span class="brand-dropdown-arrow">▾</span>';
+        trigger.classList.add('active');
+        menu.querySelectorAll('.brand-dropdown-item').forEach(i => i.classList.toggle('active', Number(i.dataset.brand) === currentBrand));
+        menu.classList.add('hidden');
+        trigger.classList.remove('open');
         currentProductsPage = 1;
         updateBrandFilterActive();
         fetchProducts(currentCategory, searchInput.value, currentSize, 1, currentBrand);
