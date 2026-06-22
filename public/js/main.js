@@ -123,7 +123,7 @@
         <ol class="terms-modal__list">
           <li><strong>Productos y precios.</strong> Las fotos y descripciones son orientativas. Los precios se muestran en USD con referencia en DOP; pueden corregirse errores evidentes antes de confirmar el pedido.</li>
           <li><strong>Pedidos.</strong> La compra queda sujeta a disponibilidad de stock y a la verificación del pago (transferencia u otro medio indicado).</li>
-          <li><strong>Envío.</strong> Los plazos son estimados y pueden variar por destino o causas ajenas a Calziani. El costo de envío es el indicado al momento del checkout.</li>
+          <li><strong>Envío.</strong> El tiempo estimado de entrega es de <strong>15 a 22 días laborables</strong> desde la confirmación del pedido. Los plazos pueden variar según el destino, el proceso aduanal o causas ajenas a Calziani. El costo de envío es el indicado al momento del checkout.</li>
           <li><strong>Devoluciones y reembolsos.</strong> Solo habrá reembolso o cambio por <strong>falla o defecto del producto</strong> (error de fábrica o envío incorrecto/dañado), previa revisión por Calziani. No proceden devoluciones por arrepentimiento, talla elegida incorrectamente o uso del artículo. Plazo para reclamos: <strong>7 días corridos</strong> desde la recepción, producto sin uso y con evidencia (fotos).</li>
           <li><strong>Privacidad.</strong> Tus datos de envío y contacto se usan solo para gestionar el pedido y comunicarnos contigo.</li>
           <li><strong>Legislación.</strong> Rigen las leyes de la República Dominicana.</li>
@@ -134,7 +134,7 @@
         <ol class="terms-modal__list">
           <li><strong>Products and pricing.</strong> Photos and descriptions are indicative. Prices are shown in USD with a DOP reference; obvious errors may be corrected before the order is confirmed.</li>
           <li><strong>Orders.</strong> Your purchase is subject to stock availability and payment verification (bank transfer or other method shown at checkout).</li>
-          <li><strong>Shipping.</strong> Delivery times are estimates and may vary by destination or events outside Calziani’s control. Shipping cost is as stated at checkout.</li>
+          <li><strong>Shipping.</strong> Estimated delivery time is <strong>15 to 22 business days</strong> from order confirmation. Timelines may vary by destination, customs processing, or events outside Calziani’s control. Shipping cost is as stated at checkout.</li>
           <li><strong>Returns and refunds.</strong> Refunds or exchanges apply <strong>only for product failure or defect</strong> (manufacturing fault or wrong/damaged shipment), after review by Calziani. No refunds for change of mind, wrong size chosen by the customer, or used items. Claims: <strong>7 calendar days</strong> from receipt, unworn item with proof (photos).</li>
           <li><strong>Privacy.</strong> Shipping and contact details are used only to fulfil your order and contact you about it.</li>
           <li><strong>Governing law.</strong> The laws of the Dominican Republic apply.</li>
