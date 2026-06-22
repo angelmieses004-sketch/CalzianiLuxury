@@ -13,7 +13,7 @@
   let currentSize        = 'all';
   let currentBrand       = 'all';
   let searchTimer        = null;
-  let _bestAvailablePromo = null; // best active promo from server (for card badges)
+
 
   function promoFloorForProduct(productId, floorProductPrices) {
     const floor = (floorProductPrices || {})[Number(productId)];
@@ -1026,10 +1026,8 @@
       return;
     }
 
-    // Coupon badges: use applied promo first, then fall back to best available promo
-    const _appliedPromo = activePromoData();
-    const _bestPromo    = _appliedPromo || _bestAvailablePromo;
-    const _promo        = _bestPromo;
+    // Coupon badge only shows when the user has actually applied a valid code
+    const _promo = activePromoData();
     const _promoExcIds  = _promo ? (_promo.excludedProductIds || []).map(Number) : [];
     const _promoFloors  = _promo ? (_promo.floorProductPrices || {}) : {};
 
@@ -1510,17 +1508,22 @@
   renderSizeFilter(currentCategory);
   initBrandFilter();
 
-  // Load best available promo for card badges (non-blocking)
-  fetch('/api/promos/active')
-    .then(r => r.ok ? r.json() : [])
-    .then(promos => {
-      if (promos.length) {
-        _bestAvailablePromo = promos[0]; // already sorted by percent DESC
-        // Re-render if products are already loaded
-        if (lastProducts.length) renderProducts(lastProducts, lastProducts.length, currentProductsPage, null);
+  // Revalidate any stored promo code — clear it if the code was disabled or expired on the server
+  (async () => {
+    const stored = activePromoData();
+    if (!stored?.code) return;
+    try {
+      const res = await fetch('/api/promo/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: stored.code }),
+      });
+      if (!res.ok) {
+        setPromoData(null);
+        updateCartUI();
       }
-    })
-    .catch(() => {});
+    } catch { /* keep stored data on network error */ }
+  })();
 
   loadCurrencyRates().then(() => {
     fetchProducts();
