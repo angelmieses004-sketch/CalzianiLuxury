@@ -87,7 +87,7 @@
         "telephone": "+18093076122",
         "description": "Tienda de moda luxury — calzado, ropa y accesorios premium",
         "priceRange": "$$",
-        "currenciesAccepted": "USD, DOP, EUR",
+        "currenciesAccepted": "DOP",
         "paymentAccepted": "Tarjeta de crédito, Transferencia bancaria, WhatsApp",
         "hasMap": "https://www.instagram.com/calziani.luxury",
         "sameAs": ["https://www.instagram.com/calziani.luxury"]
@@ -142,9 +142,9 @@
           <span class="fav-header-count hidden" id="favHeaderCount">0</span>
         </a>
         <select class="currency-select" id="currencySelect" aria-label="Moneda">
+          <option value="DOP">RD$ DOP</option>
           <option value="USD">$ USD</option>
           <option value="EUR">€ EUR</option>
-          <option value="DOP">RD$ DOP</option>
         </select>
         <button class="lang-btn" id="langBtn" aria-label="Cambiar idioma">
           <span id="langLabel">ES</span>
@@ -564,6 +564,16 @@
     </div>
   </div>
 
+  <!-- SELECCIÓN DE CALZIANI -->
+  <section class="seleccion-section hidden" id="seleccionSection">
+    <div class="main">
+      <div class="section-header">
+        <h2 class="seleccion-section__title">— Selección de Calziani —</h2>
+      </div>
+      <div id="seleccionGrid" class="product-grid"></div>
+    </div>
+  </section>
+
   <!-- PRODUCTS -->
   <main class="main" id="products">
     <div class="section-header">
@@ -684,7 +694,7 @@
       <div class="terms-modal__body" id="termsModalBody">
         <p class="terms-modal__lead">Al comprar en Calziani aceptás las siguientes condiciones:</p>
         <ol class="terms-modal__list">
-          <li><strong>Productos y precios.</strong> Las fotos y descripciones son orientativas. Los precios se muestran en USD con referencia en DOP; pueden corregirse errores evidentes antes de confirmar el pedido.</li>
+          <li><strong>Productos y precios.</strong> Las fotos y descripciones son orientativas. Los precios se expresan en pesos dominicanos (RD$ / DOP), moneda oficial de la transacción; pueden mostrarse equivalencias en USD o EUR como referencia. Pueden corregirse errores evidentes antes de confirmar el pedido.</li>
           <li><strong>Pedidos.</strong> La compra queda sujeta a disponibilidad de stock y a la verificación del pago (transferencia u otro medio indicado).</li>
           <li><strong>Envío.</strong> El tiempo estimado de entrega es de <strong>15 a 22 días laborables</strong> desde la confirmación del pedido. Los plazos pueden variar según el destino, el proceso aduanal o causas ajenas a Calziani. El costo de envío es el indicado al momento del checkout.</li>
           <li><strong>Devoluciones y reembolsos.</strong> Solo habrá reembolso o cambio por <strong>falla o defecto del producto</strong> (error de fábrica o envío incorrecto/dañado), previa revisión por Calziani. No proceden devoluciones por arrepentimiento, talla elegida incorrectamente o uso del artículo. Plazo para reclamos: <strong>7 días corridos</strong> desde la recepción, producto sin uso y con evidencia (fotos).</li>

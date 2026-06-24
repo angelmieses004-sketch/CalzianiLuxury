@@ -182,6 +182,16 @@ try { db.exec(`ALTER TABLE customer_photos ADD COLUMN review_text TEXT DEFAULT '
 try { db.exec(`ALTER TABLE customer_photos ADD COLUMN reviewer_name TEXT DEFAULT ''`); } catch (_) {}
 try { db.exec(`ALTER TABLE customer_photos ADD COLUMN user_id INTEGER REFERENCES users(id)`); } catch (_) {}
 
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS featured_products (
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      position   INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (product_id)
+    );
+  `);
+} catch (_) {}
+
 const existingAdmin = db.prepare('SELECT id FROM admin WHERE id = 1').get();
 if (!existingAdmin) {
   db.prepare("INSERT INTO admin (id, username, password) VALUES (1, 'admin', 'calziani2024')").run();

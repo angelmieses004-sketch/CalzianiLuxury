@@ -171,6 +171,9 @@
         <button class="sidebar__link" data-view="reviews">
           <span class="sidebar__icon">★</span> Reseñas
         </button>
+        <button class="sidebar__link" data-view="seleccion">
+          <span class="sidebar__icon">◆</span> Selección
+        </button>
         <button class="sidebar__link" data-view="settings">
           <span class="sidebar__icon">⚙</span> Ajustes
         </button>
@@ -544,6 +547,29 @@
           <p class="view__subtitle">Editá opiniones de clientes, fechas, fotos y visibilidad en la ficha de producto.</p>
         </div>
         <div id="reviewsAdminList" class="reviews-admin-wrap">
+          <div class="table-loading">Cargando...</div>
+        </div>
+      </section>
+
+      <!-- VIEW: Selección de Calziani -->
+      <section id="viewSeleccion" class="view">
+        <div class="view__header">
+          <h2 class="view__title">Selección de Calziani</h2>
+          <p class="view__subtitle">Elegí los productos que aparecerán primero en la tienda, en el orden que prefieras. Arrastrá para reordenar.</p>
+        </div>
+
+        <!-- Search to add products -->
+        <div class="seleccion-search-wrap">
+          <input type="text" id="seleccionSearch" placeholder="Buscar producto para agregar..." class="admin-search" style="max-width:380px" />
+          <div id="seleccionSearchResults" class="seleccion-search-results hidden"></div>
+        </div>
+
+        <!-- Current selection -->
+        <div class="seleccion-list-header">
+          <span id="seleccionCount" class="seleccion-count">0 productos seleccionados</span>
+          <button class="btn btn-primary" id="seleccionSaveBtn" style="margin-left:auto">Guardar selección</button>
+        </div>
+        <div id="seleccionList" class="seleccion-list">
           <div class="table-loading">Cargando...</div>
         </div>
       </section>

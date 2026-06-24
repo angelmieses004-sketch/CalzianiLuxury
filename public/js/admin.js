@@ -313,6 +313,7 @@
     if (name === 'brands')   loadBrandsView();
     if (name === 'customers') loadCustomersView();
     if (name === 'reviews')   loadReviewsView();
+    if (name === 'seleccion') loadSeleccion();
   }
 
   function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -2130,6 +2131,172 @@
   document.addEventListener('click', e => {
     if (!pfExcludeDropdown?.contains(e.target) && e.target !== pfExcludeSearch) {
       pfExcludeDropdown?.classList.add('hidden');
+    }
+  });
+
+  // ─── Selección de Calziani ────────────────────────────────────────────────────
+  let seleccionItems = []; // { id, name, price, cover, category }
+  let seleccionSearchTimer = null;
+  let seleccionDragIdx = null;
+
+  const seleccionList      = document.getElementById('seleccionList');
+  const seleccionCount     = document.getElementById('seleccionCount');
+  const seleccionSaveBtn   = document.getElementById('seleccionSaveBtn');
+  const seleccionSearch    = document.getElementById('seleccionSearch');
+  const seleccionResults   = document.getElementById('seleccionSearchResults');
+
+  async function loadSeleccion() {
+    if (!seleccionList) return;
+    seleccionList.innerHTML = '<div class="table-loading">Cargando...</div>';
+    try {
+      const res  = await fetch('/api/featured', { headers: authHeaders() });
+      const data = await res.json();
+      seleccionItems = data.map(p => ({
+        id: p.id, name: p.name, price: p.price,
+        cover: p.cover, category: p.category,
+      }));
+      renderSeleccionList();
+    } catch {
+      seleccionList.innerHTML = '<div class="table-loading">Error al cargar.</div>';
+    }
+  }
+
+  function renderSeleccionList() {
+    if (!seleccionList) return;
+    seleccionCount.textContent = `${seleccionItems.length} producto${seleccionItems.length !== 1 ? 's' : ''} seleccionado${seleccionItems.length !== 1 ? 's' : ''}`;
+    if (!seleccionItems.length) {
+      seleccionList.innerHTML = '<div class="seleccion-empty">No hay productos en la selección. Buscá arriba para agregar.</div>';
+      return;
+    }
+    seleccionList.innerHTML = seleccionItems.map((p, i) => {
+      const imgHtml = p.cover
+        ? `<img src="/img/products/${escHtml(p.cover)}" class="seleccion-item-img" alt="${escHtml(p.name)}" />`
+        : `<div class="seleccion-item-img"></div>`;
+      return `<div class="seleccion-item" draggable="true" data-idx="${i}">
+        <span class="seleccion-drag-handle" title="Arrastrar para reordenar">⠿</span>
+        <span class="seleccion-item-pos">${i + 1}</span>
+        ${imgHtml}
+        <div class="seleccion-item-info">
+          <div class="seleccion-item-name">${escHtml(p.name)}</div>
+          <div class="seleccion-item-meta">${CAT_LABELS[p.category] || p.category} · ${formatPrice(p.price)}</div>
+        </div>
+        <button class="seleccion-item-remove" data-idx="${i}" title="Quitar de la selección">✕</button>
+      </div>`;
+    }).join('');
+
+    seleccionList.querySelectorAll('.seleccion-item-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.dataset.idx);
+        seleccionItems.splice(idx, 1);
+        renderSeleccionList();
+      });
+    });
+
+    // Drag-and-drop reorder
+    seleccionList.querySelectorAll('.seleccion-item').forEach(el => {
+      el.addEventListener('dragstart', e => {
+        seleccionDragIdx = Number(el.dataset.idx);
+        el.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      el.addEventListener('dragend', () => {
+        el.classList.remove('dragging');
+        seleccionList.querySelectorAll('.seleccion-item').forEach(i => i.classList.remove('drag-over'));
+      });
+      el.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        seleccionList.querySelectorAll('.seleccion-item').forEach(i => i.classList.remove('drag-over'));
+        el.classList.add('drag-over');
+      });
+      el.addEventListener('drop', e => {
+        e.preventDefault();
+        const targetIdx = Number(el.dataset.idx);
+        if (seleccionDragIdx === null || seleccionDragIdx === targetIdx) return;
+        const [moved] = seleccionItems.splice(seleccionDragIdx, 1);
+        seleccionItems.splice(targetIdx, 0, moved);
+        seleccionDragIdx = null;
+        renderSeleccionList();
+      });
+    });
+  }
+
+  async function seleccionSearchProducts(q) {
+    if (!q.trim()) { seleccionResults?.classList.add('hidden'); return; }
+    try {
+      const res  = await fetch(`/api/products?search=${encodeURIComponent(q)}&limit=30`, { headers: authHeaders() });
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : (data.products || []);
+      if (!seleccionResults) return;
+      if (!list.length) {
+        seleccionResults.innerHTML = '<div class="seleccion-result-item" style="color:#aaa">Sin resultados</div>';
+        seleccionResults.classList.remove('hidden');
+        return;
+      }
+      seleccionResults.innerHTML = list.map(p => {
+        const alreadyIn = seleccionItems.some(s => s.id === p.id);
+        const imgHtml = p.cover
+          ? `<img src="/img/products/${escHtml(p.cover)}" class="seleccion-result-img" alt="" />`
+          : `<div class="seleccion-result-img"></div>`;
+        return `<div class="seleccion-result-item${alreadyIn ? ' already-added' : ''}" data-id="${p.id}" data-name="${escHtml(p.name)}" data-price="${p.price}" data-cover="${escHtml(p.cover || '')}" data-cat="${escHtml(p.category)}">
+          ${imgHtml}
+          <span class="seleccion-result-name">${escHtml(p.name)}</span>
+          <span class="seleccion-result-price">${formatPrice(p.price)}</span>
+          ${alreadyIn ? '<span class="seleccion-result-tag">ya agregado</span>' : ''}
+        </div>`;
+      }).join('');
+      seleccionResults.classList.remove('hidden');
+
+      seleccionResults.querySelectorAll('.seleccion-result-item:not(.already-added)').forEach(row => {
+        row.addEventListener('click', () => {
+          const item = {
+            id: Number(row.dataset.id),
+            name: row.dataset.name,
+            price: Number(row.dataset.price),
+            cover: row.dataset.cover || null,
+            category: row.dataset.cat,
+          };
+          if (!seleccionItems.some(s => s.id === item.id)) {
+            seleccionItems.push(item);
+            renderSeleccionList();
+          }
+          if (seleccionSearch) seleccionSearch.value = '';
+          seleccionResults?.classList.add('hidden');
+        });
+      });
+    } catch {
+      seleccionResults?.classList.add('hidden');
+    }
+  }
+
+  seleccionSearch?.addEventListener('input', () => {
+    clearTimeout(seleccionSearchTimer);
+    seleccionSearchTimer = setTimeout(() => seleccionSearchProducts(seleccionSearch.value), 320);
+  });
+
+  document.addEventListener('click', e => {
+    if (!seleccionResults?.contains(e.target) && e.target !== seleccionSearch) {
+      seleccionResults?.classList.add('hidden');
+    }
+  });
+
+  seleccionSaveBtn?.addEventListener('click', async () => {
+    seleccionSaveBtn.disabled = true;
+    seleccionSaveBtn.textContent = 'Guardando...';
+    try {
+      const res = await fetch('/api/admin/featured', {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ ids: seleccionItems.map(p => p.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Error al guardar.', true); return; }
+      showToast('Selección de Calziani guardada.');
+    } catch {
+      showToast('Error de conexión.', true);
+    } finally {
+      seleccionSaveBtn.disabled = false;
+      seleccionSaveBtn.textContent = 'Guardar selección';
     }
   });
 

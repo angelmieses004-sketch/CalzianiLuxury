@@ -202,7 +202,7 @@
 
   // ─── Currency ─────────────────────────────────────────────────────────────────
   let currencyRates = { USD: 1, EUR: 0.92, DOP: 59.48 };
-  let activeCurrency = localStorage.getItem('calziani_currency') || 'USD';
+  let activeCurrency = localStorage.getItem('calziani_currency') || 'DOP';
 
   const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', DOP: 'RD$' };
   const CURRENCY_LOCALES  = { USD: 'en-US', EUR: 'de-DE', DOP: 'es-DO' };
@@ -979,6 +979,85 @@
   const STOREFRONT_PER_PAGE = 12;
   let currentProductsPage = 1;
 
+  // ─── Selección de Calziani ───────────────────────────────────────────────────
+  async function loadSeleccionSection() {
+    const section = document.getElementById('seleccionSection');
+    const selGrid = document.getElementById('seleccionGrid');
+    if (!section || !selGrid) return;
+    try {
+      const res = await fetch('/api/featured');
+      if (!res.ok) return;
+      const products = await res.json();
+      if (!products.length) { section.classList.add('hidden'); return; }
+
+      const _promo     = activePromoData();
+      const _promoExcIds = _promo ? (_promo.excludedProductIds || []).map(Number) : [];
+      const _promoFloors = _promo ? (_promo.floorProductPrices || {}) : {};
+
+      selGrid.innerHTML = products.map(p => {
+        const isOffer  = p.compare_price && p.compare_price > p.price;
+        const discount = isOffer ? Math.round(Math.round((1 - p.price / p.compare_price) * 100) / 10) * 10 : 0;
+        const avail    = aggregateStock(p);
+        const sl       = stockLabel(avail);
+        const fav      = isFav(p.id);
+
+        let promoEligible = _promo && !isPromoExcludedProduct(p, _promoExcIds);
+        let priceAfterCoupon = 0, couponAmt = 0;
+        if (promoEligible) {
+          priceAfterCoupon = Math.round(promoUnitAfterDiscount(p.price, _promo.percent, p, _promoFloors) * 100) / 100;
+          couponAmt = Math.round((p.price - priceAfterCoupon) * 100) / 100;
+          if (couponAmt <= 0) promoEligible = false;
+        }
+
+        const imgHtml = p.cover
+          ? `<img src="/img/products/${escHtml(p.cover)}" alt="${escHtml(p.name)}" class="product-card__img" loading="lazy" />`
+          : `<div class="product-card__img-empty"><span>CALZIANI</span></div>`;
+        const badgeHtml = isOffer
+          ? `<span class="product-card__sale-badge">−${discount}%</span>`
+          : (sl.cls === 'out' ? `<span class="product-card__stock-badge out">${t('out_of_stock')}</span>` : '');
+        const priceHtml = isOffer
+          ? `<span class="pc-price pc-price--sale">${formatPrice(p.price)}</span><span class="pc-price-orig">${formatPrice(p.compare_price)}</span>`
+          : `<span class="pc-price">${formatPrice(p.price)}</span>`;
+        const couponHtml = promoEligible ? `
+          <div class="pc-coupon-block">
+            <span class="pc-coupon-badge">− ${formatPrice(couponAmt)} cupón</span>
+            <span class="pc-coupon-after">${formatPrice(priceAfterCoupon)} con cupón</span>
+          </div>` : '';
+
+        return `<div class="product-card-wrap">
+          <a class="product-card" href="/product/${p.id}" aria-label="Ver ${escHtml(p.name)}">
+            <div class="product-card__media">
+              ${imgHtml}${badgeHtml}
+              <button class="pc-fav-btn${fav ? ' active' : ''}" data-id="${p.id}" aria-label="Favorito" title="Favorito">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </button>
+            </div>
+            <div class="product-card__info">
+              <p class="pc-category">${CATEGORY_LABELS[p.category] || p.category}</p>
+              <h3 class="pc-name">${escHtml(p.name)}</h3>
+              <div class="pc-pricing">${priceHtml}</div>
+              ${couponHtml}
+              ${p.sizes?.length ? `<div class="pc-sizes">${p.sizes.map(s => `<span class="pc-size">${s}</span>`).join('')}</div>` : ''}
+            </div>
+          </a>
+        </div>`;
+      }).join('');
+
+      section.classList.remove('hidden');
+
+      selGrid.querySelectorAll('.pc-fav-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.preventDefault(); e.stopPropagation();
+          const id  = btn.dataset.id;
+          const now = toggleFav(id);
+          btn.classList.toggle('active', now);
+          btn.querySelector('svg').setAttribute('fill', now ? 'currentColor' : 'none');
+          updateFavHeaderCount();
+        });
+      });
+    } catch { /* silently skip */ }
+  }
+
   // ─── Fetch & render ─────────────────────────────────────────────────────────
   async function fetchProducts(category = 'all', search = '', size = 'all', page = currentProductsPage, brand = currentBrand) {
     currentProductsPage = page;
@@ -1528,6 +1607,7 @@
   loadCurrencyRates().then(() => {
     fetchProducts();
     loadSaleProducts();
+    loadSeleccionSection();
     updateCartUI();
   });
   initCurrencySelect();

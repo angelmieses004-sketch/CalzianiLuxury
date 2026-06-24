@@ -505,6 +505,51 @@ app.put('/api/admin/brands/promo-rules', requireAuth, (req, res) => {
   }
 });
 
+// ─── Featured (Selección de Calziani) ─────────────────────────────────────────
+app.get('/api/featured', (req, res) => {
+  try {
+    const rows = db.prepare(
+      `SELECT p.*, b.name AS brand_name
+       FROM featured_products f
+       JOIN products p ON p.id = f.product_id
+       LEFT JOIN brands b ON b.id = p.brand_id
+       ORDER BY f.position ASC`
+    ).all();
+    const products = rows.map(p => {
+      const firstImg = db.prepare(
+        'SELECT filename FROM product_images WHERE product_id = ? ORDER BY position ASC, id ASC LIMIT 1'
+      ).get(p.id);
+      return {
+        ...p,
+        sizes: JSON.parse(p.sizes || '[]'),
+        sizes_stock: JSON.parse(p.sizes_stock || '{}'),
+        cover: firstImg ? firstImg.filename : null,
+      };
+    });
+    res.json(products);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener selección.' });
+  }
+});
+
+app.put('/api/admin/featured', requireAuth, (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids)) return res.status(400).json({ error: 'ids debe ser un arreglo.' });
+  try {
+    const tx = db.transaction(() => {
+      db.prepare('DELETE FROM featured_products').run();
+      const ins = db.prepare('INSERT INTO featured_products (product_id, position) VALUES (?, ?)');
+      ids.forEach((id, i) => ins.run(Number(id), i));
+    });
+    tx();
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al guardar selección.' });
+  }
+});
+
 app.get('/api/products', (req, res) => {
   const { category, search, size, brand_id } = req.query;
   const pageNum  = parseInt(req.query.page);

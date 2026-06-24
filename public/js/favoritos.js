@@ -3,7 +3,7 @@
 
   // ─── Currency ─────────────────────────────────────────────────────────────────
   let currencyRates = { USD: 1, EUR: 0.92, DOP: 59.48 };
-  let activeCurrency = localStorage.getItem('calziani_currency') || 'USD';
+  let activeCurrency = localStorage.getItem('calziani_currency') || 'DOP';
   const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', DOP: 'RD$' };
   const CURRENCY_LOCALES  = { USD: 'en-US', EUR: 'de-DE', DOP: 'es-DO' };
   const CURRENCY_DECIMALS = { USD: 2, EUR: 2, DOP: 0 };
