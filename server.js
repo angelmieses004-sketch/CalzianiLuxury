@@ -2311,6 +2311,7 @@ app.get('/reset-password',   (req, res) => res.sendFile(path.join(__dirname, 'pu
 app.get('/politicas',        (req, res) => res.sendFile(path.join(__dirname, 'public', 'politicas.html')));
 app.get('/payment/success', (req, res) => res.sendFile(path.join(__dirname, 'public', 'payment-success.html')));
 app.get('/payment/cancel',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'payment-cancel.html')));
+app.get('/card-pending',    (req, res) => res.sendFile(path.join(__dirname, 'public', 'card-pending.html')));
 app.get('/{*splat}', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 app.listen(PORT, () => {
