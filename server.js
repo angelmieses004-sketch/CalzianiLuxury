@@ -1775,6 +1775,116 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
   }
 });
 
+// ─── Card link payment (manual) ───────────────────────────────────────────────
+app.post('/api/orders/card-link-submit', (req, res) => {
+  try {
+    const { cart, shipping, subtotal, shippingFee, total, promoCode } = req.body || {};
+    if (!Array.isArray(cart) || !cart.length) {
+      return res.status(400).json({ error: 'Carrito vacío.' });
+    }
+    const s = shipping || {};
+    if (!String(s.name || '').trim() || !String(s.phone || '').trim() || !String(s.country || '').trim()
+        || !String(s.province || '').trim() || !String(s.address || '').trim()) {
+      return res.status(400).json({ error: 'Datos de envío incompletos.' });
+    }
+    if (!isValidEmail(s.email)) {
+      return res.status(400).json({ error: 'Correo electrónico requerido para el link de pago.' });
+    }
+    const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
+    const fee = Number(shippingFee);
+    const shipFee = Number.isFinite(fee) && fee >= 0 ? fee : CHECKOUT_SHIPPING_USD;
+    if (Math.abs(shipFee - CHECKOUT_SHIPPING_USD) > 0.02) {
+      return res.status(400).json({ error: 'Costo de envío no válido.' });
+    }
+
+    const stockCheck = validateCartStock(cart);
+    if (!stockCheck.ok) return res.status(400).json({ error: stockCheck.error });
+
+    const promoRes = applyPromoCalziani(cart, promoCode, s.phone);
+    if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
+
+    const discountedSubtotal = promoRes.discountedSubtotal;
+    const totalCheck = Math.round((discountedSubtotal + shipFee) * 100) / 100;
+    const clientTotal = Number(total);
+    const clientSub = Number(subtotal);
+    if (!Number.isFinite(clientTotal) || Math.abs(totalCheck - clientTotal) > 0.02) {
+      return res.status(400).json({ error: 'Total no coincide.' });
+    }
+    if (!Number.isFinite(clientSub) || Math.abs(discountedSubtotal - clientSub) > 0.02) {
+      return res.status(400).json({ error: 'Subtotal no coincide.' });
+    }
+
+    const customerEmail = String(s.email).trim();
+    const orderNum = `CAL-C${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.toUpperCase();
+    const payload = {
+      cart,
+      shipping: {
+        name: String(s.name).trim(),
+        phone: String(s.phone).trim().replace(/\D/g, ''),
+        email: customerEmail,
+        country: String(s.country).trim(),
+        province: String(s.province).trim(),
+        address: String(s.address).trim(),
+      },
+      subtotal: discountedSubtotal,
+      subtotalBeforeDiscount: promoRes.redeem ? lineSubtotal : undefined,
+      promoCode: promoRes.redeem ? promoRes.code : undefined,
+      promoPercent: promoRes.redeem ? promoRes.percent : undefined,
+      shippingFee: shipFee,
+      total: totalCheck,
+      paymentMethod: 'card_link',
+    };
+    const userId = req.user?.id || null;
+    const trackingCode = uniqueTrackingCode();
+
+    const insertOrder = db.prepare(`
+      INSERT INTO orders (order_number, user_id, items_json, subtotal, itbis, total, status, customer_name, customer_email, tracking_code, tracking_stage)
+      VALUES (?, ?, ?, ?, 0, ?, 'pending_card_link', ?, ?, ?, 'received')
+    `);
+    const insertPromo = db.prepare(`
+      INSERT INTO promo_redemptions (promo_code, phone_key, order_number) VALUES (?, ?, ?)
+    `);
+
+    const tx = db.transaction(() => {
+      insertOrder.run(orderNum, userId, JSON.stringify(payload), discountedSubtotal, totalCheck,
+                      payload.shipping.name, customerEmail, trackingCode);
+      if (promoRes.redeem && promoRes.phoneKey) {
+        insertPromo.run(promoRes.code, promoRes.phoneKey, orderNum);
+      }
+    });
+    tx();
+
+    sendOrderReceiptEmail({
+      to: customerEmail,
+      order: {
+        orderNumber: orderNum,
+        trackingCode,
+        name: payload.shipping.name,
+        country: payload.shipping.country,
+        province: payload.shipping.province,
+        address: payload.shipping.address,
+        method: 'Tarjeta débito/crédito',
+        statusLabel: 'Pendiente — te enviaremos el link de pago por WhatsApp',
+        dateStr: new Date().toLocaleString('es-DO', { dateStyle: 'long', timeStyle: 'short' }),
+        items: cart.map(i => ({ name: i.name, size: i.size || '', qty: Number(i.qty) || 1, price: Number(i.price) })),
+        lineSubtotal,
+        discountAmt: promoRes.redeem ? Math.round((lineSubtotal - discountedSubtotal) * 100) / 100 : 0,
+        promoPct: promoRes.redeem ? promoRes.percent : 0,
+        shippingFee: shipFee,
+        total: totalCheck,
+      },
+    }).catch(() => {});
+
+    res.json({ ok: true, orderNumber: orderNum, trackingCode });
+  } catch (e) {
+    console.error('card-link-submit:', e);
+    if (String(e.message).includes('UNIQUE')) {
+      return res.status(409).json({ error: 'Reintentá en un momento.' });
+    }
+    res.status(500).json({ error: 'Error al guardar el pedido.' });
+  }
+});
+
 // ─── AZUL Payment Page ────────────────────────────────────────────────────────
 const AZUL_ENV  = process.env.AZUL_ENV === 'production' ? 'production' : 'sandbox';
 const AZUL_URL  = AZUL_ENV === 'production'
@@ -2051,7 +2161,7 @@ app.put('/api/admin/orders/:id', requireAuth, (req, res) => {
     address:  String(address         ?? prevShip.address  ?? '').trim(),
   };
 
-  const VALID_STATUSES = ['pending_transfer','pending_azul','pending_paypal','paid_paypal','paid','cancelled','manual'];
+  const VALID_STATUSES = ['pending_transfer','pending_azul','pending_paypal','paid_paypal','pending_card_link','paid','cancelled','manual'];
   const newStatus = VALID_STATUSES.includes(status) ? status : order.status;
 
   const newName = String(customer_name ?? '').trim() || order.customer_name;

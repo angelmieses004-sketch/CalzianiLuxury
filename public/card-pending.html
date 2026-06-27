@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pedido confirmado — Calziani</title>
+  <link rel="stylesheet" href="/css/style.css?v=20260426g" />
+  <link rel="icon" href="/img/587730407_17843809347618797_3290323688225420457_n.jpg" />
+  <style>
+    body { background: #fafafa; }
+
+    .cp-page {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 3rem 1.25rem 4rem;
+      text-align: center;
+    }
+
+    .cp-brand {
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      color: #111;
+      margin-bottom: 2rem;
+    }
+
+    .cp-title {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.4rem;
+    }
+
+    .cp-subtitle {
+      font-size: 1rem;
+      color: #333;
+      margin-bottom: 0.75rem;
+    }
+    .cp-subtitle strong { color: #111; }
+
+    .cp-notice {
+      font-size: 0.85rem;
+      color: #555;
+      margin-bottom: 0.4rem;
+      line-height: 1.6;
+    }
+    .cp-wa-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.82rem;
+      color: #16a34a;
+      font-weight: 600;
+      margin-bottom: 2rem;
+    }
+
+    .cp-time {
+      font-size: 0.75rem;
+      color: #aaa;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+
+    /* Info cards row */
+    .cp-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      text-align: left;
+    }
+    @media (max-width: 500px) {
+      .cp-cards { grid-template-columns: 1fr; }
+    }
+    .cp-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 1rem 1.1rem;
+      background: #fff;
+    }
+    .cp-card__label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 0.5rem;
+    }
+    .cp-card__val {
+      font-size: 0.83rem;
+      color: #111;
+      line-height: 1.6;
+    }
+    .cp-card__val strong { display: block; }
+
+    /* Order list */
+    .cp-section {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+      text-align: left;
+    }
+    .cp-section__head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1.25rem;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .cp-section__head h3 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #444;
+      margin: 0;
+    }
+
+    .cp-items { list-style: none; margin: 0; padding: 0; }
+    .cp-items li {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .cp-items li:last-child { border-bottom: none; }
+    .cp-item__img {
+      width: 52px;
+      height: 52px;
+      object-fit: cover;
+      border-radius: 4px;
+      background: #f3f4f6;
+      flex-shrink: 0;
+    }
+    .cp-item__info { flex: 1; }
+    .cp-item__name { font-size: 0.82rem; font-weight: 600; color: #111; }
+    .cp-item__meta { font-size: 0.72rem; color: #888; margin-top: 2px; }
+    .cp-item__price { font-size: 0.82rem; font-weight: 700; color: #111; white-space: nowrap; text-align: right; }
+    .cp-item__price span { display: block; font-size: 0.68rem; font-weight: 400; color: #aaa; }
+
+    /* Summary */
+    .cp-summary { padding: 0.85rem 1.25rem; }
+    .cp-summary__row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: #555;
+      padding: 3px 0;
+    }
+    .cp-summary__row.total {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #111;
+      border-top: 2px solid #111;
+      margin-top: 6px;
+      padding-top: 10px;
+    }
+    .cp-summary__row.total small {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 400;
+      color: #888;
+    }
+    .cp-summary__discount { color: #16a34a; }
+
+    .cp-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+    .cp-btn {
+      padding: 0.75rem 2rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-radius: 2px;
+      text-decoration: none;
+      display: inline-block;
+      cursor: pointer;
+      border: none;
+    }
+    .cp-btn-primary { background: #111; color: #fff; }
+    .cp-btn-primary:hover { opacity: 0.85; }
+    .cp-btn-secondary { border: 1px solid #e0e0e0; color: #111; background: #fff; }
+    .cp-btn-secondary:hover { background: #f5f5f5; }
+
+    @media print { .cp-actions { display: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="cp-page">
+    <div class="cp-brand">CALZIANI</div>
+
+    <h1 class="cp-title">¡Gracias!</h1>
+    <p class="cp-subtitle" id="cpSubtitle">Tu pedido ha sido registrado.</p>
+    <p class="cp-notice" id="cpNotice"></p>
+    <p class="cp-wa-note">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+      Te enviaremos el link de pago por WhatsApp en breve.
+    </p>
+
+    <p class="cp-time" id="cpTime">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </p>
+
+    <!-- Info cards -->
+    <div class="cp-cards" id="cpCards" hidden>
+      <div class="cp-card">
+        <p class="cp-card__label">Datos de envío</p>
+        <div class="cp-card__val" id="cpShipping"></div>
+      </div>
+      <div class="cp-card">
+        <p class="cp-card__label">Método de pago</p>
+        <div class="cp-card__val">
+          <strong>Tarjeta débito/crédito</strong>
+          Recibirás el link de pago por WhatsApp para completar tu compra de forma segura.
+        </div>
+      </div>
+    </div>
+
+    <!-- Order list -->
+    <div class="cp-section" id="cpOrderSection" hidden>
+      <div class="cp-section__head">
+        <h3>Lista de productos</h3>
+      </div>
+      <ul class="cp-items" id="cpItems"></ul>
+    </div>
+
+    <!-- Order summary -->
+    <div class="cp-section" id="cpSummarySection" hidden>
+      <div class="cp-section__head">
+        <h3>Resumen del pedido</h3>
+      </div>
+      <div class="cp-summary" id="cpSummary"></div>
+    </div>
+
+    <div class="cp-actions">
+      <a href="/" class="cp-btn cp-btn-primary">Seguir comprando</a>
+      <button type="button" onclick="window.print()" class="cp-btn cp-btn-secondary">Imprimir / Guardar</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const raw = JSON.parse(localStorage.getItem('calziani_card_pending') || 'null');
+      if (!raw) return;
+
+      const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+      const usd = n => 'US$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const dop = n => 'RD$' + Math.round(Number(n || 0) * (raw.dopRate || 59.48)).toLocaleString('es-DO');
+
+      // Header
+      if (raw.orderNumber) {
+        document.getElementById('cpSubtitle').innerHTML =
+          `Tu pedido <strong>#${esc(raw.orderNumber)}</strong> ha sido registrado.`;
+      }
+      if (raw.email) {
+        document.getElementById('cpNotice').textContent =
+          `Enviamos un comprobante de pedido a ${raw.email}.`;
+      }
+
+      // Time
+      const dt = raw.date ? new Date(raw.date) : new Date();
+      const timeEl = document.getElementById('cpTime');
+      timeEl.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Pedido realizado el ${dt.toLocaleString('es-DO', { dateStyle: 'long', timeStyle: 'short' })}`;
+
+      // Shipping card
+      const shipEl = document.getElementById('cpShipping');
+      shipEl.innerHTML = `
+        <strong>${esc(raw.name || '')}</strong>
+        ${esc(raw.address || '')}, ${esc(raw.province || '')}<br>
+        ${esc(raw.country || '')}<br>
+        ${raw.phone ? esc(raw.phone) : ''}
+      `;
+      document.getElementById('cpCards').hidden = false;
+
+      // Items
+      if (Array.isArray(raw.items) && raw.items.length) {
+        document.getElementById('cpItems').innerHTML = raw.items.map(i => `
+          <li>
+            ${i.cover ? `<img class="cp-item__img" src="${esc(i.cover)}" alt="${esc(i.name)}" />` : `<div class="cp-item__img"></div>`}
+            <div class="cp-item__info">
+              <div class="cp-item__name">${esc(i.name)}</div>
+              <div class="cp-item__meta">${i.size ? `Talla: ${esc(i.size)} · ` : ''}Qty: ${i.qty}</div>
+            </div>
+            <div class="cp-item__price">
+              ${usd(i.price * i.qty)}
+              <span>${dop(i.price * i.qty)}</span>
+            </div>
+          </li>`).join('');
+        document.getElementById('cpOrderSection').hidden = false;
+      }
+
+      // Summary
+      const lineSub = Number(raw.lineSubtotal) || 0;
+      const disc    = Number(raw.discountAmt)   || 0;
+      const ship    = Number(raw.shippingFee)   || 0;
+      const tot     = Number(raw.total)         || (lineSub - disc + ship);
+      const promoPct = Number(raw.promoPct)     || 0;
+
+      document.getElementById('cpSummary').innerHTML = [
+        `<div class="cp-summary__row"><span>Subtotal</span><span>${usd(lineSub)} <small style="display:inline;color:#aaa">/ ${dop(lineSub)}</small></span></div>`,
+        disc ? `<div class="cp-summary__row cp-summary__discount"><span>Descuento${promoPct ? ` (−${promoPct}%)` : ''}</span><span>− ${usd(disc)}</span></div>` : '',
+        `<div class="cp-summary__row"><span>Envío</span><span>${usd(ship)} <small style="display:inline;color:#aaa">/ ${dop(ship)}</small></span></div>`,
+        `<div class="cp-summary__row total"><span>Total</span><span>${usd(tot)}<small>${dop(tot)} DOP</small></span></div>`,
+      ].filter(Boolean).join('');
+      document.getElementById('cpSummarySection').hidden = false;
+
+      localStorage.removeItem('calziani_card_pending');
+    })();
+  </script>
+  <script src="/js/whatsapp-float.js"></script>
+</body>
+</html>

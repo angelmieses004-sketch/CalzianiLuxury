@@ -219,7 +219,7 @@
           <div class="shipping-fields">
             <input class="shipping-input" id="shipName"     type="text"  placeholder="Nombre completo *" autocomplete="name" />
             <input class="shipping-input" id="shipPhone"    type="tel"   placeholder="Teléfono / WhatsApp *" autocomplete="tel" />
-            <input class="shipping-input" id="shipEmail"    type="email" placeholder="Correo electrónico (para tu recibo)" autocomplete="email" />
+            <input class="shipping-input" id="shipEmail"    type="email" placeholder="Correo electrónico *" autocomplete="email" />
             <select class="shipping-input shipping-select" id="shipCountry">
               <option value="">Seleccionar país *</option>
               <option value="Dominican Republic">República Dominicana</option>
@@ -235,7 +235,7 @@
             <input class="shipping-input" id="shipProvince" type="text"  placeholder="Provincia / Estado *" autocomplete="address-level1" />
             <input class="shipping-input" id="shipAddress"  type="text"  placeholder="Dirección completa *" autocomplete="street-address" />
           </div>
-          <p class="shipping-err hidden" id="shippingErr">Por favor completa todos los datos de envío.</p>
+          <p class="shipping-err hidden" id="shippingErr">Por favor completa todos los datos de envío, incluyendo tu correo electrónico.</p>
         </div>
 
         <div class="cart-promo" id="cartPromoBlock">
@@ -294,6 +294,10 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             Transferencia
           </button>
+          <button class="pay-method-tab" data-method="cardlink">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Tarjeta
+          </button>
         </div>
 
         <!-- Card (AZUL) panel — hidden until AZUL is configured -->
@@ -303,7 +307,15 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             Pagar con tarjeta
           </button>
-          <p class="azul-powered">Procesado por <strong>AZUL</strong> · Banco Popular</p>
+        </div>
+
+        <!-- Card link panel -->
+        <div class="pay-panel" id="payPanelCardLink">
+          <p class="cardlink-note">Recibirás un link de pago seguro en tu correo electrónico para completar tu compra con tarjeta débito/crédito.</p>
+          <button class="btn-cardlink-pay" id="btnCardLinkPay">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Solicitar link de pago
+          </button>
         </div>
 
         <!-- Transfer panel -->

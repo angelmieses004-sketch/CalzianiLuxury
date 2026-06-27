@@ -644,9 +644,11 @@
   const payMethodTabs      = document.querySelectorAll('.pay-method-tab');
   const payPanelCard       = document.getElementById('payPanelCard');
   const payPanelTransfer   = document.getElementById('payPanelTransfer');
+  const payPanelCardLink   = document.getElementById('payPanelCardLink');
   const transferInfo       = document.getElementById('transferInfo');
   const btnWhatsapp        = document.getElementById('btnWhatsapp');
   const btnAzulPay         = document.getElementById('btnAzulPay');
+  const btnCardLinkPay     = document.getElementById('btnCardLinkPay');
   const azulNote           = document.getElementById('azulNote');
 
   payMethodTabs.forEach(tab => {
@@ -656,6 +658,7 @@
       activeMethod = tab.dataset.method;
       payPanelCard?.classList.toggle('active', activeMethod === 'card');
       payPanelTransfer?.classList.toggle('active', activeMethod === 'transfer');
+      payPanelCardLink?.classList.toggle('active', activeMethod === 'cardlink');
     });
   });
 
@@ -694,7 +697,7 @@
 
   function validateShipping() {
     const s = getShippingInfo();
-    const ok = s.name && s.phone && s.country && s.province && s.address;
+    const ok = s.name && s.phone && s.email && s.country && s.province && s.address;
     const errEl = document.getElementById('shippingErr');
     if (errEl) errEl.classList.toggle('hidden', ok);
     return ok;
@@ -708,7 +711,7 @@
 
   function updateCheckoutTermsGate() {
     const ok = !!document.getElementById('acceptTerms')?.checked;
-    ['btnWhatsapp', 'btnAzulPay'].forEach(id => {
+    ['btnWhatsapp', 'btnAzulPay', 'btnCardLinkPay'].forEach(id => {
       const btn = document.getElementById(id);
       if (!btn) return;
       btn.disabled = !ok;
@@ -848,6 +851,64 @@
       alert('Error de conexión. Intentá nuevamente.');
       btnAzulPay.disabled = false;
       btnAzulPay.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Pagar con tarjeta`;
+    }
+  });
+
+  // ─── Card link payment ────────────────────────────────────────────────────────
+  btnCardLinkPay?.addEventListener('click', async () => {
+    if (!validateShipping()) return;
+    if (!validateTerms()) return;
+    const cart = getCart();
+    if (!cart.length) return;
+    const ship = getShippingInfo();
+    const ct = cartTotals();
+    const btn = btnCardLinkPay;
+    const prevHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Procesando...';
+    try {
+      const res = await fetch('/api/orders/card-link-submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cart,
+          shipping: ship,
+          subtotal: ct.subtotal,
+          shippingFee: SHIPPING_USD,
+          total: ct.total,
+          promoCode: activePromoCode() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Error al procesar el pedido.');
+        btn.disabled = false;
+        btn.innerHTML = prevHtml;
+        return;
+      }
+      localStorage.setItem('calziani_card_pending', JSON.stringify({
+        orderNumber: data.orderNumber,
+        email: ship.email,
+        name: ship.name,
+        phone: ship.phone,
+        country: ship.country,
+        province: ship.province,
+        address: ship.address,
+        items: cart,
+        lineSubtotal: ct.lineSubtotal,
+        discountAmt: ct.discountAmt,
+        promoPct: ct.promoPct,
+        shippingFee: SHIPPING_USD,
+        total: ct.total,
+        dopRate: (currencyRates && currencyRates.DOP) || 59.48,
+        date: new Date().toISOString(),
+      }));
+      localStorage.removeItem('calziani_cart');
+      window.location.href = '/card-pending';
+    } catch {
+      alert('Error de conexión. Intentá nuevamente.');
+      btn.disabled = false;
+      btn.innerHTML = prevHtml;
     }
   });
 
