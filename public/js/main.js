@@ -202,7 +202,7 @@
 
   // ─── Currency ─────────────────────────────────────────────────────────────────
   let currencyRates = { USD: 1, EUR: 0.92, DOP: 59.48 };
-  let activeCurrency = localStorage.getItem('calziani_currency') || 'DOP';
+  let activeCurrency = localStorage.getItem('calziani_currency') || 'USD';
 
   const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', DOP: 'RD$' };
   const CURRENCY_LOCALES  = { USD: 'en-US', EUR: 'de-DE', DOP: 'es-DO' };
@@ -425,7 +425,9 @@
   const promoMsg = document.getElementById('promoMsg');
   const checkoutBtn   = document.getElementById('checkoutBtn');
 
-  const SHIPPING_USD    = 5;
+  let SHIPPING_USD      = 0;
+  let selectedShipping  = 'standard';
+  let shippingCfg       = { standard: { price: 0, days: '15-22' }, priority: { price: 30, days: '6-13' } };
   const LS_PROMO_DATA   = 'calziani_promo_data'; // stores { code, percent, excludedProductIds }
   // Clear legacy key from old hardcoded promo system
   try { localStorage.removeItem('calziani_promo_calziani'); } catch (_) {}
@@ -664,13 +666,51 @@
 
   async function loadPaymentConfig() {
     try {
-      const res = await fetch('/api/payment-config');
-      payConfig = await res.json();
+      const [pcRes, scRes] = await Promise.all([
+        fetch('/api/payment-config'),
+        fetch('/api/shipping-config'),
+      ]);
+      payConfig  = await pcRes.json();
+      shippingCfg = await scRes.json();
+      SHIPPING_USD = shippingCfg[selectedShipping]?.price ?? 0;
       renderTransferInfo();
+      renderShippingOpts();
+      updateCartUI();
       const { total } = cartTotals();
       const dopRate   = currencyRates.DOP || 59.48;
       if (azulNote) azulNote.textContent = `Total: RD$${(total * dopRate).toFixed(0)} (USD $${total.toFixed(2)})`;
     } catch { /* ignore */ }
+  }
+
+  function renderShippingOpts() {
+    const stdEl  = document.getElementById('shipOptStd');
+    const priEl  = document.getElementById('shipOptPri');
+    const stdPriceEl = document.getElementById('shipStdPrice');
+    const priPriceEl = document.getElementById('shipPriPrice');
+    const stdDaysEl  = document.getElementById('shipStdDays');
+    const priDaysEl  = document.getElementById('shipPriDays');
+    if (!stdEl || !priEl) return;
+
+    const std = shippingCfg.standard;
+    const pri = shippingCfg.priority;
+
+    if (stdPriceEl) stdPriceEl.textContent = std.price === 0 ? 'Gratis' : formatUsdCheckout(std.price);
+    if (priPriceEl) priPriceEl.textContent = formatUsdCheckout(pri.price);
+    if (stdDaysEl)  stdDaysEl.textContent  = std.days + ' días hábiles';
+    if (priDaysEl)  priDaysEl.textContent  = pri.days + ' días hábiles';
+
+    [stdEl, priEl].forEach(el => {
+      el.onclick = () => {
+        selectedShipping = el.dataset.method;
+        SHIPPING_USD = shippingCfg[selectedShipping]?.price ?? 0;
+        stdEl.classList.toggle('ship-opt--active', selectedShipping === 'standard');
+        priEl.classList.toggle('ship-opt--active', selectedShipping === 'priority');
+        updateCartUI();
+      };
+    });
+
+    stdEl.classList.toggle('ship-opt--active', selectedShipping === 'standard');
+    priEl.classList.toggle('ship-opt--active', selectedShipping === 'priority');
   }
 
   function renderTransferInfo() {
@@ -802,6 +842,7 @@
           cart,
           total,
           shipping,
+          shippingFee: SHIPPING_USD,
           promoCode: activePromoCode() || undefined,
         }),
       });

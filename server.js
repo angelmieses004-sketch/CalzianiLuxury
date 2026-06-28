@@ -1401,7 +1401,37 @@ app.get('/api/payment-config', (req, res) => {
   });
 });
 
-const CHECKOUT_SHIPPING_USD = 5;
+function getSetting(key, def = '') {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+  return row ? row.value : def;
+}
+function setSetting(key, value) {
+  db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, String(value));
+}
+function getShippingConfig() {
+  return {
+    standard: { price: Number(getSetting('shipping_standard_usd', '0')) || 0,  days: getSetting('shipping_standard_days', '15-22') },
+    priority: { price: Number(getSetting('shipping_priority_usd', '30')) || 30, days: getSetting('shipping_priority_days', '6-13') },
+  };
+}
+function validateShippingFee(fee) {
+  const cfg = getShippingConfig();
+  const valid = [cfg.standard.price, cfg.priority.price];
+  return Number.isFinite(fee) && valid.some(f => Math.abs(fee - f) <= 0.02);
+}
+
+app.get('/api/shipping-config', (req, res) => res.json(getShippingConfig()));
+
+app.get('/api/admin/shipping-config', requireAuth, (req, res) => res.json(getShippingConfig()));
+
+app.put('/api/admin/shipping-config', requireAuth, (req, res) => {
+  const { standardPrice, standardDays, priorityPrice, priorityDays } = req.body || {};
+  if (standardPrice !== undefined) setSetting('shipping_standard_usd', Math.max(0, Number(standardPrice) || 0));
+  if (standardDays  !== undefined) setSetting('shipping_standard_days', String(standardDays).trim() || '15-22');
+  if (priorityPrice !== undefined) setSetting('shipping_priority_usd', Math.max(0, Number(priorityPrice) || 0));
+  if (priorityDays  !== undefined) setSetting('shipping_priority_days', String(priorityDays).trim() || '6-13');
+  res.json({ ok: true, ...getShippingConfig() });
+});
 
 // ─── Tracking ──────────────────────────────────────────────────────────────────
 const TRACKING_STAGES = ['received', 'in_europe', 'in_usa', 'in_dominican_republic', 'delivered'];
@@ -1639,10 +1669,10 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
     }
     const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
     const fee = Number(shippingFee);
-    const shipFee = Number.isFinite(fee) && fee >= 0 ? fee : CHECKOUT_SHIPPING_USD;
-    if (Math.abs(shipFee - CHECKOUT_SHIPPING_USD) > 0.02) {
+    if (!validateShippingFee(fee)) {
       return res.status(400).json({ error: 'Costo de envío no válido.' });
     }
+    const shipFee = fee;
 
     const stockCheck = validateCartStock(cart);
     if (!stockCheck.ok) return res.status(400).json({ error: stockCheck.error });
@@ -1792,10 +1822,10 @@ app.post('/api/orders/card-link-submit', (req, res) => {
     }
     const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
     const fee = Number(shippingFee);
-    const shipFee = Number.isFinite(fee) && fee >= 0 ? fee : CHECKOUT_SHIPPING_USD;
-    if (Math.abs(shipFee - CHECKOUT_SHIPPING_USD) > 0.02) {
+    if (!validateShippingFee(fee)) {
       return res.status(400).json({ error: 'Costo de envío no válido.' });
     }
+    const shipFee = fee;
 
     const stockCheck = validateCartStock(cart);
     if (!stockCheck.ok) return res.status(400).json({ error: stockCheck.error });
@@ -1898,17 +1928,22 @@ app.post('/api/azul/checkout', (req, res) => {
     return res.status(503).json({ error: 'AZUL no está configurado. Configure las credenciales en las variables de entorno.' });
   }
 
-  const { cart, total, shipping, promoCode } = req.body || {};
+  const { cart, total, shipping, promoCode, shippingFee: azulShipFeeRaw } = req.body || {};
   if (!cart?.length || total == null || total === '') return res.status(400).json({ error: 'Carrito vacío.' });
 
   const stockAzul = validateCartStock(cart);
   if (!stockAzul.ok) return res.status(400).json({ error: stockAzul.error });
 
+  const azulShipFee = Number(azulShipFeeRaw);
+  if (!validateShippingFee(azulShipFee)) {
+    return res.status(400).json({ error: 'Costo de envío no válido.' });
+  }
+
   const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
   const promoRes = applyPromoCalziani(cart, promoCode, shipping?.phone);
   if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
 
-  const totalUSDCheck = Math.round((promoRes.discountedSubtotal + CHECKOUT_SHIPPING_USD) * 100) / 100;
+  const totalUSDCheck = Math.round((promoRes.discountedSubtotal + azulShipFee) * 100) / 100;
   if (!Number.isFinite(Number(total)) || Math.abs(Number(total) - totalUSDCheck) > 0.02) {
     return res.status(400).json({ error: 'Total no coincide.' });
   }
@@ -2000,7 +2035,7 @@ app.post('/api/azul/checkout', (req, res) => {
       lineSubtotal,
       discountAmt: promoRes.redeem ? Math.round((lineSubtotal - promoRes.discountedSubtotal) * 100) / 100 : 0,
       promoPct: promoRes.redeem ? promoRes.percent : 0,
-      shippingFee: CHECKOUT_SHIPPING_USD,
+      shippingFee: azulShipFee,
       total: totalUSDCheck,
     },
   }).catch(() => {});

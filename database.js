@@ -197,4 +197,17 @@ if (!existingAdmin) {
   db.prepare("INSERT INTO admin (id, username, password) VALUES (1, 'admin', 'calziani2024')").run();
 }
 
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
+} catch (_) {}
+
+const settingsDefaults = [
+  ['shipping_standard_usd',  '0'],
+  ['shipping_standard_days', '15-22'],
+  ['shipping_priority_usd',  '30'],
+  ['shipping_priority_days', '6-13'],
+];
+const _insertSetting = db.prepare(`INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)`);
+for (const [k, v] of settingsDefaults) _insertSetting.run(k, v);
+
 module.exports = db;

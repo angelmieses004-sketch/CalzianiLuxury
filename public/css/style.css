@@ -985,6 +985,33 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   color: var(--gray-400);
 }
 
+/* ─── Shipping method selector ─────────────────────────────────────────────── */
+.ship-opts { margin-bottom: 0.75rem; }
+.ship-opts__title {
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: #888; margin-bottom: 0.45rem;
+}
+.ship-opt {
+  display: flex; align-items: center; gap: 0.65rem;
+  padding: 0.6rem 0.75rem; border: 1.5px solid #e5e7eb; border-radius: 6px;
+  cursor: pointer; margin-bottom: 0.35rem; transition: border-color 0.15s, background 0.15s;
+}
+.ship-opt:hover { border-color: #bbb; }
+.ship-opt--active { border-color: #111; background: #fafafa; }
+.ship-opt__radio {
+  width: 16px; height: 16px; border-radius: 50%; border: 2px solid #ccc;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.15s;
+}
+.ship-opt--active .ship-opt__radio { border-color: #111; }
+.ship-opt--active .ship-opt__radio::after {
+  content: ''; width: 8px; height: 8px; border-radius: 50%; background: #111;
+}
+.ship-opt__body { flex: 1; min-width: 0; }
+.ship-opt__label { font-size: 0.8rem; font-weight: 600; color: #111; display: block; }
+.ship-opt__days  { font-size: 0.68rem; color: #888; }
+.ship-opt__price { font-size: 0.8rem; font-weight: 700; color: #111; white-space: nowrap; }
+
 /* ─── Card link pay button ──────────────────────────────────────────────────── */
 .cardlink-note {
   font-size: 0.8rem;

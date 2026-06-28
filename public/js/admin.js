@@ -314,6 +314,7 @@
     if (name === 'customers') loadCustomersView();
     if (name === 'reviews')   loadReviewsView();
     if (name === 'seleccion') loadSeleccion();
+    if (name === 'settings')  loadShippingConfig();
   }
 
   function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -1336,6 +1337,49 @@
       loadProducts();
     } catch {
       showToast('Error de conexión.', true);
+    }
+  });
+
+  // ─── Shipping config ─────────────────────────────────────────────────────────
+  async function loadShippingConfig() {
+    try {
+      const res = await fetch('/api/admin/shipping-config', { headers: authHeaders() });
+      if (!res.ok) return;
+      const cfg = await res.json();
+      document.getElementById('scStdPrice').value = cfg.standard.price;
+      document.getElementById('scStdDays').value  = cfg.standard.days;
+      document.getElementById('scPriPrice').value = cfg.priority.price;
+      document.getElementById('scPriDays').value  = cfg.priority.days;
+    } catch { /* ignore */ }
+  }
+
+  document.getElementById('shippingConfigForm')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const msgEl = document.getElementById('scMsg');
+    msgEl.className = 'hidden';
+    try {
+      const res = await fetch('/api/admin/shipping-config', {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          standardPrice: document.getElementById('scStdPrice').value,
+          standardDays:  document.getElementById('scStdDays').value,
+          priorityPrice: document.getElementById('scPriPrice').value,
+          priorityDays:  document.getElementById('scPriDays').value,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        msgEl.textContent = data.error || 'Error al guardar.';
+        msgEl.className = 'form-error';
+        return;
+      }
+      msgEl.textContent = '¡Configuración de envío guardada!';
+      msgEl.className = '';
+      msgEl.style.color = '#16a34a';
+    } catch {
+      msgEl.textContent = 'Error de conexión.';
+      msgEl.className = 'form-error';
     }
   });
 

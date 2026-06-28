@@ -248,6 +248,27 @@
           <p class="cart-promo__msg hidden" id="promoMsg" role="status"></p>
         </div>
 
+        <!-- Shipping method selector -->
+        <div class="ship-opts" id="shippingOptsBlock">
+          <p class="ship-opts__title">Método de envío</p>
+          <div class="ship-opt ship-opt--active" id="shipOptStd" data-method="standard">
+            <div class="ship-opt__radio"></div>
+            <div class="ship-opt__body">
+              <span class="ship-opt__label">Estándar</span>
+              <span class="ship-opt__days" id="shipStdDays">15-22 días hábiles</span>
+            </div>
+            <span class="ship-opt__price" id="shipStdPrice">Gratis</span>
+          </div>
+          <div class="ship-opt" id="shipOptPri" data-method="priority">
+            <div class="ship-opt__radio"></div>
+            <div class="ship-opt__body">
+              <span class="ship-opt__label">Prioritario</span>
+              <span class="ship-opt__days" id="shipPriDays">6-13 días hábiles</span>
+            </div>
+            <span class="ship-opt__price" id="shipPriPrice">US$30.00</span>
+          </div>
+        </div>
+
         <div class="cart-totals">
           <div class="cart-totals__row">
             <span>Subtotal</span>

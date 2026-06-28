@@ -579,6 +579,35 @@
         <div class="view__header">
           <h2 class="view__title">Ajustes</h2>
         </div>
+
+        <div class="settings-card">
+          <h3 class="settings-card__title">Configuración de envío</h3>
+          <form id="shippingConfigForm" class="product-form" novalidate>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+              <div class="field">
+                <label for="scStdPrice">Precio estándar (USD)</label>
+                <input type="number" id="scStdPrice" min="0" step="0.01" placeholder="0" />
+              </div>
+              <div class="field">
+                <label for="scStdDays">Días estándar</label>
+                <input type="text" id="scStdDays" placeholder="15-22" maxlength="20" />
+              </div>
+              <div class="field">
+                <label for="scPriPrice">Precio prioritario (USD)</label>
+                <input type="number" id="scPriPrice" min="0" step="0.01" placeholder="30" />
+              </div>
+              <div class="field">
+                <label for="scPriDays">Días prioritario</label>
+                <input type="text" id="scPriDays" placeholder="6-13" maxlength="20" />
+              </div>
+            </div>
+            <p id="scMsg" class="hidden" style="font-size:0.8rem;margin-top:0.5rem"></p>
+            <div class="form-btns" style="margin-top:0.5rem">
+              <button type="submit" class="btn btn-primary">Guardar configuración de envío</button>
+            </div>
+          </form>
+        </div>
+
         <div class="settings-card">
           <h3 class="settings-card__title">Cambiar contraseña</h3>
           <form id="passwordForm" class="product-form" novalidate>
@@ -696,6 +725,7 @@
           <label for="eoStatus">Estado del pedido</label>
           <select id="eoStatus">
             <option value="pending_transfer">Pendiente (transferencia / WhatsApp)</option>
+            <option value="pending_card_link">Pendiente (link de pago con tarjeta)</option>
             <option value="pending_azul">Pendiente (tarjeta AZUL)</option>
             <option value="pending_paypal">Pendiente (PayPal)</option>
             <option value="paid_paypal">Pagado (PayPal)</option>
