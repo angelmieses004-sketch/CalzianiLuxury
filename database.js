@@ -202,14 +202,14 @@ try {
 } catch (_) {}
 
 const settingsDefaults = [
-  ['shipping_standard_usd',  '30'],
+  ['shipping_standard_usd',  '0'],
   ['shipping_standard_days', '15-22'],
   ['shipping_priority_usd',  '30'],
   ['shipping_priority_days', '6-13'],
 ];
 const _insertSetting = db.prepare(`INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)`);
 for (const [k, v] of settingsDefaults) _insertSetting.run(k, v);
-// Migrate: if standard was seeded at 0 (old default), update to real base price
-try { db.prepare(`UPDATE settings SET value = '30' WHERE key = 'shipping_standard_usd' AND value = '0'`).run(); } catch (_) {}
+// Standard shipping is free (offer) — reset if it was incorrectly set to 30 by a previous migration
+try { db.prepare(`UPDATE settings SET value = '0' WHERE key = 'shipping_standard_usd' AND value = '30'`).run(); } catch (_) {}
 
 module.exports = db;

@@ -1010,7 +1010,13 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 .ship-opt__body { flex: 1; min-width: 0; }
 .ship-opt__label { font-size: 0.8rem; font-weight: 600; color: #111; display: block; }
 .ship-opt__days  { font-size: 0.68rem; color: #888; }
-.ship-opt__price { font-size: 0.8rem; font-weight: 700; color: #111; white-space: nowrap; }
+.ship-opt__price { font-size: 0.8rem; font-weight: 700; color: #111; white-space: nowrap; text-align: right; }
+.ship-opt__strike { text-decoration: line-through; color: #aaa; font-weight: 400; margin-right: 2px; }
+.ship-opt__offer {
+  display: inline-block; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; background: #dc2626; color: #fff;
+  padding: 1px 5px; border-radius: 3px; margin-left: 3px; vertical-align: middle;
+}
 
 /* ─── Card link pay button ──────────────────────────────────────────────────── */
 .cardlink-note {

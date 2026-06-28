@@ -695,7 +695,15 @@
     const pri = shippingCfg.priority;
 
     if (stdPriceEl) stdPriceEl.textContent = std.price === 0 ? 'Gratis' : formatUsdCheckout(std.price);
-    if (priPriceEl) priPriceEl.textContent = formatUsdCheckout(pri.price);
+    if (priPriceEl) {
+      const PRIORITY_BASE = 30;
+      if (pri.price < PRIORITY_BASE) {
+        priPriceEl.innerHTML =
+          `<span class="ship-opt__strike">US$${PRIORITY_BASE}.00</span> ${formatUsdCheckout(pri.price)} <span class="ship-opt__offer">Oferta limitada</span>`;
+      } else {
+        priPriceEl.textContent = formatUsdCheckout(pri.price);
+      }
+    }
     if (stdDaysEl)  stdDaysEl.textContent  = std.days + ' días hábiles';
     if (priDaysEl)  priDaysEl.textContent  = pri.days + ' días hábiles';
 
