@@ -61,6 +61,7 @@
   const sizesHint          = document.getElementById('sizesHint');
   const fComparePrice      = document.getElementById('fComparePrice');
   const fShipping          = document.getElementById('fShipping');
+  const fHot               = document.getElementById('fHot');
   const offerBadgePreview  = document.getElementById('offerBadgePreview');
   const fImages            = document.getElementById('fImages');
   const imgGrid            = document.getElementById('imgGrid');
@@ -1203,6 +1204,7 @@
     sizesContainer.innerHTML = '';
     sizesHint.classList.remove('hidden');
     offerBadgePreview.classList.remove('visible');
+    if (fHot) fHot.checked = false;
     resetImages();
     populateBrandSelect(null);
   }
@@ -1224,6 +1226,7 @@
       fDesc.value = p.description || '';
       fComparePrice.value = p.compare_price || '';
       fShipping.value = p.shipping_days || '';
+      if (fHot) fHot.checked = !!p.hot;
       renderSizeStockInputs(p.category, Array.isArray(p.sizes) ? p.sizes : [], p.sizes_stock || {});
       updateOfferPreview();
       existingImages = Array.isArray(p.images) ? p.images : [];
@@ -1281,6 +1284,7 @@
     formData.append('compare_price', compare_price || '');
     formData.append('shipping_days', shipping_days || '');
     formData.append('brand_id', brand_id || '');
+    formData.append('hot', fHot?.checked ? '1' : '0');
     formData.append('remove_image_ids', JSON.stringify(removeIds));
     newFiles.forEach(file => formData.append('images', file));
 

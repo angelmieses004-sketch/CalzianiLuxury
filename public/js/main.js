@@ -1122,12 +1122,17 @@
         const imgHtml = p.cover
           ? `<img src="/img/products/${escHtml(p.cover)}" alt="${escHtml(p.name)}" class="product-card__img" loading="lazy" />`
           : `<div class="product-card__img-empty"><span>CALZIANI</span></div>`;
+        const isHot = !!p.hot;
         const badgeHtml = isOffer
           ? `<span class="product-card__sale-badge">−${discount}%</span>`
-          : (sl.cls === 'out' ? `<span class="product-card__stock-badge out">${t('out_of_stock')}</span>` : '');
+          : isHot
+            ? `<span class="product-card__hot-badge">🔥 HOT</span>`
+            : (sl.cls === 'out' ? `<span class="product-card__stock-badge out">${t('out_of_stock')}</span>` : '');
         const priceHtml = isOffer
           ? `<span class="pc-price pc-price--sale">${formatPrice(p.price)}</span><span class="pc-price-orig">${formatPrice(p.compare_price)}</span>`
-          : `<span class="pc-price">${formatPrice(p.price)}</span>`;
+          : isHot
+            ? `<span class="pc-price pc-price--hot">${formatPrice(p.price)}</span>`
+            : `<span class="pc-price">${formatPrice(p.price)}</span>`;
         const couponHtml = promoEligible ? `
           <div class="pc-coupon-block">
             <span class="pc-coupon-badge">− ${formatPrice(couponAmt)} cupón</span>
@@ -1242,13 +1247,18 @@
         ? `<img src="/img/products/${escHtml(p.cover)}" alt="${escHtml(p.name)}" class="product-card__img" loading="lazy" />`
         : `<div class="product-card__img-empty"><span>CALZIANI</span></div>`;
 
+      const isHot = !!p.hot;
       const badgeHtml = isOffer
         ? `<span class="product-card__sale-badge">−${discount}%</span>`
-        : (sl.cls === 'out' ? `<span class="product-card__stock-badge out">${t('out_of_stock')}</span>` : '');
+        : isHot
+          ? `<span class="product-card__hot-badge">🔥 HOT</span>`
+          : (sl.cls === 'out' ? `<span class="product-card__stock-badge out">${t('out_of_stock')}</span>` : '');
 
       const priceHtml = isOffer
         ? `<span class="pc-price pc-price--sale">${formatPrice(p.price)}</span><span class="pc-price-orig">${formatPrice(p.compare_price)}</span>`
-        : `<span class="pc-price">${formatPrice(p.price)}</span>`;
+        : isHot
+          ? `<span class="pc-price pc-price--hot">${formatPrice(p.price)}</span>`
+          : `<span class="pc-price">${formatPrice(p.price)}</span>`;
 
       const couponLabel = `− ${formatPrice(couponAmt)} cupón`;
       const couponHtml = promoEligible ? `

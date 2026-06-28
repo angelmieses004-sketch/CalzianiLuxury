@@ -1407,6 +1407,24 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   border: 1px solid var(--gray-200);
 }
 
+.product-card__hot-badge {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  background: #dc2626;
+  color: #fff;
+}
+
+.pc-price--hot {
+  color: #dc2626;
+  font-weight: 600;
+}
+
 /* ─── Modal Gallery ─────────────────────────────────────────────────────────── */
 .modal__gallery {
   margin-bottom: 1.5rem;

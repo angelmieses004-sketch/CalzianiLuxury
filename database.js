@@ -97,6 +97,7 @@ try { db.exec(`ALTER TABLE products ADD COLUMN compare_price REAL DEFAULT NULL`)
 try { db.exec(`ALTER TABLE products ADD COLUMN image TEXT DEFAULT NULL`); } catch (_) {}
 try { db.exec(`ALTER TABLE products ADD COLUMN sizes_stock TEXT DEFAULT '{}'`); } catch (_) {}
 try { db.exec(`ALTER TABLE products ADD COLUMN gender TEXT DEFAULT NULL`); } catch (_) {}
+try { db.exec(`ALTER TABLE products ADD COLUMN hot INTEGER DEFAULT 0`); } catch (_) {}
 
 try {
   db.exec(`

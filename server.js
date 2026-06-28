@@ -1231,7 +1231,7 @@ app.post('/api/admin/login', (req, res) => {
 });
 
 app.post('/api/admin/products', requireAuth, upload.array('images', 10), async (req, res) => {
-  const { name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price, brand_id } = req.body || {};
+  const { name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price, brand_id, hot } = req.body || {};
 
   if (!name || !name.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
   if (price === undefined || price === null || isNaN(Number(price)) || Number(price) < 0)
@@ -1247,16 +1247,17 @@ app.post('/api/admin/products', requireAuth, upload.array('images', 10), async (
   const compPrice = compare_price && !isNaN(Number(compare_price)) && Number(compare_price) > 0 ? Number(compare_price) : null;
   const shipDays = shipping_days && String(shipping_days).trim() ? String(shipping_days).trim() : null;
   const brandId = brand_id && !isNaN(Number(brand_id)) && Number(brand_id) > 0 ? Number(brand_id) : null;
+  const isHot = hot === '1' || hot === 'true' || hot === true ? 1 : 0;
 
   try {
     const result = db.prepare(
-      'INSERT INTO products (name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price, brand_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO products (name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price, brand_id, hot) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     ).run(
       name.trim(), (description || '').trim(), Number(price),
       category, totalStock,
       JSON.stringify(Array.isArray(parsedSizes) ? parsedSizes : []),
       JSON.stringify(parsedSizesStock),
-      shipDays, compPrice, brandId
+      shipDays, compPrice, brandId, isHot
     );
 
     const productId = result.lastInsertRowid;
@@ -1284,7 +1285,7 @@ app.put('/api/admin/products/:id', requireAuth, upload.array('images', 10), asyn
   const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Producto no encontrado' });
 
-  const { name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price, remove_image_ids, brand_id } = req.body || {};
+  const { name, description, price, category, stock, sizes, sizes_stock, shipping_days, compare_price, remove_image_ids, brand_id, hot } = req.body || {};
 
   if (!name || !name.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
   if (price === undefined || price === null || isNaN(Number(price)) || Number(price) < 0)
@@ -1300,6 +1301,7 @@ app.put('/api/admin/products/:id', requireAuth, upload.array('images', 10), asyn
   const compPrice = compare_price && !isNaN(Number(compare_price)) && Number(compare_price) > 0 ? Number(compare_price) : null;
   const shipDays = shipping_days && String(shipping_days).trim() ? String(shipping_days).trim() : null;
   const brandId = brand_id && !isNaN(Number(brand_id)) && Number(brand_id) > 0 ? Number(brand_id) : null;
+  const isHot = hot === '1' || hot === 'true' || hot === true ? 1 : 0;
 
   try {
     // Delete images marked for removal
@@ -1330,13 +1332,13 @@ app.put('/api/admin/products/:id', requireAuth, upload.array('images', 10), asyn
 
     db.prepare(
       `UPDATE products SET name = ?, description = ?, price = ?, category = ?, stock = ?, sizes = ?,
-       sizes_stock = ?, shipping_days = ?, compare_price = ?, brand_id = ?, updated_at = datetime('now') WHERE id = ?`
+       sizes_stock = ?, shipping_days = ?, compare_price = ?, brand_id = ?, hot = ?, updated_at = datetime('now') WHERE id = ?`
     ).run(
       name.trim(), (description || '').trim(), Number(price),
       category, totalStock,
       JSON.stringify(Array.isArray(parsedSizes) ? parsedSizes : []),
       JSON.stringify(parsedSizesStock),
-      shipDays, compPrice, brandId,
+      shipDays, compPrice, brandId, isHot,
       req.params.id,
     );
 
