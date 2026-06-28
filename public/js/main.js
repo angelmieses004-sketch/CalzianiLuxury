@@ -1126,7 +1126,7 @@
         const badgeHtml = isOffer
           ? `<span class="product-card__sale-badge">−${discount}%</span>`
           : isHot
-            ? `<span class="product-card__hot-badge">🔥 HOT</span>`
+            ? `<span class="product-card__hot-badge">HOT NOW</span>`
             : (sl.cls === 'out' ? `<span class="product-card__stock-badge out">${t('out_of_stock')}</span>` : '');
         const priceHtml = isOffer
           ? `<span class="pc-price pc-price--sale">${formatPrice(p.price)}</span><span class="pc-price-orig">${formatPrice(p.compare_price)}</span>`
@@ -1251,7 +1251,7 @@
       const badgeHtml = isOffer
         ? `<span class="product-card__sale-badge">−${discount}%</span>`
         : isHot
-          ? `<span class="product-card__hot-badge">🔥 HOT</span>`
+          ? `<span class="product-card__hot-badge">HOT NOW</span>`
           : (sl.cls === 'out' ? `<span class="product-card__stock-badge out">${t('out_of_stock')}</span>` : '');
 
       const priceHtml = isOffer
