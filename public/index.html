@@ -213,6 +213,24 @@
       </div>
       <div class="cart-drawer__foot" id="cartFoot">
 
+        <!-- Threshold progress bar -->
+        <div class="cart-bar" id="cartBar" style="display:none">
+          <p class="cart-bar__msg" id="cartBarMsg">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#D48C1A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            Te faltan <b id="cartBarGap"></b> para <b class="cart-bar__reward">envío gratis + 10% OFF</b>
+          </p>
+          <div class="cart-bar__row">
+            <div class="cart-bar__track"><div class="cart-bar__fill" id="cartBarFill"></div></div>
+            <span class="cart-bar__gift" id="cartBarGift">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+            </span>
+          </div>
+          <p class="cart-bar__done" id="cartBarDone">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#27500A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            ¡Desbloqueaste envío gratis + 10% OFF!
+          </p>
+        </div>
+
         <!-- Shipping form -->
         <div class="shipping-form" id="shippingForm">
           <p class="shipping-form__title">Datos de envío</p>
@@ -275,6 +293,13 @@
             <div class="cart-totals__dual">
               <span id="cartSubtotalUsd" class="cart-totals__usd-line"></span>
               <span id="cartSubtotalDop" class="cart-totals__dop-line"></span>
+            </div>
+          </div>
+          <div class="cart-totals__row cart-totals__threshold hidden" id="cartThresholdRow">
+            <span>10% OFF (+$600)</span>
+            <div class="cart-totals__dual">
+              <span id="cartThresholdUsd" class="cart-totals__usd-line cart-totals__discount-val"></span>
+              <span id="cartThresholdDop" class="cart-totals__dop-line cart-totals__discount-val"></span>
             </div>
           </div>
           <div class="cart-totals__row cart-totals__discount hidden" id="cartDiscountRow">

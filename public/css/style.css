@@ -1018,6 +1018,68 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   padding: 1px 5px; border-radius: 3px; margin-left: 3px; vertical-align: middle;
 }
 
+/* ─── Cart threshold progress bar ──────────────────────────────────────────── */
+.cart-bar {
+  padding: 11px 16px 13px;
+  border-bottom: 1px solid var(--gray-200);
+}
+.cart-bar__msg {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.78rem;
+  color: #444;
+  margin: 0 0 9px;
+  line-height: 1.35;
+}
+.cart-bar__msg b      { color: #111; font-weight: 700; }
+.cart-bar__reward     { color: #C07D12 !important; }
+.cart-bar__row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.cart-bar__track {
+  flex: 1;
+  height: 9px;
+  background: #E8E5DC;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.cart-bar__fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  /* Gradient spans a fixed 420px anchored left → as fill grows, more green appears */
+  background: linear-gradient(90deg, #EF9F27 0%, #52b788 100%);
+  background-size: 420px 100%;
+  background-position: left center;
+  background-repeat: no-repeat;
+  transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cart-bar__gift {
+  display: flex;
+  align-items: center;
+  color: #ccc;
+  flex-shrink: 0;
+  transition: color 0.4s ease;
+}
+.cart-bar--done .cart-bar__gift { color: #52b788; }
+.cart-bar__done {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #27500A;
+  background: #EAF3DE;
+  padding: 7px 11px;
+  border-radius: 8px;
+  margin-top: 9px;
+}
+.cart-bar--done .cart-bar__msg  { display: none; }
+.cart-bar--done .cart-bar__done { display: flex; }
+
 /* ─── Card link pay button ──────────────────────────────────────────────────── */
 .cardlink-note {
   font-size: 0.8rem;

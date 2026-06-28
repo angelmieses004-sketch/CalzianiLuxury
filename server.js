@@ -335,7 +335,8 @@ async function sendOrderReceiptEmail({ to, order }) {
       <table style="width:100%;font-size:13px;color:#333;margin:8px 0 0">
         <tr><td style="padding:3px 0;color:#888">Subtotal</td><td style="padding:3px 0;text-align:right">${fmtUsd(order.lineSubtotal)} <span style="color:#999">/ ${fmtDop(order.lineSubtotal)}</span></td></tr>
         ${order.discountAmt ? `<tr><td style="padding:3px 0;color:#888">Descuento${order.promoPct ? ` (−${order.promoPct}%)` : ''}</td><td style="padding:3px 0;text-align:right;color:#16a34a">− ${fmtUsd(order.discountAmt)}</td></tr>` : ''}
-        <tr><td style="padding:3px 0;color:#888">Envío</td><td style="padding:3px 0;text-align:right">${fmtUsd(order.shippingFee)} <span style="color:#999">/ ${fmtDop(order.shippingFee)}</span></td></tr>
+        ${order.thresholdDiscount ? `<tr><td style="padding:3px 0;color:#888">10% OFF (+$600)</td><td style="padding:3px 0;text-align:right;color:#16a34a">− ${fmtUsd(order.thresholdDiscount)}</td></tr>` : ''}
+        <tr><td style="padding:3px 0;color:#888">Envío</td><td style="padding:3px 0;text-align:right">${order.shippingFee > 0 ? `${fmtUsd(order.shippingFee)} <span style="color:#999">/ ${fmtDop(order.shippingFee)}</span>` : '<span style="color:#16a34a">Gratis</span>'}</td></tr>
         <tr><td style="padding:10px 0 0;font-weight:700;font-size:15px;border-top:2px solid #111">Total</td><td style="padding:10px 0 0;text-align:right;font-weight:700;font-size:15px;border-top:2px solid #111">${fmtUsd(order.total)}<br><span style="color:#666;font-size:12px">${fmtDop(order.total)} DOP</span></td></tr>
       </table>
 
@@ -1426,6 +1427,14 @@ function validateShippingFee(fee) {
 
 app.get('/api/shipping-config', (req, res) => res.json(getShippingConfig()));
 
+const CART_THRESHOLD_USD = 600;
+const CART_THRESHOLD_PCT = 0.10;
+function applyCartThreshold(lineSubtotal, promoSubtotal) {
+  const met = lineSubtotal >= CART_THRESHOLD_USD;
+  const discount = met ? Math.round(promoSubtotal * CART_THRESHOLD_PCT * 100) / 100 : 0;
+  return { met, discount, finalSubtotal: Math.round((promoSubtotal - discount) * 100) / 100 };
+}
+
 app.get('/api/admin/shipping-config', requireAuth, (req, res) => res.json(getShippingConfig()));
 
 app.put('/api/admin/shipping-config', requireAuth, (req, res) => {
@@ -1673,10 +1682,6 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
     }
     const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
     const fee = Number(shippingFee);
-    if (!validateShippingFee(fee)) {
-      return res.status(400).json({ error: 'Costo de envío no válido.' });
-    }
-    const shipFee = fee;
 
     const stockCheck = validateCartStock(cart);
     if (!stockCheck.ok) return res.status(400).json({ error: stockCheck.error });
@@ -1684,7 +1689,16 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
     const promoRes = applyPromoCalziani(cart, promoCode, s.phone);
     if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
 
-    const discountedSubtotal = promoRes.discountedSubtotal;
+    const { met: thresholdMet, discount: thresholdDiscount, finalSubtotal: discountedSubtotal } =
+      applyCartThreshold(lineSubtotal, promoRes.discountedSubtotal);
+
+    if (thresholdMet) {
+      if (Math.abs(fee) > 0.02) return res.status(400).json({ error: 'Envío debe ser gratis con la oferta aplicada.' });
+    } else {
+      if (!validateShippingFee(fee)) return res.status(400).json({ error: 'Costo de envío no válido.' });
+    }
+    const shipFee = thresholdMet ? 0 : fee;
+
     const totalCheck = Math.round((discountedSubtotal + shipFee) * 100) / 100;
     const clientTotal = Number(total);
     const clientSub = Number(subtotal);
@@ -1729,6 +1743,7 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
       subtotalBeforeDiscount: promoRes.redeem ? lineSubtotal : undefined,
       promoCode: promoRes.redeem ? promoRes.code : undefined,
       promoPercent: promoRes.redeem ? promoRes.percent : undefined,
+      thresholdDiscount: thresholdMet ? thresholdDiscount : undefined,
       shippingFee: shipFee,
       total: totalCheck,
       paymentMethod: 'whatsapp',
@@ -1787,8 +1802,9 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
         dateStr: new Date().toLocaleString('es-DO', { dateStyle: 'long', timeStyle: 'short' }),
         items: cart.map(i => ({ name: i.name, size: i.size || '', qty: Number(i.qty) || 1, price: Number(i.price) })),
         lineSubtotal,
-        discountAmt: promoRes.redeem ? Math.round((lineSubtotal - discountedSubtotal) * 100) / 100 : 0,
+        discountAmt: promoRes.redeem ? Math.round((lineSubtotal - promoRes.discountedSubtotal) * 100) / 100 : 0,
         promoPct: promoRes.redeem ? promoRes.percent : 0,
+        thresholdDiscount: thresholdMet ? thresholdDiscount : 0,
         shippingFee: shipFee,
         total: totalCheck,
       },
@@ -1826,10 +1842,6 @@ app.post('/api/orders/card-link-submit', (req, res) => {
     }
     const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
     const fee = Number(shippingFee);
-    if (!validateShippingFee(fee)) {
-      return res.status(400).json({ error: 'Costo de envío no válido.' });
-    }
-    const shipFee = fee;
 
     const stockCheck = validateCartStock(cart);
     if (!stockCheck.ok) return res.status(400).json({ error: stockCheck.error });
@@ -1837,7 +1849,16 @@ app.post('/api/orders/card-link-submit', (req, res) => {
     const promoRes = applyPromoCalziani(cart, promoCode, s.phone);
     if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
 
-    const discountedSubtotal = promoRes.discountedSubtotal;
+    const { met: thresholdMet, discount: thresholdDiscount, finalSubtotal: discountedSubtotal } =
+      applyCartThreshold(lineSubtotal, promoRes.discountedSubtotal);
+
+    if (thresholdMet) {
+      if (Math.abs(fee) > 0.02) return res.status(400).json({ error: 'Envío debe ser gratis con la oferta aplicada.' });
+    } else {
+      if (!validateShippingFee(fee)) return res.status(400).json({ error: 'Costo de envío no válido.' });
+    }
+    const shipFee = thresholdMet ? 0 : fee;
+
     const totalCheck = Math.round((discountedSubtotal + shipFee) * 100) / 100;
     const clientTotal = Number(total);
     const clientSub = Number(subtotal);
@@ -1864,6 +1885,7 @@ app.post('/api/orders/card-link-submit', (req, res) => {
       subtotalBeforeDiscount: promoRes.redeem ? lineSubtotal : undefined,
       promoCode: promoRes.redeem ? promoRes.code : undefined,
       promoPercent: promoRes.redeem ? promoRes.percent : undefined,
+      thresholdDiscount: thresholdMet ? thresholdDiscount : undefined,
       shippingFee: shipFee,
       total: totalCheck,
       paymentMethod: 'card_link',
@@ -1902,8 +1924,9 @@ app.post('/api/orders/card-link-submit', (req, res) => {
         dateStr: new Date().toLocaleString('es-DO', { dateStyle: 'long', timeStyle: 'short' }),
         items: cart.map(i => ({ name: i.name, size: i.size || '', qty: Number(i.qty) || 1, price: Number(i.price) })),
         lineSubtotal,
-        discountAmt: promoRes.redeem ? Math.round((lineSubtotal - discountedSubtotal) * 100) / 100 : 0,
+        discountAmt: promoRes.redeem ? Math.round((lineSubtotal - promoRes.discountedSubtotal) * 100) / 100 : 0,
         promoPct: promoRes.redeem ? promoRes.percent : 0,
+        thresholdDiscount: thresholdMet ? thresholdDiscount : 0,
         shippingFee: shipFee,
         total: totalCheck,
       },
@@ -1938,16 +1961,24 @@ app.post('/api/azul/checkout', (req, res) => {
   const stockAzul = validateCartStock(cart);
   if (!stockAzul.ok) return res.status(400).json({ error: stockAzul.error });
 
-  const azulShipFee = Number(azulShipFeeRaw);
-  if (!validateShippingFee(azulShipFee)) {
-    return res.status(400).json({ error: 'Costo de envío no válido.' });
-  }
-
+  const azulShipFeeRaw2 = Number(azulShipFeeRaw);
   const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
   const promoRes = applyPromoCalziani(cart, promoCode, shipping?.phone);
   if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
 
-  const totalUSDCheck = Math.round((promoRes.discountedSubtotal + azulShipFee) * 100) / 100;
+  const { met: thresholdMet, discount: thresholdDiscount, finalSubtotal: azulDiscountedSub } =
+    applyCartThreshold(lineSubtotal, promoRes.discountedSubtotal);
+
+  let azulShipFee;
+  if (thresholdMet) {
+    if (Math.abs(azulShipFeeRaw2) > 0.02) return res.status(400).json({ error: 'Envío debe ser gratis con la oferta aplicada.' });
+    azulShipFee = 0;
+  } else {
+    if (!validateShippingFee(azulShipFeeRaw2)) return res.status(400).json({ error: 'Costo de envío no válido.' });
+    azulShipFee = azulShipFeeRaw2;
+  }
+
+  const totalUSDCheck = Math.round((azulDiscountedSub + azulShipFee) * 100) / 100;
   if (!Number.isFinite(Number(total)) || Math.abs(Number(total) - totalUSDCheck) > 0.02) {
     return res.status(400).json({ error: 'Total no coincide.' });
   }
@@ -2005,7 +2036,7 @@ app.post('/api/azul/checkout', (req, res) => {
         orderNum,
         req.user?.id || null,
         JSON.stringify(itemsPayload),
-        promoRes.discountedSubtotal,
+        azulDiscountedSub,
         0,
         totalUSDCheck,
         shipping?.name || null,
@@ -2039,6 +2070,7 @@ app.post('/api/azul/checkout', (req, res) => {
       lineSubtotal,
       discountAmt: promoRes.redeem ? Math.round((lineSubtotal - promoRes.discountedSubtotal) * 100) / 100 : 0,
       promoPct: promoRes.redeem ? promoRes.percent : 0,
+      thresholdDiscount: thresholdMet ? thresholdDiscount : 0,
       shippingFee: azulShipFee,
       total: totalUSDCheck,
     },

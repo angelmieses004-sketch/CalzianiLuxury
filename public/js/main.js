@@ -428,6 +428,8 @@
   let SHIPPING_USD      = 0;
   let selectedShipping  = 'standard';
   let shippingCfg       = { standard: { price: 0, days: '15-22' }, priority: { price: 30, days: '6-13' } };
+  const THRESHOLD_MIN   = 600;
+  const THRESHOLD_PCT   = 10;
   const LS_PROMO_DATA   = 'calziani_promo_data'; // stores { code, percent, excludedProductIds }
   // Clear legacy key from old hardcoded promo system
   try { localStorage.removeItem('calziani_promo_calziani'); } catch (_) {}
@@ -615,6 +617,17 @@
     const ct = cartTotals();
     if (cartSubtotalUsd) cartSubtotalUsd.textContent = formatUsdCheckout(ct.lineSubtotal);
     if (cartSubtotalDop) cartSubtotalDop.textContent = formatDopCheckout(ct.lineSubtotal);
+    // Threshold discount row
+    const thresholdRow = document.getElementById('cartThresholdRow');
+    if (thresholdRow) {
+      thresholdRow.classList.toggle('hidden', !ct.thresholdMet);
+      if (ct.thresholdMet) {
+        const tUsd = document.getElementById('cartThresholdUsd');
+        const tDop = document.getElementById('cartThresholdDop');
+        if (tUsd) tUsd.textContent = `− ${formatUsdCheckout(ct.thresholdDiscountAmt)}`;
+        if (tDop) tDop.textContent = `− ${formatDopCheckout(ct.thresholdDiscountAmt)}`;
+      }
+    }
     if (cartDiscountRow) {
       cartDiscountRow.classList.toggle('hidden', !ct.promoOn);
       if (ct.promoOn && cartDiscountUsd && cartDiscountDop) {
@@ -623,11 +636,31 @@
       }
     }
     if (promoClearBtn) promoClearBtn.classList.toggle('hidden', !promoCalzianiActive());
-    if (cartShippingUsd) cartShippingUsd.textContent = formatUsdCheckout(SHIPPING_USD);
-    if (cartShippingDop) cartShippingDop.textContent = formatDopCheckout(SHIPPING_USD);
+    if (cartShippingUsd) cartShippingUsd.textContent = ct.shipping === 0 ? 'Gratis' : formatUsdCheckout(ct.shipping);
+    if (cartShippingDop) cartShippingDop.textContent = ct.shipping === 0 ? '' : formatDopCheckout(ct.shipping);
     if (cartTotalUsd) cartTotalUsd.textContent = formatUsdCheckout(ct.total);
     if (cartTotalDop) cartTotalDop.textContent = formatDopCheckout(ct.total);
     updateCheckoutTermsGate();
+
+    // Progress bar toward $600 threshold
+    const cartBar  = document.getElementById('cartBar');
+    const cartBarFill = document.getElementById('cartBarFill');
+    const cartBarGap  = document.getElementById('cartBarGap');
+    if (cartBar) {
+      const hasItems = getCart().length > 0;
+      cartBar.style.display = hasItems ? '' : 'none';
+      if (hasItems) {
+        const pct = Math.min(100, Math.round(ct.lineSubtotal / THRESHOLD_MIN * 100));
+        if (cartBarFill) cartBarFill.style.width = pct + '%';
+        if (ct.thresholdMet) {
+          cartBar.classList.add('cart-bar--done');
+        } else {
+          cartBar.classList.remove('cart-bar--done');
+          const remaining = Math.round((THRESHOLD_MIN - ct.lineSubtotal) * 100) / 100;
+          if (cartBarGap) cartBarGap.textContent = '$' + remaining.toLocaleString('en-US');
+        }
+      }
+    }
 
     // Qty buttons
     cartItems.querySelectorAll('.qty-btn').forEach(btn => {
@@ -815,13 +848,23 @@
           return s + lineUnit * qty;
         }, 0) * 100) / 100
       : lineSubtotal;
-    const discountAmt = Math.round((lineSubtotal - subtotalAfter) * 100) / 100;
-    const total = Math.round((subtotalAfter + SHIPPING_USD) * 100) / 100;
+    const promoDiscountAmt = Math.round((lineSubtotal - subtotalAfter) * 100) / 100;
+
+    // Threshold offer: cart >= $600 → 10% off + free shipping
+    const thresholdMet = lineSubtotal >= THRESHOLD_MIN;
+    const thresholdDiscountAmt = thresholdMet
+      ? Math.round(subtotalAfter * THRESHOLD_PCT / 100 * 100) / 100
+      : 0;
+    const finalSubtotal = Math.round((subtotalAfter - thresholdDiscountAmt) * 100) / 100;
+    const effectiveShipping = thresholdMet ? 0 : SHIPPING_USD;
+    const total = Math.round((finalSubtotal + effectiveShipping) * 100) / 100;
     return {
       lineSubtotal,
-      discountAmt,
-      subtotal: subtotalAfter,
-      shipping: SHIPPING_USD,
+      discountAmt: promoDiscountAmt,
+      thresholdMet,
+      thresholdDiscountAmt,
+      subtotal: finalSubtotal,
+      shipping: effectiveShipping,
       total,
       totalUSD: total.toFixed(2),
       promoOn,
@@ -850,7 +893,7 @@
           cart,
           total,
           shipping,
-          shippingFee: SHIPPING_USD,
+          shippingFee: ctAzul.shipping,
           promoCode: activePromoCode() || undefined,
         }),
       });
@@ -923,7 +966,7 @@
           cart,
           shipping: ship,
           subtotal: ct.subtotal,
-          shippingFee: SHIPPING_USD,
+          shippingFee: ct.shipping,
           total: ct.total,
           promoCode: activePromoCode() || undefined,
         }),
@@ -985,7 +1028,7 @@
           cart,
           shipping: ship,
           subtotal: ct.subtotal,
-          shippingFee: SHIPPING_USD,
+          shippingFee: ct.shipping,
           total: ct.total,
           promoCode: activePromoCode() || undefined,
         }),
