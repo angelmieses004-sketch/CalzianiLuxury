@@ -620,6 +620,38 @@
   }
 }
 
+/* ─── Update box ─────────────────────────────────────────────────────────────── */
+.pp-update-box {
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  background: #fff;
+}
+
+.pp-update-box__header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.45rem;
+  color: #111;
+}
+
+.pp-update-box p {
+  font-size: 0.85rem;
+  color: #222;
+  line-height: 1.55;
+  margin-bottom: 0.2rem;
+}
+
+.pp-update-box p:last-child {
+  margin-bottom: 0;
+  font-weight: 600;
+}
+
 /* ─── Description ─────────────────────────────────────────────────────────────── */
 .pp-desc {
   padding-top: 0.5rem;

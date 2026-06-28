@@ -1139,6 +1139,7 @@
             <span class="pc-coupon-after">${formatPrice(priceAfterCoupon)} con cupón</span>
           </div>` : '';
 
+        const lowStockMsg = p.low_stock ? `<div class="pc-low-stock-msg"><span class="pc-low-stock-dot">●</span><strong>Pocas unidades</strong><span class="pc-low-stock-text"> - Compra ahora antes de que se agoten</span></div>` : '';
         return `<div class="product-card-wrap">
           <a class="product-card" href="/product/${p.id}" aria-label="Ver ${escHtml(p.name)}">
             <div class="product-card__media">
@@ -1155,6 +1156,7 @@
               ${p.sizes?.length ? `<div class="pc-sizes">${p.sizes.map(s => `<span class="pc-size">${s}</span>`).join('')}</div>` : ''}
             </div>
           </a>
+          ${lowStockMsg}
         </div>`;
       }).join('');
 
@@ -1267,6 +1269,7 @@
           <span class="pc-coupon-after">${formatPrice(priceAfterCoupon)} con cupón</span>
         </div>` : '';
 
+      const lowStockMsg = p.low_stock ? `<div class="pc-low-stock-msg"><span class="pc-low-stock-dot">●</span><strong>Pocas unidades</strong><span class="pc-low-stock-text"> - Compra ahora antes de que se agoten</span></div>` : '';
       return `<div class="product-card-wrap">
         <a class="product-card" href="/product/${p.id}" aria-label="Ver ${escHtml(p.name)}">
           <div class="product-card__media">
@@ -1284,6 +1287,7 @@
             ${p.sizes && p.sizes.length ? `<div class="pc-sizes">${p.sizes.map(s => `<span class="pc-size">${s}</span>`).join('')}</div>` : ''}
           </div>
         </a>
+        ${lowStockMsg}
       </div>`;
     }).join('');
 

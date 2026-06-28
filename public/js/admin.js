@@ -62,6 +62,7 @@
   const fComparePrice      = document.getElementById('fComparePrice');
   const fShipping          = document.getElementById('fShipping');
   const fHot               = document.getElementById('fHot');
+  const fLowStock          = document.getElementById('fLowStock');
   const offerBadgePreview  = document.getElementById('offerBadgePreview');
   const fImages            = document.getElementById('fImages');
   const imgGrid            = document.getElementById('imgGrid');
@@ -396,9 +397,10 @@
             ? `<img src="/img/products/${p.cover}" class="td-thumb" alt="" />`
             : `<div class="td-thumb td-thumb--empty"></div>`;
 
+          const lowStockBadge = p.low_stock ? `<span style="display:inline-block;margin-left:6px;background:#b45309;color:#fff;font-size:0.62rem;font-weight:700;letter-spacing:0.06em;padding:1px 5px;vertical-align:middle">POCAS</span>` : '';
           return `<tr>
             <td class="td-img">${thumbHtml}</td>
-            <td class="td-name"><span title="${escHtml(p.name)}">${escHtml(p.name)}</span></td>
+            <td class="td-name"><span title="${escHtml(p.name)}">${escHtml(p.name)}</span>${lowStockBadge}</td>
             <td class="td-category"><span class="badge">${CAT_LABELS[p.category] || p.category}</span></td>
             <td class="td-sizes">${sizesHtml}</td>
             <td class="td-price">${priceHtml}</td>
@@ -1205,6 +1207,7 @@
     sizesHint.classList.remove('hidden');
     offerBadgePreview.classList.remove('visible');
     if (fHot) fHot.checked = false;
+    if (fLowStock) fLowStock.checked = false;
     resetImages();
     populateBrandSelect(null);
   }
@@ -1227,6 +1230,7 @@
       fComparePrice.value = p.compare_price || '';
       fShipping.value = p.shipping_days || '';
       if (fHot) fHot.checked = !!p.hot;
+      if (fLowStock) fLowStock.checked = !!p.low_stock;
       renderSizeStockInputs(p.category, Array.isArray(p.sizes) ? p.sizes : [], p.sizes_stock || {});
       updateOfferPreview();
       existingImages = Array.isArray(p.images) ? p.images : [];
@@ -1285,6 +1289,7 @@
     formData.append('shipping_days', shipping_days || '');
     formData.append('brand_id', brand_id || '');
     formData.append('hot', fHot?.checked ? '1' : '0');
+    formData.append('low_stock', fLowStock?.checked ? '1' : '0');
     formData.append('remove_image_ids', JSON.stringify(removeIds));
     newFiles.forEach(file => formData.append('images', file));
 

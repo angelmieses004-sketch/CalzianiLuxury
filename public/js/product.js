@@ -675,6 +675,14 @@
             ${sizesHtml}
             ${trustTeaserHtml}
             ${ctaHtml}
+            <div class="pp-update-box">
+              <div class="pp-update-box__header">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <strong>ACTUALIZACIÓN:</strong>
+              </div>
+              <p><strong>Estamos viralizándonos en redes sociales</strong> y tenemos muy pocas unidades disponibles.</p>
+              <p>¡Consíguelo ahora antes de que se agoten!</p>
+            </div>
             ${returnsHtml}
             ${trustHtml}
             ${p.description ? `<div class="pp-desc"><p class="pp-label">Descripción</p><p>${escHtml(p.description)}</p></div>` : ''}

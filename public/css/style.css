@@ -1075,6 +1075,30 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   min-height: 0;
 }
 
+.pc-low-stock-msg {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  color: #111;
+  padding: 0.2rem 0.1rem;
+  line-height: 1.2;
+}
+
+.pc-low-stock-dot {
+  font-size: 0.45rem;
+  color: #dc2626;
+  flex-shrink: 0;
+}
+
+.pc-low-stock-msg strong {
+  font-weight: 700;
+}
+
+.pc-low-stock-msg span.pc-low-stock-text {
+  font-weight: 400;
+}
+
 .pc-fav-btn {
   position: absolute;
   top: 0.6rem;

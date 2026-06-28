@@ -98,6 +98,7 @@ try { db.exec(`ALTER TABLE products ADD COLUMN image TEXT DEFAULT NULL`); } catc
 try { db.exec(`ALTER TABLE products ADD COLUMN sizes_stock TEXT DEFAULT '{}'`); } catch (_) {}
 try { db.exec(`ALTER TABLE products ADD COLUMN gender TEXT DEFAULT NULL`); } catch (_) {}
 try { db.exec(`ALTER TABLE products ADD COLUMN hot INTEGER DEFAULT 0`); } catch (_) {}
+try { db.exec(`ALTER TABLE products ADD COLUMN low_stock INTEGER DEFAULT 0`); } catch (_) {}
 
 try {
   db.exec(`
