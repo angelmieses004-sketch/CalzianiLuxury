@@ -427,10 +427,10 @@
   const checkoutBtn   = document.getElementById('checkoutBtn');
 
   let SHIPPING_USD      = 0;
-  let selectedShipping  = 'standard';
+  let selectedShipping  = 'priority';
   let shippingCfg       = { standard: { price: 0, days: '15-22' }, priority: { price: 30, days: '6-13' } };
-  const THRESHOLD_MIN   = 600;
-  const THRESHOLD_PCT   = 10;
+  const THRESHOLD_MIN   = 500;
+  const THRESHOLD_PCT   = 5;
   const LS_PROMO_DATA   = 'calziani_promo_data'; // stores { code, percent, excludedProductIds }
   // Clear legacy key from old hardcoded promo system
   try { localStorage.removeItem('calziani_promo_calziani'); } catch (_) {}
@@ -632,6 +632,8 @@
     if (cartDiscountRow) {
       cartDiscountRow.classList.toggle('hidden', !ct.promoOn);
       if (ct.promoOn && cartDiscountUsd && cartDiscountDop) {
+        const labelEl = cartDiscountRow.querySelector('[data-i18n="promo_discount_label"]');
+        if (labelEl) labelEl.textContent = `Descuento (−${ct.promoPct}%)`;
         cartDiscountUsd.textContent = `− ${formatUsdCheckout(ct.discountAmt)}`;
         cartDiscountDop.textContent = `− ${formatDopCheckout(ct.discountAmt)}`;
       }
@@ -675,16 +677,18 @@
 
   // ─── Payment methods ──────────────────────────────────────────────────────────
   let payConfig   = {};
-  let activeMethod = 'transfer';
+  let activeMethod = 'cardlink';
 
   const payMethodTabs      = document.querySelectorAll('.pay-method-tab');
   const payPanelCard       = document.getElementById('payPanelCard');
   const payPanelTransfer   = document.getElementById('payPanelTransfer');
   const payPanelCardLink   = document.getElementById('payPanelCardLink');
+  const payPanelCod        = document.getElementById('payPanelCod');
   const transferInfo       = document.getElementById('transferInfo');
   const btnWhatsapp        = document.getElementById('btnWhatsapp');
   const btnAzulPay         = document.getElementById('btnAzulPay');
   const btnCardLinkPay     = document.getElementById('btnCardLinkPay');
+  const btnCodPay          = document.getElementById('btnCodPay');
   const azulNote           = document.getElementById('azulNote');
 
   payMethodTabs.forEach(tab => {
@@ -695,6 +699,7 @@
       payPanelCard?.classList.toggle('active', activeMethod === 'card');
       payPanelTransfer?.classList.toggle('active', activeMethod === 'transfer');
       payPanelCardLink?.classList.toggle('active', activeMethod === 'cardlink');
+      payPanelCod?.classList.toggle('active', activeMethod === 'cod');
     });
   });
 
@@ -768,18 +773,16 @@
 
   function getShippingInfo() {
     return {
-      name:     (document.getElementById('shipName')?.value     || '').trim(),
-      phone:    (document.getElementById('shipPhone')?.value    || '').trim(),
-      email:    (document.getElementById('shipEmail')?.value    || '').trim(),
-      country:  (document.getElementById('shipCountry')?.value  || '').trim(),
-      province: (document.getElementById('shipProvince')?.value || '').trim(),
-      address:  (document.getElementById('shipAddress')?.value  || '').trim(),
+      name:    (document.getElementById('shipName')?.value    || '').trim(),
+      phone:   (document.getElementById('shipPhone')?.value   || '').trim(),
+      country: (document.getElementById('shipCountry')?.value || '').trim(),
+      address: (document.getElementById('shipAddress')?.value || '').trim(),
     };
   }
 
   function validateShipping() {
     const s = getShippingInfo();
-    const ok = s.name && s.phone && s.email && s.country && s.province && s.address;
+    const ok = !!(s.name && s.phone && s.country && s.address);
     const errEl = document.getElementById('shippingErr');
     if (errEl) errEl.classList.toggle('hidden', ok);
     return ok;
@@ -793,7 +796,7 @@
 
   function updateCheckoutTermsGate() {
     const ok = !!document.getElementById('acceptTerms')?.checked;
-    ['btnWhatsapp', 'btnAzulPay', 'btnCardLinkPay'].forEach(id => {
+    ['btnWhatsapp', 'btnAzulPay', 'btnCardLinkPay', 'btnCodPay'].forEach(id => {
       const btn = document.getElementById(id);
       if (!btn) return;
       btn.disabled = !ok;
@@ -925,9 +928,7 @@
         trackingUrl: data.trackingUrl || '',
         name:     shipping.name,
         phone:    shipping.phone,
-        email:    shipping.email,
         country:  shipping.country,
-        province: shipping.province,
         address:  shipping.address,
         method:   'Tarjeta (AZUL)',
         dopRate:  (currencyRates && currencyRates.DOP) || 59.48,
@@ -981,11 +982,9 @@
       }
       localStorage.setItem('calziani_card_pending', JSON.stringify({
         orderNumber: data.orderNumber,
-        email: ship.email,
         name: ship.name,
         phone: ship.phone,
         country: ship.country,
-        province: ship.province,
         address: ship.address,
         items: cart,
         lineSubtotal: ct.lineSubtotal,
@@ -1077,7 +1076,6 @@
       `Nombre: ${ship.name}`,
       `Teléfono: ${ship.phone}`,
       `País: ${ship.country}`,
-      `Provincia: ${ship.province}`,
       `Dirección: ${ship.address}`,
       ``,
       `Adjunto comprobante de transferencia.`,
@@ -1100,6 +1098,108 @@
           <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px">¡Pedido registrado!</h3>
           <p style="font-size:0.82rem;color:#555;margin-bottom:4px">Pedido: <strong>${orderNumber}</strong></p>
           <p style="font-size:0.82rem;color:#555;margin-bottom:16px">Envianos el comprobante de transferencia por WhatsApp para confirmar tu pedido.</p>
+          ${trackingUrl ? `<a href="${trackingUrl}" target="_blank" style="font-size:0.8rem;color:#111;text-decoration:underline;display:block;margin-bottom:14px">Ver seguimiento de pedido</a>` : ''}
+          <button onclick="location.href='/'" style="background:#111;color:#fff;border:none;padding:10px 24px;font-size:0.8rem;font-weight:700;letter-spacing:0.08em;cursor:pointer;border-radius:2px">Seguir comprando</button>
+        </div>`;
+    }
+    updateCartUI();
+  });
+
+  // ─── COD payment (Santiago only) ─────────────────────────────────────────────
+  btnCodPay?.addEventListener('click', async () => {
+    const cart = getCart();
+    if (!cart.length) return;
+    if (!validateShipping()) return;
+    if (!validateTerms()) return;
+    const ship = getShippingInfo();
+    const ct = cartTotals();
+    const btn = btnCodPay;
+    const prevHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Guardando pedido...';
+
+    let orderNumber = '';
+    let trackingCode = '';
+    let trackingUrl = '';
+    try {
+      const saveRes = await fetch('/api/orders/whatsapp-submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          cart,
+          shipping: ship,
+          subtotal: ct.subtotal,
+          shippingFee: ct.shipping,
+          total: ct.total,
+          promoCode: activePromoCode() || undefined,
+          paymentMethod: 'cod',
+        }),
+      });
+      const saveData = await saveRes.json().catch(() => ({}));
+      if (!saveRes.ok) {
+        alert(saveData.error || 'No se pudo guardar el pedido.');
+        btn.disabled = false;
+        btn.innerHTML = prevHtml;
+        updateCheckoutTermsGate();
+        return;
+      }
+      orderNumber = saveData.orderNumber || '';
+      trackingCode = saveData.trackingCode || '';
+      trackingUrl = saveData.trackingUrl || (trackingCode ? `${location.origin}/tracking?code=${encodeURIComponent(trackingCode)}` : '');
+      window.CalzianiPixel?.trackInitiateCheckout(cart, ct.total);
+      setPromoCalziani(false);
+      if (promoCodeInput) promoCodeInput.value = '';
+      promoClearBtn?.classList.add('hidden');
+    } catch {
+      alert('Error de conexión.');
+      btn.disabled = false;
+      btn.innerHTML = prevHtml;
+      updateCheckoutTermsGate();
+      return;
+    }
+
+    const items = cart.map(i => `• ${i.name}${i.size ? ` (${i.size})` : ''} x${i.qty} — ${formatUsdCheckout(i.price * i.qty)} / ${formatDopCheckout(i.price * i.qty)}`).join('\n');
+    const msg = [
+      `Hola! Quiero confirmar mi pedido en Calziani con pago al recibir 🛍️`,
+      orderNumber ? `Pedido: *${orderNumber}*` : '',
+      trackingCode ? `Código de tracking: *${trackingCode}*` : '',
+      trackingUrl ? `Link de tracking: ${trackingUrl}` : '',
+      ``,
+      items,
+      ``,
+      `Subtotal: ${formatUsdCheckout(ct.lineSubtotal)} / ${formatDopCheckout(ct.lineSubtotal)}`,
+      ...(ct.promoOn
+        ? [`Descuento promocional −${ct.promoPct}%: ${formatUsdCheckout(ct.discountAmt)} / ${formatDopCheckout(ct.discountAmt)}`]
+        : []),
+      `Envío: ${formatUsdCheckout(SHIPPING_USD)} / ${formatDopCheckout(SHIPPING_USD)}`,
+      `*Total: ${formatUsdCheckout(ct.total)} / ${formatDopCheckout(ct.total)}*`,
+      ``,
+      `📦 Datos de entrega:`,
+      `Nombre: ${ship.name}`,
+      `Teléfono: ${ship.phone}`,
+      `País: ${ship.country}`,
+      `Dirección: ${ship.address}`,
+      ``,
+      `💵 Método de pago: Pago al recibir (Santiago)`,
+      ``,
+      activeLang === 'en'
+        ? '✓ I confirm that I accepted Calziani\'s terms and conditions.'
+        : '✓ Confirmo que acepté los términos y condiciones de Calziani.',
+    ].filter(Boolean).join('\n');
+    const phone = (payConfig.whatsapp || '18093076122').replace(/\D/g, '');
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+
+    localStorage.removeItem('calziani_cart');
+
+    const cartBody = document.getElementById('cartBody');
+    if (cartBody) {
+      cartBody.innerHTML = `
+        <div style="padding:28px 20px;text-align:center">
+          <div style="width:52px;height:52px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.4rem">✓</div>
+          <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px">¡Pedido registrado!</h3>
+          <p style="font-size:0.82rem;color:#555;margin-bottom:4px">Pedido: <strong>${orderNumber}</strong></p>
+          <p style="font-size:0.82rem;color:#555;margin-bottom:16px">Un asesor se comunicará contigo para coordinar la entrega en Santiago.</p>
           ${trackingUrl ? `<a href="${trackingUrl}" target="_blank" style="font-size:0.8rem;color:#111;text-decoration:underline;display:block;margin-bottom:14px">Ver seguimiento de pedido</a>` : ''}
           <button onclick="location.href='/'" style="background:#111;color:#fff;border:none;padding:10px 24px;font-size:0.8rem;font-weight:700;letter-spacing:0.08em;cursor:pointer;border-radius:2px">Seguir comprando</button>
         </div>`;

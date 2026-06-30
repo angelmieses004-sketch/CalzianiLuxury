@@ -219,8 +219,7 @@
         <!-- Threshold progress bar -->
         <div class="cart-bar" id="cartBar" style="display:none">
           <p class="cart-bar__msg" id="cartBarMsg">
-            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#D48C1A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-            Te faltan <b id="cartBarGap"></b> para <b class="cart-bar__reward">envío gratis + 10% OFF</b>
+            Te faltan <b id="cartBarGap"></b> para <b class="cart-bar__reward">accesorios gratis</b>
           </p>
           <div class="cart-bar__row">
             <div class="cart-bar__track"><div class="cart-bar__fill" id="cartBarFill"></div></div>
@@ -230,20 +229,20 @@
           </div>
           <p class="cart-bar__done" id="cartBarDone">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#27500A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            ¡Desbloqueaste envío gratis + 10% OFF!
+              ¡Desbloqueaste envío gratis + 5% OFF + accesorios!
           </p>
         </div>
 
         <!-- Shipping form -->
         <div class="shipping-form" id="shippingForm">
+          <p class="shipping-form__intro">Ordenalo con 30% de inicial · pagás el resto al recibir · te contactamos por WhatsApp.</p>
           <p class="shipping-form__title">Datos de envío</p>
           <div class="shipping-fields">
-            <input class="shipping-input" id="shipName"     type="text"  placeholder="Nombre completo *" autocomplete="name" />
-            <input class="shipping-input" id="shipPhone"    type="tel"   placeholder="Teléfono / WhatsApp *" autocomplete="tel" />
-            <input class="shipping-input" id="shipEmail"    type="email" placeholder="Correo electrónico *" autocomplete="email" />
-            <select class="shipping-input shipping-select" id="shipCountry">
+            <input class="shipping-input" id="shipName"    type="text" placeholder="Nombre completo *" autocomplete="name" />
+            <input class="shipping-input" id="shipPhone"   type="tel"  placeholder="Teléfono / WhatsApp *" autocomplete="tel" />
+            <select class="shipping-input shipping-select shipping-wide" id="shipCountry">
               <option value="">Seleccionar país *</option>
-              <option value="Dominican Republic">República Dominicana</option>
+              <option value="Dominican Republic" selected>República Dominicana</option>
               <option value="United States">Estados Unidos</option>
               <option value="Puerto Rico">Puerto Rico</option>
               <option value="Canada">Canadá</option>
@@ -253,10 +252,9 @@
               <option value="Spain">España</option>
               <option value="Other">Otro</option>
             </select>
-            <input class="shipping-input" id="shipProvince" type="text"  placeholder="Provincia / Estado *" autocomplete="address-level1" />
-            <input class="shipping-input" id="shipAddress"  type="text"  placeholder="Dirección completa *" autocomplete="street-address" />
+            <input class="shipping-input shipping-wide" id="shipAddress" type="text" placeholder="Dirección completa (ciudad, provincia) *" autocomplete="street-address" />
           </div>
-          <p class="shipping-err hidden" id="shippingErr">Por favor completa todos los datos de envío, incluyendo tu correo electrónico.</p>
+          <p class="shipping-err hidden" id="shippingErr">Por favor completa todos los datos de envío.</p>
         </div>
 
         <div class="cart-promo" id="cartPromoBlock">
@@ -272,21 +270,21 @@
         <!-- Shipping method selector -->
         <div class="ship-opts" id="shippingOptsBlock">
           <p class="ship-opts__title">Método de envío</p>
-          <div class="ship-opt ship-opt--active" id="shipOptStd" data-method="standard">
-            <div class="ship-opt__radio"></div>
-            <div class="ship-opt__body">
-              <span class="ship-opt__label">Estándar</span>
-              <span class="ship-opt__days" id="shipStdDays">15-22 días hábiles</span>
-            </div>
-            <span class="ship-opt__price" id="shipStdPrice">Gratis</span>
-          </div>
-          <div class="ship-opt" id="shipOptPri" data-method="priority">
+          <div class="ship-opt ship-opt--active" id="shipOptPri" data-method="priority">
             <div class="ship-opt__radio"></div>
             <div class="ship-opt__body">
               <span class="ship-opt__label">Prioritario</span>
               <span class="ship-opt__days" id="shipPriDays">6-13 días hábiles</span>
             </div>
             <span class="ship-opt__price" id="shipPriPrice">US$30.00</span>
+          </div>
+          <div class="ship-opt" id="shipOptStd" data-method="standard">
+            <div class="ship-opt__radio"></div>
+            <div class="ship-opt__body">
+              <span class="ship-opt__label">Estándar</span>
+              <span class="ship-opt__days" id="shipStdDays">15-22 días hábiles</span>
+            </div>
+            <span class="ship-opt__price" id="shipStdPrice">Gratis</span>
           </div>
         </div>
 
@@ -299,7 +297,7 @@
             </div>
           </div>
           <div class="cart-totals__row cart-totals__threshold hidden" id="cartThresholdRow">
-            <span>10% OFF (+$600)</span>
+            <span>5% OFF (+$500)</span>
             <div class="cart-totals__dual">
               <span id="cartThresholdUsd" class="cart-totals__usd-line cart-totals__discount-val"></span>
               <span id="cartThresholdDop" class="cart-totals__dop-line cart-totals__discount-val"></span>
@@ -339,13 +337,17 @@
 
         <!-- Payment method selector -->
         <div class="pay-method-tabs">
-          <button class="pay-method-tab active" data-method="transfer">
+          <button class="pay-method-tab active" data-method="cardlink">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Tarjeta
+          </button>
+          <button class="pay-method-tab" data-method="transfer">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             Transferencia
           </button>
-          <button class="pay-method-tab" data-method="cardlink">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-            Tarjeta
+          <button class="pay-method-tab" data-method="cod">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Al recibir
           </button>
         </div>
 
@@ -359,8 +361,8 @@
         </div>
 
         <!-- Card link panel -->
-        <div class="pay-panel" id="payPanelCardLink">
-          <p class="cardlink-note">Recibirás un link de pago seguro en tu correo electrónico para completar tu compra con tarjeta débito/crédito.</p>
+        <div class="pay-panel active" id="payPanelCardLink">
+          <p class="cardlink-note">Recibirás un link de pago seguro por WhatsApp para completar tu compra con tarjeta débito/crédito.</p>
           <button class="btn-cardlink-pay" id="btnCardLinkPay">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             Solicitar link de pago
@@ -368,13 +370,25 @@
         </div>
 
         <!-- Transfer panel -->
-        <div class="pay-panel active" id="payPanelTransfer">
+        <div class="pay-panel" id="payPanelTransfer">
           <div class="transfer-info" id="transferInfo">
             <!-- filled by JS from /api/payment-config -->
           </div>
           <button class="btn-whatsapp" id="btnWhatsapp">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
             Confirmar por WhatsApp
+          </button>
+        </div>
+
+        <!-- COD panel (Santiago only) -->
+        <div class="pay-panel" id="payPanelCod">
+          <p class="cod-note">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Opción disponible <strong>solo en Santiago</strong>. Un asesor coordinará la entrega y el cobro.
+          </p>
+          <button class="btn-whatsapp btn-cod-pay" id="btnCodPay">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+            Confirmar pago al recibir
           </button>
         </div>
 
@@ -868,10 +882,10 @@
     </div>
   </div>
 
-  <script src="/js/whatsapp-float.js"></script>
-  <script src="/js/pixel.js"></script>
-  <script src="/js/trust.js"></script>
-  <script src="/js/main.js"></script>
+  <script src="/js/whatsapp-float.js?v=20260630"></script>
+  <script src="/js/pixel.js?v=20260630"></script>
+  <script src="/js/trust.js?v=20260630"></script>
+  <script src="/js/main.js?v=20260630"></script>
 
   <script>
     // Category showcase + hero ghost CTA clicks

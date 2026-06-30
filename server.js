@@ -335,7 +335,7 @@ async function sendOrderReceiptEmail({ to, order }) {
       <table style="width:100%;font-size:13px;color:#333;margin:8px 0 0">
         <tr><td style="padding:3px 0;color:#888">Subtotal</td><td style="padding:3px 0;text-align:right">${fmtUsd(order.lineSubtotal)} <span style="color:#999">/ ${fmtDop(order.lineSubtotal)}</span></td></tr>
         ${order.discountAmt ? `<tr><td style="padding:3px 0;color:#888">Descuento${order.promoPct ? ` (−${order.promoPct}%)` : ''}</td><td style="padding:3px 0;text-align:right;color:#16a34a">− ${fmtUsd(order.discountAmt)}</td></tr>` : ''}
-        ${order.thresholdDiscount ? `<tr><td style="padding:3px 0;color:#888">10% OFF (+$600)</td><td style="padding:3px 0;text-align:right;color:#16a34a">− ${fmtUsd(order.thresholdDiscount)}</td></tr>` : ''}
+        ${order.thresholdDiscount ? `<tr><td style="padding:3px 0;color:#888">5% OFF (+$500)</td><td style="padding:3px 0;text-align:right;color:#16a34a">− ${fmtUsd(order.thresholdDiscount)}</td></tr>` : ''}
         <tr><td style="padding:3px 0;color:#888">Envío</td><td style="padding:3px 0;text-align:right">${order.shippingFee > 0 ? `${fmtUsd(order.shippingFee)} <span style="color:#999">/ ${fmtDop(order.shippingFee)}</span>` : '<span style="color:#16a34a">Gratis</span>'}</td></tr>
         <tr><td style="padding:10px 0 0;font-weight:700;font-size:15px;border-top:2px solid #111">Total</td><td style="padding:10px 0 0;text-align:right;font-weight:700;font-size:15px;border-top:2px solid #111">${fmtUsd(order.total)}<br><span style="color:#666;font-size:12px">${fmtDop(order.total)} DOP</span></td></tr>
       </table>
@@ -1431,8 +1431,8 @@ function validateShippingFee(fee) {
 
 app.get('/api/shipping-config', (req, res) => res.json(getShippingConfig()));
 
-const CART_THRESHOLD_USD = 600;
-const CART_THRESHOLD_PCT = 0.10;
+const CART_THRESHOLD_USD = 500;
+const CART_THRESHOLD_PCT = 0.05;
 function applyCartThreshold(lineSubtotal, promoSubtotal) {
   const met = lineSubtotal >= CART_THRESHOLD_USD;
   const discount = met ? Math.round(promoSubtotal * CART_THRESHOLD_PCT * 100) / 100 : 0;
@@ -1681,9 +1681,11 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
     }
     const s = shipping || {};
     if (!String(s.name || '').trim() || !String(s.phone || '').trim() || !String(s.country || '').trim()
-        || !String(s.province || '').trim() || !String(s.address || '').trim()) {
+        || !String(s.address || '').trim()) {
       return res.status(400).json({ error: 'Datos de envío incompletos.' });
     }
+    const allowedMethods = ['whatsapp', 'cod'];
+    const storedMethod = allowedMethods.includes(req.body?.paymentMethod) ? req.body.paymentMethod : 'whatsapp';
     const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
     const fee = Number(shippingFee);
 
@@ -1740,7 +1742,7 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
         phone: String(s.phone).trim().replace(/\D/g, ''),
         email: customerEmail || undefined,
         country: String(s.country).trim(),
-        province: String(s.province).trim(),
+        province: String(s.province || '').trim() || undefined,
         address: String(s.address).trim(),
       },
       subtotal: discountedSubtotal,
@@ -1750,7 +1752,7 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
       thresholdDiscount: thresholdMet ? thresholdDiscount : undefined,
       shippingFee: shipFee,
       total: totalCheck,
-      paymentMethod: 'whatsapp',
+      paymentMethod: storedMethod,
     };
     const userId = req.user?.id || null;
 
@@ -1838,11 +1840,8 @@ app.post('/api/orders/card-link-submit', (req, res) => {
     }
     const s = shipping || {};
     if (!String(s.name || '').trim() || !String(s.phone || '').trim() || !String(s.country || '').trim()
-        || !String(s.province || '').trim() || !String(s.address || '').trim()) {
+        || !String(s.address || '').trim()) {
       return res.status(400).json({ error: 'Datos de envío incompletos.' });
-    }
-    if (!isValidEmail(s.email)) {
-      return res.status(400).json({ error: 'Correo electrónico requerido para el link de pago.' });
     }
     const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
     const fee = Number(shippingFee);
@@ -1873,16 +1872,16 @@ app.post('/api/orders/card-link-submit', (req, res) => {
       return res.status(400).json({ error: 'Subtotal no coincide.' });
     }
 
-    const customerEmail = String(s.email).trim();
+    const customerEmail = isValidEmail(s.email) ? String(s.email).trim() : null;
     const orderNum = `CAL-C${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.toUpperCase();
     const payload = {
       cart,
       shipping: {
         name: String(s.name).trim(),
         phone: String(s.phone).trim().replace(/\D/g, ''),
-        email: customerEmail,
+        email: customerEmail || undefined,
         country: String(s.country).trim(),
-        province: String(s.province).trim(),
+        province: String(s.province || '').trim() || undefined,
         address: String(s.address).trim(),
       },
       subtotal: discountedSubtotal,
