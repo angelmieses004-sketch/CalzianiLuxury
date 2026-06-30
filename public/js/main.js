@@ -21,6 +21,7 @@
   }
 
   function isPromoExcludedProduct(item, excludedIds) {
+    if (item.brand_promo_excluded) return true;
     return (excludedIds || []).map(Number).includes(Number(item.id));
   }
 
@@ -1797,3 +1798,82 @@
     lastScrollY = currentScrollY;
   }, { passive: true });
 })();
+
+// ─── Coupon Popup ─────────────────────────────────────────────────────────────
+// Usar DOMContentLoaded porque el HTML del popup está después del tag <script>
+document.addEventListener('DOMContentLoaded', function () {
+(function () {
+  var KEY  = 'calziani_cpn_seen';
+  var CODE = 'CALZIANI15';
+
+  // Una sola vez por sesión
+  if (sessionStorage.getItem(KEY)) return;
+
+  var overlay = document.getElementById('couponOverlay');
+  var bd      = document.getElementById('couponBd');
+  var xBtn    = document.getElementById('couponClose');
+  var copyBtn = document.getElementById('couponCopy');
+  if (!overlay) return;
+
+  var opened = false;
+  var timer;
+
+  function open() {
+    if (opened) return;
+    opened = true;
+    clearTimeout(timer);
+    document.removeEventListener('mouseleave', onExit);
+    overlay.setAttribute('aria-hidden', 'false');
+    overlay.classList.add('open');
+    sessionStorage.setItem(KEY, '1');
+  }
+
+  function close() {
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+
+  // Disparador 1: 5 segundos
+  timer = setTimeout(open, 5000);
+
+  // Disparador 2: exit-intent (mouse sale por arriba)
+  function onExit(e) { if (e.clientY <= 0) open(); }
+  document.addEventListener('mouseleave', onExit);
+
+  // Cierre
+  bd.addEventListener('click', close);
+  xBtn.addEventListener('click', close);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && overlay.classList.contains('open')) close();
+  });
+
+  // Copiar código al portapapeles
+  copyBtn.addEventListener('click', function () {
+    var btn = copyBtn;
+    function showCopied() {
+      btn.textContent = '¡COPIADO!';
+      btn.classList.add('cpn-copied');
+      setTimeout(function () {
+        btn.textContent = 'COPIAR';
+        btn.classList.remove('cpn-copied');
+      }, 1500);
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(CODE).then(showCopied).catch(fallback);
+    } else {
+      fallback();
+    }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = CODE;
+      ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      try { document.execCommand('copy'); } catch (_) {}
+      document.body.removeChild(ta);
+      showCopied();
+    }
+  });
+}());
+});
+

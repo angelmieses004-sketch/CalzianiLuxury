@@ -96,6 +96,9 @@
   }
   </script>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap">
   <link rel="stylesheet" href="/css/style.css?v=20260621d" />
   <link rel="icon" href="/img/587730407_17843809347618797_3290323688225420457_n.jpg" />
 
@@ -902,5 +905,48 @@
       document.getElementById('newsletterSuccess').classList.remove('hidden');
     });
   </script>
+
+  <!-- ══ COUPON POPUP ═════════════════════════════════════════════════════════ -->
+  <div class="cpn-overlay" id="couponOverlay" aria-hidden="true">
+    <div class="cpn-bd" id="couponBd"></div>
+    <article class="cpn-card" role="dialog" aria-modal="true" aria-labelledby="cpnTitle">
+
+      <button class="cpn-x" id="couponClose" aria-label="Cerrar">
+        <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="1" y1="1" x2="13" y2="13"/><line x1="13" y1="1" x2="1" y2="13"/>
+        </svg>
+      </button>
+
+      <!-- Sección roja con borde superior festoneado -->
+      <div class="cpn-red">
+        <span class="cpn-badge">CÓDIGO LIMITADO</span>
+        <p class="cpn-brand" id="cpnTitle">CALZIANI <span class="cpn-x-icon">×</span> CUPÓN</p>
+        <p class="cpn-pct">15% OFF</p>
+        <div class="cpn-wm" aria-hidden="true">OFERTA</div>
+      </div>
+
+      <!-- Divisor tipo ticket (línea punteada + muescas laterales) -->
+      <div class="cpn-sep" aria-hidden="true"></div>
+
+      <!-- Sección crema -->
+      <div class="cpn-cream">
+        <p class="cpn-valid-lbl">VÁLIDO POR TIEMPO LIMITADO</p>
+        <p class="cpn-week">Solo esta semana · cantidad limitada</p>
+
+        <div class="cpn-code-row">
+          <span class="cpn-code">CALZIANI15</span>
+          <button class="cpn-copy" id="couponCopy">COPIAR</button>
+        </div>
+
+        <div class="cpn-bars" aria-hidden="true"></div>
+
+        <p class="cpn-trust">Pagás contra entrega en Santiago · 100% original</p>
+        <p class="cpn-fine">*No acumulable con otras promociones. Válido en todos los productos.</p>
+      </div>
+
+    </article>
+  </div>
+  <!-- ══════════════════════════════════════════════════════════════════════════ -->
+
 </body>
 </html>

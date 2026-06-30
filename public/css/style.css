@@ -1080,6 +1080,203 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 .cart-bar--done .cart-bar__msg  { display: none; }
 .cart-bar--done .cart-bar__done { display: flex; }
 
+/* ─── Coupon Popup ──────────────────────────────────────────────────────────── */
+
+/* Overlay + backdrop */
+.cpn-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .35s ease;
+}
+.cpn-overlay.open { opacity: 1; pointer-events: auto; }
+.cpn-bd {
+  position: absolute; inset: 0;
+  background: rgba(10, 10, 10, .72);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+/* Card */
+.cpn-card {
+  position: relative;
+  width: 100%; max-width: 356px;
+  border-radius: 0 0 20px 20px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.5);
+  overflow: hidden;
+  transform: translateY(24px) scale(.96);
+  transition: transform .45s cubic-bezier(.22,1,.36,1);
+}
+.cpn-overlay.open .cpn-card { transform: none; }
+
+/* Close X */
+.cpn-x {
+  position: absolute; top: 12px; right: 12px; z-index: 5;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(255,255,255,.2); border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #fff;
+  transition: background .2s;
+}
+.cpn-x:hover { background: rgba(255,255,255,.35); }
+
+/* ── Red top section ── */
+.cpn-red {
+  position: relative;
+  background: #C4102C;
+  padding: 22px 24px 30px;
+  text-align: center;
+  overflow: hidden;
+  /* Scalloped top edge via CSS mask */
+  mask-image:
+    radial-gradient(circle at 50% 0%, transparent 10px, black 10.5px),
+    linear-gradient(black, black);
+  mask-size: 20px 20px, 100% calc(100% - 10px);
+  mask-repeat: repeat-x, no-repeat;
+  mask-position: 0 0, 0 10px;
+  -webkit-mask-image:
+    radial-gradient(circle at 50% 0%, transparent 10px, black 10.5px),
+    linear-gradient(black, black);
+  -webkit-mask-size: 20px 20px, 100% calc(100% - 10px);
+  -webkit-mask-repeat: repeat-x, no-repeat;
+  -webkit-mask-position: 0 0, 0 10px;
+}
+/* Scalloped bottom: cream bumps over the red edge */
+.cpn-red::after {
+  content: '';
+  position: absolute; bottom: -10px; left: 0; right: 0; height: 20px;
+  background: radial-gradient(circle at 50% 0, #F4F2EC 10px, transparent 10.5px);
+  background-size: 20px 20px;
+  pointer-events: none; z-index: 2;
+}
+
+.cpn-badge {
+  display: inline-block;
+  background: #fff; color: #C4102C;
+  font-family: 'Archivo Black', 'Arial Black', sans-serif;
+  font-size: .56rem; letter-spacing: .2em;
+  padding: 3px 11px; border-radius: 999px;
+  margin-bottom: 11px;
+}
+.cpn-brand {
+  font-family: 'Archivo Black', 'Arial Black', sans-serif;
+  font-size: .85rem; color: rgba(255,255,255,.82);
+  letter-spacing: .14em; margin: 0 0 5px;
+  text-decoration: underline; text-underline-offset: 4px;
+}
+.cpn-x-icon { color: #C8941F; text-decoration: none; }
+.cpn-pct {
+  font-family: 'Archivo Black', 'Arial Black', sans-serif;
+  font-size: 4.2rem; color: #fff;
+  line-height: 1; margin: 0;
+  letter-spacing: -.03em;
+}
+/* Watermark rotado */
+.cpn-wm {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) rotate(-18deg);
+  font-family: 'Archivo Black', 'Arial Black', sans-serif;
+  font-size: 5.8rem; color: rgba(255,255,255,.07);
+  white-space: nowrap; pointer-events: none;
+  user-select: none; letter-spacing: .08em;
+}
+
+/* ── Divisor ticket (muescas laterales + línea punteada) ── */
+.cpn-sep {
+  position: relative; height: 1px;
+  background: rgba(0,0,0,.13);
+  margin: 0 18px;
+}
+.cpn-sep::before,
+.cpn-sep::after {
+  content: ''; position: absolute; top: -13px;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: #0d0d0d; /* coincide con el backdrop oscuro */
+}
+.cpn-sep::before { left: -30px; }
+.cpn-sep::after  { right: -30px; }
+
+/* ── Cream bottom section ── */
+.cpn-cream {
+  background: #F4F2EC;
+  padding: 20px 24px 22px;
+  text-align: center;
+}
+.cpn-valid-lbl {
+  font-family: 'Archivo Black', 'Arial Black', sans-serif;
+  font-size: .6rem; letter-spacing: .22em; color: #1A1A1A;
+  margin: 0 0 4px;
+}
+.cpn-week { font-size: .74rem; color: #999; margin: 0 0 16px; }
+
+/* Fila del código */
+.cpn-code-row {
+  display: flex; align-items: stretch;
+  border: 2px dashed #C4102C; border-radius: 8px;
+  overflow: hidden; margin: 0 0 14px;
+}
+.cpn-code {
+  flex: 1;
+  font-family: 'Courier New', 'Courier', monospace;
+  font-size: 1.15rem; font-weight: 700; letter-spacing: .1em;
+  color: #1A1A1A; padding: 10px 12px;
+  display: flex; align-items: center;
+}
+.cpn-copy {
+  background: #C4102C; color: #fff; border: none;
+  font-family: 'Archivo Black', 'Arial Black', sans-serif;
+  font-size: .58rem; letter-spacing: .14em;
+  padding: 0 16px; cursor: pointer;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+.cpn-copy:hover          { background: #a50e26; }
+.cpn-copy.cpn-copied     { background: #27500A; letter-spacing: .08em; }
+
+/* Código de barras decorativo */
+.cpn-bars {
+  width: 180px; height: 34px;
+  margin: 0 auto 14px;
+  opacity: .55; border-radius: 1px;
+  background: repeating-linear-gradient(
+    90deg,
+    #1A1A1A 0px,  #1A1A1A 2px,
+    transparent   2px,  transparent   5px,
+    #1A1A1A 5px,  #1A1A1A 7px,
+    transparent   7px,  transparent   9px,
+    #1A1A1A 9px,  #1A1A1A 12px,
+    transparent   12px, transparent  14px,
+    #1A1A1A 14px, #1A1A1A 15px,
+    transparent   15px, transparent  18px,
+    #1A1A1A 18px, #1A1A1A 21px,
+    transparent   21px, transparent  23px,
+    #1A1A1A 23px, #1A1A1A 24px,
+    transparent   24px, transparent  27px,
+    #1A1A1A 27px, #1A1A1A 30px,
+    transparent   30px, transparent  32px,
+    #1A1A1A 32px, #1A1A1A 33px,
+    transparent   33px, transparent  36px
+  );
+}
+
+.cpn-trust {
+  font-size: .71rem; color: #666;
+  font-style: italic; margin: 0 0 6px;
+}
+.cpn-fine {
+  font-size: .59rem; color: #bbb;
+  line-height: 1.5; margin: 0;
+}
+
+/* ── Mobile ── */
+@media (max-width: 400px) {
+  .cpn-card { max-width: 100%; }
+  .cpn-pct  { font-size: 3.5rem; }
+  .cpn-code { font-size: 1rem; letter-spacing: .06em; }
+}
+
 /* ─── Card link pay button ──────────────────────────────────────────────────── */
 .cardlink-note {
   font-size: 0.8rem;

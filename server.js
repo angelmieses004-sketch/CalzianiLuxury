@@ -510,7 +510,9 @@ app.put('/api/admin/brands/promo-rules', requireAuth, (req, res) => {
 app.get('/api/featured', (req, res) => {
   try {
     const rows = db.prepare(
-      `SELECT p.*, b.name AS brand_name
+      `SELECT p.*, b.name AS brand_name,
+              b.promo_excluded AS brand_promo_excluded,
+              b.promo_min_price_usd AS brand_promo_min
        FROM featured_products f
        JOIN products p ON p.id = f.product_id
        LEFT JOIN brands b ON b.id = p.brand_id
@@ -558,7 +560,9 @@ app.get('/api/products', (req, res) => {
   const paginate = !isNaN(pageNum) && pageNum >= 1;
 
   let query = `
-    SELECT p.*, b.name AS brand_name
+    SELECT p.*, b.name AS brand_name,
+           b.promo_excluded AS brand_promo_excluded,
+           b.promo_min_price_usd AS brand_promo_min
     FROM products p
     LEFT JOIN brands b ON b.id = p.brand_id
   `;
