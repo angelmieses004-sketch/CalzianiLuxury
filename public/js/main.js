@@ -1772,6 +1772,28 @@
     } catch { /* keep stored data on network error */ }
   })();
 
+  // Auto-apply default promo on first visit so coupon prices are visible on all devices
+  (async () => {
+    if (activePromoData()) return;
+    try {
+      const res = await fetch('/api/promo/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: 'CALZIANI15' }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setPromoData({
+        code: data.code,
+        percent: data.percent,
+        excludedProductIds: data.excludedProductIds || [],
+        floorProductPrices: data.floorProductPrices || {},
+      });
+      if (lastProducts.length) renderProducts(lastProducts);
+      loadSeleccionSection();
+    } catch { /* ignore */ }
+  })();
+
   loadCurrencyRates().then(() => {
     fetchProducts();
     loadSaleProducts();
