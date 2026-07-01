@@ -408,9 +408,9 @@
   const cartClose   = document.getElementById('cartClose');
   const cartBtn     = document.getElementById('cartBtn');
   const cartBadge   = document.getElementById('cartBadge');
-  const cartItems   = document.getElementById('cartItems');
+  const ckItems     = document.getElementById('ckItems');
   const cartEmpty   = document.getElementById('cartEmpty');
-  const cartFoot    = document.getElementById('cartFoot');
+  const ckBody      = document.getElementById('ckBody');
   const cartSubtotalUsd = document.getElementById('cartSubtotalUsd');
   const cartSubtotalDop = document.getElementById('cartSubtotalDop');
   const cartShippingUsd = document.getElementById('cartShippingUsd');
@@ -566,113 +566,49 @@
       cartBadge.classList.toggle('hidden', count === 0);
     }
 
-    // Empty state
+    // Empty / filled state
     if (!cart.length) {
-      cartEmpty.classList.remove('hidden');
-      cartItems.classList.add('hidden');
-      cartFoot.classList.add('hidden');
-      const at = document.getElementById('acceptTerms');
-      if (at) at.checked = false;
-      updateCheckoutTermsGate();
+      cartEmpty?.classList.remove('hidden');
+      ckBody?.classList.add('hidden');
       return;
     }
-    cartEmpty.classList.add('hidden');
-    cartItems.classList.remove('hidden');
-    cartFoot.classList.remove('hidden');
+    cartEmpty?.classList.add('hidden');
+    ckBody?.classList.remove('hidden');
 
-    // Items
-    const _promoData    = activePromoData();
-    const _excludedIds  = _promoData ? (_promoData.excludedProductIds || []).map(Number) : [];
-    cartItems.innerHTML = cart.map(item => {
-      const excluded = _promoData && isPromoExcludedProduct(item, _excludedIds);
-      return `
-      <li class="cart-item">
-        <div class="cart-item__img">
-          ${item.cover
-            ? `<img src="/img/products/${escHtml(item.cover)}" alt="${escHtml(item.name)}" />`
-            : `<div class="cart-item__img-empty">C</div>`}
-        </div>
-        <div class="cart-item__info">
-          <p class="cart-item__name">${escHtml(item.name)}</p>
-          ${item.size ? `<p class="cart-item__size">Talle: ${escHtml(item.size)}</p>` : ''}
-          ${excluded ? `<p class="cart-item__promo-excluded">El código ${escHtml(_promoData.code)} no aplica a este producto</p>` : ''}
-          <div class="cart-item__qty">
-            <button class="qty-btn" data-id="${item.id}" data-size="${item.size||''}" data-delta="-1">−</button>
-            <span>${item.qty}</span>
-            <button class="qty-btn" data-id="${item.id}" data-size="${item.size||''}" data-delta="1" ${item.maxQty !== undefined && item.qty >= item.maxQty ? 'disabled style="opacity:.35;cursor:default"' : ''}>+</button>
+    // Render items
+    if (ckItems) {
+      ckItems.innerHTML = cart.map(item => `
+        <div class="ck-item">
+          <div class="ck-item__img">
+            ${item.cover
+              ? `<img src="/img/products/${escHtml(item.cover)}" alt="${escHtml(item.name)}" loading="lazy" />`
+              : `<div class="ck-item__img-ph">C</div>`}
           </div>
-        </div>
-        <div class="cart-item__right">
-          <div class="cart-item__price-block">
-            <span class="cart-item__price">${formatUsdCheckout(item.price * item.qty)}</span>
-            <span class="cart-item__price-dop">${formatDopCheckout(item.price * item.qty)}</span>
+          <div class="ck-item__info">
+            <p class="ck-item__name">${escHtml(item.name)}</p>
+            <p class="ck-item__meta">${item.size ? `Talla ${escHtml(item.size)} · ` : ''}Cant. ${item.qty}</p>
           </div>
-          <button class="cart-item__remove" data-id="${item.id}" data-size="${item.size||''}" aria-label="Eliminar">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-      </li>`;
-    }).join('');
+          <div class="ck-item__right">
+            <p class="ck-item__price">${formatUsdCheckout(item.price * item.qty)}</p>
+            <button class="ck-item__remove" data-id="${item.id}" data-size="${item.size||''}" aria-label="Eliminar">×</button>
+          </div>
+        </div>`).join('');
 
-    // Totals (USD + DOP for transfer / local customers)
+      ckItems.querySelectorAll('.ck-item__remove').forEach(btn => {
+        btn.addEventListener('click', () => removeFromCart(btn.dataset.id, btn.dataset.size));
+      });
+    }
+
+    // Totals
     const ct = cartTotals();
-    if (cartSubtotalUsd) cartSubtotalUsd.textContent = formatUsdCheckout(ct.lineSubtotal);
-    if (cartSubtotalDop) cartSubtotalDop.textContent = formatDopCheckout(ct.lineSubtotal);
-    // Threshold discount row
-    const thresholdRow = document.getElementById('cartThresholdRow');
-    if (thresholdRow) {
-      thresholdRow.classList.toggle('hidden', !ct.thresholdMet);
-      if (ct.thresholdMet) {
-        const tUsd = document.getElementById('cartThresholdUsd');
-        const tDop = document.getElementById('cartThresholdDop');
-        if (tUsd) tUsd.textContent = `− ${formatUsdCheckout(ct.thresholdDiscountAmt)}`;
-        if (tDop) tDop.textContent = `− ${formatDopCheckout(ct.thresholdDiscountAmt)}`;
-      }
-    }
-    if (cartDiscountRow) {
-      cartDiscountRow.classList.toggle('hidden', !ct.promoOn);
-      if (ct.promoOn && cartDiscountUsd && cartDiscountDop) {
-        const labelEl = cartDiscountRow.querySelector('[data-i18n="promo_discount_label"]');
-        if (labelEl) labelEl.textContent = `Descuento (−${ct.promoPct}%)`;
-        cartDiscountUsd.textContent = `− ${formatUsdCheckout(ct.discountAmt)}`;
-        cartDiscountDop.textContent = `− ${formatDopCheckout(ct.discountAmt)}`;
-      }
-    }
-    if (promoClearBtn) promoClearBtn.classList.toggle('hidden', !promoCalzianiActive());
-    if (cartShippingUsd) cartShippingUsd.textContent = ct.shipping === 0 ? 'Gratis' : formatUsdCheckout(ct.shipping);
-    if (cartShippingDop) cartShippingDop.textContent = ct.shipping === 0 ? '' : formatDopCheckout(ct.shipping);
-    if (cartTotalUsd) cartTotalUsd.textContent = formatUsdCheckout(ct.total);
-    if (cartTotalDop) cartTotalDop.textContent = formatDopCheckout(ct.total);
-    updateCheckoutTermsGate();
-
-    // Progress bar toward $600 threshold
-    const cartBar  = document.getElementById('cartBar');
-    const cartBarFill = document.getElementById('cartBarFill');
-    const cartBarGap  = document.getElementById('cartBarGap');
-    if (cartBar) {
-      const hasItems = getCart().length > 0;
-      cartBar.style.display = hasItems ? '' : 'none';
-      if (hasItems) {
-        const pct = Math.min(100, Math.round(ct.lineSubtotal / THRESHOLD_MIN * 100));
-        if (cartBarFill) cartBarFill.style.width = pct + '%';
-        if (ct.thresholdMet) {
-          cartBar.classList.add('cart-bar--done');
-        } else {
-          cartBar.classList.remove('cart-bar--done');
-          const remaining = Math.round((THRESHOLD_MIN - ct.lineSubtotal) * 100) / 100;
-          if (cartBarGap) cartBarGap.textContent = '$' + remaining.toLocaleString('en-US');
-        }
-      }
-    }
-
-    // Qty buttons
-    cartItems.querySelectorAll('.qty-btn').forEach(btn => {
-      btn.addEventListener('click', () => changeQty(btn.dataset.id, btn.dataset.size, Number(btn.dataset.delta)));
-    });
-    cartItems.querySelectorAll('.cart-item__remove').forEach(btn => {
-      btn.addEventListener('click', () => removeFromCart(btn.dataset.id, btn.dataset.size));
-    });
-
+    const ckSubtotalEl = document.getElementById('ckSubtotal');
+    const ckShippingEl = document.getElementById('ckShipping');
+    const ckTotalEl    = document.getElementById('ckTotal');
+    const ckDepositEl  = document.getElementById('ckDeposit');
+    if (ckSubtotalEl) ckSubtotalEl.textContent = formatUsdCheckout(ct.lineSubtotal);
+    if (ckShippingEl) ckShippingEl.textContent = ct.shipping === 0 ? 'Gratis' : formatUsdCheckout(ct.shipping);
+    if (ckTotalEl)    ckTotalEl.textContent    = formatUsdCheckout(ct.total);
+    if (ckDepositEl)  ckDepositEl.textContent  = formatUsdCheckout(Math.round(ct.total * 0.30 * 100) / 100);
   }
 
   // ─── Payment methods ──────────────────────────────────────────────────────────
@@ -775,14 +711,14 @@
     return {
       name:    (document.getElementById('shipName')?.value    || '').trim(),
       phone:   (document.getElementById('shipPhone')?.value   || '').trim(),
-      country: (document.getElementById('shipCountry')?.value || '').trim(),
+      country: 'Dominican Republic',
       address: (document.getElementById('shipAddress')?.value || '').trim(),
     };
   }
 
   function validateShipping() {
     const s = getShippingInfo();
-    const ok = !!(s.name && s.phone && s.country && s.address);
+    const ok = !!(s.name && s.phone && s.address);
     const errEl = document.getElementById('shippingErr');
     if (errEl) errEl.classList.toggle('hidden', ok);
     return ok;
@@ -795,14 +731,7 @@
   }
 
   function updateCheckoutTermsGate() {
-    const ok = !!document.getElementById('acceptTerms')?.checked;
-    ['btnWhatsapp', 'btnAzulPay', 'btnCardLinkPay', 'btnCodPay'].forEach(id => {
-      const btn = document.getElementById(id);
-      if (!btn) return;
-      btn.disabled = !ok;
-      btn.style.opacity = ok ? '' : '0.45';
-      btn.style.cursor = ok ? '' : 'not-allowed';
-    });
+    // Terms gate removed — CTA button is always enabled; form is validated on submit
   }
 
   function initTermsCheckout() {
@@ -948,10 +877,35 @@
     }
   });
 
+  // ─── Step 1 → Step 2 transition ─────────────────────────────────────────────
+  document.getElementById('btnGoToCheckout')?.addEventListener('click', () => {
+    if (!validateShipping()) return;
+    const ct = cartTotals();
+    const summaryEl = document.getElementById('ckCheckoutSummary');
+    if (summaryEl) {
+      summaryEl.innerHTML = `
+        <div class="ck-checkout__sum-row">
+          <span>Total</span>
+          <strong>${formatUsdCheckout(ct.total)}</strong>
+        </div>
+        <div class="ck-checkout__sum-row ck-checkout__sum-deposit">
+          <span>Apartás hoy (30%)</span>
+          <strong>${formatUsdCheckout(Math.round(ct.total * 0.30 * 100) / 100)}</strong>
+        </div>`;
+    }
+    renderTransferInfo();
+    ckBody?.classList.add('hidden');
+    document.getElementById('ckCheckout')?.classList.remove('hidden');
+  });
+
+  document.getElementById('ckBack')?.addEventListener('click', () => {
+    document.getElementById('ckCheckout')?.classList.add('hidden');
+    ckBody?.classList.remove('hidden');
+  });
+
   // ─── Card link payment ────────────────────────────────────────────────────────
   btnCardLinkPay?.addEventListener('click', async () => {
     if (!validateShipping()) return;
-    if (!validateTerms()) return;
     const cart = getCart();
     if (!cart.length) return;
     const ship = getShippingInfo();
@@ -1008,7 +962,6 @@
     const cart = getCart();
     if (!cart.length) return;
     if (!validateShipping()) return;
-    if (!validateTerms()) return;
     const ship = getShippingInfo();
     const ct = cartTotals();
     const btn = btnWhatsapp;
@@ -1089,17 +1042,16 @@
 
     // Clear cart so the order cannot be submitted a second time
     localStorage.removeItem('calziani_cart');
-
-    const cartBody = document.getElementById('cartBody');
-    if (cartBody) {
-      cartBody.innerHTML = `
-        <div style="padding:28px 20px;text-align:center">
-          <div style="width:52px;height:52px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.4rem">✓</div>
-          <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px">¡Pedido registrado!</h3>
+    const ckCheckoutEl = document.getElementById('ckCheckout');
+    if (ckCheckoutEl) {
+      ckCheckoutEl.innerHTML = `
+        <div style="padding:60px 20px;text-align:center">
+          <div style="width:56px;height:56px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:1.6rem">✓</div>
+          <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:8px">¡Pedido registrado!</h3>
           <p style="font-size:0.82rem;color:#555;margin-bottom:4px">Pedido: <strong>${orderNumber}</strong></p>
-          <p style="font-size:0.82rem;color:#555;margin-bottom:16px">Envianos el comprobante de transferencia por WhatsApp para confirmar tu pedido.</p>
-          ${trackingUrl ? `<a href="${trackingUrl}" target="_blank" style="font-size:0.8rem;color:#111;text-decoration:underline;display:block;margin-bottom:14px">Ver seguimiento de pedido</a>` : ''}
-          <button onclick="location.href='/'" style="background:#111;color:#fff;border:none;padding:10px 24px;font-size:0.8rem;font-weight:700;letter-spacing:0.08em;cursor:pointer;border-radius:2px">Seguir comprando</button>
+          <p style="font-size:0.82rem;color:#555;margin-bottom:20px">Te contactaremos por WhatsApp para coordinar la entrega.</p>
+          ${trackingUrl ? `<a href="${trackingUrl}" target="_blank" style="font-size:0.8rem;color:#111;text-decoration:underline;display:block;margin-bottom:16px">Ver seguimiento de pedido</a>` : ''}
+          <button onclick="location.href='/'" style="background:#111;color:#fff;border:none;padding:12px 28px;font-size:0.82rem;font-weight:700;letter-spacing:0.08em;cursor:pointer;border-radius:6px">Seguir comprando</button>
         </div>`;
     }
     updateCartUI();
@@ -1110,7 +1062,6 @@
     const cart = getCart();
     if (!cart.length) return;
     if (!validateShipping()) return;
-    if (!validateTerms()) return;
     const ship = getShippingInfo();
     const ct = cartTotals();
     const btn = btnCodPay;
@@ -1192,16 +1143,16 @@
 
     localStorage.removeItem('calziani_cart');
 
-    const cartBody = document.getElementById('cartBody');
-    if (cartBody) {
-      cartBody.innerHTML = `
-        <div style="padding:28px 20px;text-align:center">
-          <div style="width:52px;height:52px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.4rem">✓</div>
-          <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px">¡Pedido registrado!</h3>
+    const ckCheckoutEl2 = document.getElementById('ckCheckout');
+    if (ckCheckoutEl2) {
+      ckCheckoutEl2.innerHTML = `
+        <div style="padding:60px 20px;text-align:center">
+          <div style="width:56px;height:56px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:1.6rem">✓</div>
+          <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:8px">¡Pedido registrado!</h3>
           <p style="font-size:0.82rem;color:#555;margin-bottom:4px">Pedido: <strong>${orderNumber}</strong></p>
-          <p style="font-size:0.82rem;color:#555;margin-bottom:16px">Un asesor se comunicará contigo para coordinar la entrega en Santiago.</p>
-          ${trackingUrl ? `<a href="${trackingUrl}" target="_blank" style="font-size:0.8rem;color:#111;text-decoration:underline;display:block;margin-bottom:14px">Ver seguimiento de pedido</a>` : ''}
-          <button onclick="location.href='/'" style="background:#111;color:#fff;border:none;padding:10px 24px;font-size:0.8rem;font-weight:700;letter-spacing:0.08em;cursor:pointer;border-radius:2px">Seguir comprando</button>
+          <p style="font-size:0.82rem;color:#555;margin-bottom:20px">Un asesor se comunicará contigo para coordinar la entrega.</p>
+          ${trackingUrl ? `<a href="${trackingUrl}" target="_blank" style="font-size:0.8rem;color:#111;text-decoration:underline;display:block;margin-bottom:16px">Ver seguimiento de pedido</a>` : ''}
+          <button onclick="location.href='/'" style="background:#111;color:#fff;border:none;padding:12px 28px;font-size:0.82rem;font-weight:700;letter-spacing:0.08em;cursor:pointer;border-radius:6px">Seguir comprando</button>
         </div>`;
     }
     updateCartUI();
