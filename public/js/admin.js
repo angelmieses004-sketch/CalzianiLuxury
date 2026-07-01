@@ -450,6 +450,60 @@
   const ORDERS_PER_PAGE = 10;
   let currentOrdersPage = 1;
 
+  // ─── Export orders ───────────────────────────────────────────────────────────
+  async function exportOrders(format) {
+    const from  = document.getElementById('exportFrom')?.value || '';
+    const to    = document.getElementById('exportTo')?.value   || '';
+    const csvBtn = document.getElementById('exportCsvBtn');
+    const pdfBtn = document.getElementById('exportPdfBtn');
+    const activeBtn = format === 'csv' ? csvBtn : pdfBtn;
+
+    const params = new URLSearchParams({ format });
+    if (from) params.set('from', from);
+    if (to)   params.set('to', to);
+
+    activeBtn.disabled = true;
+    activeBtn.textContent = 'Generando...';
+    try {
+      const res = await fetch(`/api/admin/orders/export?${params}`, { headers: authHeaders() });
+      if (!res.ok) { showToast('Error al exportar.', true); return; }
+
+      if (format === 'csv') {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `pedidos_${from||'inicio'}_${to||'hoy'}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const html = await res.text();
+        const win = window.open('', '_blank');
+        win.document.write(html);
+        win.document.close();
+      }
+    } catch {
+      showToast('Error de conexión.', true);
+    } finally {
+      activeBtn.disabled = false;
+      activeBtn.textContent = format === 'csv' ? '⬇ CSV' : '⬇ PDF';
+    }
+  }
+
+  document.getElementById('exportCsvBtn')?.addEventListener('click', () => exportOrders('csv'));
+  document.getElementById('exportPdfBtn')?.addEventListener('click', () => exportOrders('pdf'));
+
+  // Set default export dates (last 30 days)
+  (function setDefaultDates() {
+    const toEl   = document.getElementById('exportTo');
+    const fromEl = document.getElementById('exportFrom');
+    if (!toEl || !fromEl) return;
+    const now   = new Date();
+    const month = new Date(now); month.setDate(month.getDate() - 30);
+    toEl.value   = now.toISOString().slice(0, 10);
+    fromEl.value = month.toISOString().slice(0, 10);
+  })();
+
   async function loadOrders(page = currentOrdersPage) {
     if (!token || !ordersList) return;
     currentOrdersPage = page;
@@ -499,11 +553,19 @@
       : '<div class="order-card__section"><p class="order-muted">Sin datos de envío en el pedido.</p></div>';
 
     const itemsHtml = cart.length
-      ? `<ul class="order-card__items">${cart.map(i => {
-          const line = Number(i.price) * Number(i.qty);
-          const sz = i.size ? ` <small>(${escHtml(i.size)})</small>` : '';
-          return `<li><span class="order-card__iname">${escHtml(i.name)}${sz}</span> <span class="order-card__iqty">×${i.qty}</span> <span class="order-card__iprice">${formatPrice(line)}</span></li>`;
-        }).join('')}</ul>`
+      ? `<ul class="order-card__items">
+          ${cart.map((i, idx) => {
+            const line = Number(i.price) * Number(i.qty);
+            return `<li class="order-card__item-row">
+              <span class="order-card__iname">${escHtml(i.name)}</span>
+              <input type="text" class="size-edit-input" data-item-idx="${idx}" value="${escHtml(i.size || '')}" placeholder="Talla" title="Talla" />
+              <span class="order-card__iqty">×${i.qty}</span>
+              <span class="order-card__iprice">${formatPrice(line)}</span>
+            </li>`;
+          }).join('')}
+        </ul>
+        <button type="button" class="btn btn-sm save-sizes-btn" data-order-id="${o.id}">Guardar tallas</button>
+        <span class="sizes-save-feedback hidden" id="szfb-${o.id}">✓ Tallas guardadas</span>`
       : '<p class="order-muted">Sin detalle de productos en JSON.</p>';
 
     const st = o.status || '';
@@ -634,6 +696,39 @@
       } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = 'Guardar tracking';
+      }
+    }
+
+    // Save sizes button
+    const saveSizesBtn = e.target.closest('.save-sizes-btn');
+    if (saveSizesBtn) {
+      const orderId = saveSizesBtn.dataset.orderId;
+      const card = saveSizesBtn.closest('.order-card');
+      const feedback = document.getElementById(`szfb-${orderId}`);
+      const inputs = card?.querySelectorAll('.size-edit-input');
+      if (!inputs?.length) return;
+      const sizes = [...inputs].map(inp => ({ index: Number(inp.dataset.itemIdx), size: inp.value.trim() }));
+      saveSizesBtn.disabled = true;
+      saveSizesBtn.textContent = 'Guardando...';
+      try {
+        const res = await fetch(`/api/admin/orders/${orderId}/item-sizes`, {
+          method: 'PATCH',
+          headers: authHeaders(),
+          body: JSON.stringify({ sizes }),
+        });
+        if (res.ok) {
+          feedback?.classList.remove('hidden');
+          setTimeout(() => feedback?.classList.add('hidden'), 2500);
+          showToast('Tallas actualizadas.');
+        } else {
+          const d = await res.json().catch(() => ({}));
+          showToast(d.error || 'Error al guardar tallas.', true);
+        }
+      } catch {
+        showToast('Error de conexión.', true);
+      } finally {
+        saveSizesBtn.disabled = false;
+        saveSizesBtn.textContent = 'Guardar tallas';
       }
     }
 

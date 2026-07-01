@@ -211,6 +211,22 @@
         <div class="view__header">
           <h2 class="view__title">Pedidos</h2>
         </div>
+        <!-- Export toolbar -->
+        <div class="export-bar">
+          <label class="export-label">Exportar pedidos</label>
+          <div class="export-fields">
+            <div class="export-field">
+              <span class="export-field__lbl">Desde</span>
+              <input type="date" id="exportFrom" class="export-date" />
+            </div>
+            <div class="export-field">
+              <span class="export-field__lbl">Hasta</span>
+              <input type="date" id="exportTo" class="export-date" />
+            </div>
+            <button type="button" class="btn btn-sm btn-ghost" id="exportCsvBtn">⬇ CSV</button>
+            <button type="button" class="btn btn-sm btn-ghost" id="exportPdfBtn">⬇ PDF</button>
+          </div>
+        </div>
         <div id="ordersList" class="orders-list">
           <div class="table-loading">Cargando...</div>
         </div>

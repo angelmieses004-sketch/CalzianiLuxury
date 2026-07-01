@@ -261,6 +261,54 @@ input:focus, textarea:focus, select:focus {
   align-items: center;
 }
 
+/* ─── Export bar (orders view) ──────────────────────────────────────────────── */
+.export-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  background: var(--gray-50, #fafafa);
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  padding: 0.65rem 1rem;
+  margin-bottom: 1.25rem;
+}
+.export-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gray-500, #888);
+  white-space: nowrap;
+}
+.export-fields {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.export-field {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.export-field__lbl {
+  font-size: 0.74rem;
+  color: var(--gray-600);
+  white-space: nowrap;
+}
+.export-date {
+  padding: 4px 8px;
+  border: 1px solid var(--gray-200);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  color: var(--black);
+  background: #fff;
+  cursor: pointer;
+}
+.export-date:focus { outline: none; border-color: var(--black); }
+
 .admin-search {
   width: 220px;
   padding: 0.5rem 0.85rem;
@@ -815,6 +863,43 @@ input:focus, textarea:focus, select:focus {
 .order-card__iname { flex: 1; min-width: 8rem; }
 .order-card__iqty { color: var(--gray-600); }
 .order-card__iprice { font-weight: 600; margin-left: auto; }
+
+.size-edit-input {
+  width: 64px;
+  padding: 2px 6px;
+  border: 1px solid var(--gray-200);
+  border-radius: 4px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  text-align: center;
+  color: var(--gray-800);
+  background: #fafafa;
+  transition: border-color 0.15s;
+}
+.size-edit-input:focus { outline: none; border-color: var(--gray-700); background: #fff; }
+.size-edit-input::placeholder { color: var(--gray-300); }
+
+.save-sizes-btn {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  padding: 4px 12px;
+  background: #111;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.save-sizes-btn:hover { opacity: 0.85; }
+.save-sizes-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.sizes-save-feedback {
+  margin-left: 0.5rem;
+  font-size: 0.78rem;
+  color: #16a34a;
+  font-weight: 600;
+}
+.sizes-save-feedback.hidden { display: none; }
 
 .order-muted { color: var(--gray-400); font-size: 0.85rem; }
 

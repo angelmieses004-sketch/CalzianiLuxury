@@ -2194,6 +2194,92 @@ app.post('/api/admin/orders', requireAuth, (req, res) => {
 });
 
 // Admin: list orders (includes tracking fields)
+// Admin: export orders as CSV or printable HTML (PDF via browser)
+app.get('/api/admin/orders/export', requireAuth, (req, res) => {
+  const { from, to, format } = req.query;
+  let where = '1=1';
+  const params = [];
+  if (from) { where += ' AND DATE(created_at) >= ?'; params.push(from); }
+  if (to)   { where += ' AND DATE(created_at) <= ?'; params.push(to); }
+
+  const orders = db.prepare(
+    `SELECT id, order_number, customer_name, customer_email, subtotal, total,
+            status, created_at, items_json, tracking_code
+     FROM orders WHERE ${where} ORDER BY created_at DESC`
+  ).all(...params);
+
+  if (format === 'csv') {
+    const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [
+      ['Pedido','Fecha','Cliente','Email','Tracking','Productos','Tallas','Total USD','Estado'].join(','),
+      ...orders.map(o => {
+        let data = {}; try { data = JSON.parse(o.items_json || '{}'); } catch {}
+        const cart = Array.isArray(data.cart) ? data.cart : [];
+        const names  = cart.map(i => `${i.name} x${i.qty}`).join(' | ');
+        const sizes  = cart.map(i => i.size || '—').join(' | ');
+        return [
+          esc(o.order_number), esc((o.created_at||'').slice(0,10)),
+          esc(o.customer_name), esc(o.customer_email),
+          esc(o.tracking_code), esc(names), esc(sizes),
+          esc(Number(o.total).toFixed(2)), esc(o.status),
+        ].join(',');
+      }),
+    ];
+    const filename = `pedidos_${from||'inicio'}_${to||'hoy'}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send('﻿' + rows.join('\r\n'));
+  }
+
+  // PDF: return printable HTML page
+  const dopRate = Number(process.env.USD_RATE) || 59.48;
+  const fmtDate = d => (d||'').slice(0,10);
+  const fmtUsd  = n => `$${Number(n).toFixed(2)}`;
+  const fmtDop  = n => `RD$${Math.round(Number(n)*dopRate).toLocaleString('es-DO')}`;
+  const escH    = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const rows = orders.map(o => {
+    let data = {}; try { data = JSON.parse(o.items_json || '{}'); } catch {}
+    const cart = Array.isArray(data.cart) ? data.cart : [];
+    const items = cart.map(i => `${escH(i.name)}${i.size ? ` (${escH(i.size)})` : ''} ×${i.qty}`).join('<br>');
+    return `<tr>
+      <td>${escH(o.order_number)}</td>
+      <td>${fmtDate(o.created_at)}</td>
+      <td>${escH(o.customer_name||'—')}</td>
+      <td>${escH(o.tracking_code||'—')}</td>
+      <td style="font-size:11px">${items||'—'}</td>
+      <td>${fmtUsd(o.total)}<br><small style="color:#888">${fmtDop(o.total)}</small></td>
+      <td>${escH(o.status)}</td>
+    </tr>`;
+  }).join('');
+
+  const period = `${from||'inicio'} → ${to||'hoy'}`;
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
+  <title>Pedidos Calziani — ${escH(period)}</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:12px;margin:24px;color:#111}
+    h1{font-size:18px;margin-bottom:4px}
+    p.period{font-size:11px;color:#666;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse}
+    th{background:#111;color:#fff;padding:6px 8px;text-align:left;font-size:11px}
+    td{padding:5px 8px;border-bottom:1px solid #e8e8e8;vertical-align:top}
+    tr:nth-child(even) td{background:#f9f9f9}
+    @media print{body{margin:10px}}
+  </style>
+  </head><body>
+  <h1>CALZIANI · Pedidos</h1>
+  <p class="period">Período: ${escH(period)} · Total: ${orders.length} pedido(s)</p>
+  <table>
+    <thead><tr><th>Pedido</th><th>Fecha</th><th>Cliente</th><th>Tracking</th><th>Productos</th><th>Total</th><th>Estado</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="7">Sin pedidos en el período.</td></tr>'}</tbody>
+  </table>
+  <script>window.onload=()=>window.print();<\/script>
+  </body></html>`;
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  return res.send(html);
+});
+
 app.get('/api/admin/orders', requireAuth, (req, res) => {
   const pageNum  = parseInt(req.query.page);
   const limitNum = parseInt(req.query.limit) || 10;
@@ -2257,6 +2343,23 @@ app.delete('/api/admin/orders/:id', requireAuth, (req, res) => {
   if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
   db.prepare('DELETE FROM orders WHERE id = ?').run(req.params.id);
   res.json({ message: 'Pedido eliminado.' });
+});
+
+// Admin: update item sizes in an order
+app.patch('/api/admin/orders/:id/item-sizes', requireAuth, (req, res) => {
+  const { sizes } = req.body || {};
+  if (!Array.isArray(sizes)) return res.status(400).json({ error: 'Formato inválido.' });
+  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
+  if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+  let payload = {};
+  try { payload = JSON.parse(order.items_json || '{}'); } catch {}
+  const cart = Array.isArray(payload.cart) ? payload.cart : [];
+  sizes.forEach(({ index, size }) => {
+    if (cart[index] !== undefined) cart[index].size = String(size ?? '').trim();
+  });
+  payload.cart = cart;
+  db.prepare('UPDATE orders SET items_json = ? WHERE id = ?').run(JSON.stringify(payload), req.params.id);
+  res.json({ ok: true });
 });
 
 // Admin: update tracking code, stage + notes for an order
