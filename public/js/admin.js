@@ -4,7 +4,7 @@
   let pendingDeleteId = null;
   let searchTimer = null;
 
-  const CAT_LABELS = { calzado: 'Calzado', ropa: 'Ropa', accesorio: 'Accesorio' };
+  const CAT_LABELS = { calzado: 'Calzado' };
 
   const ORDER_STATUS_LABEL = {
     pending_transfer: 'Pendiente (transferencia / WhatsApp)',
@@ -28,8 +28,6 @@
 
   const SIZES_BY_CATEGORY = {
     calzado:   ['35','36','37','38','39','40','41','42','43','44','45'],
-    ropa:      ['XS','S','M','L','XL','XXL'],
-    accesorio: ['Única talla'],
   };
 
   // ─── DOM refs ───────────────────────────────────────────────────────────────

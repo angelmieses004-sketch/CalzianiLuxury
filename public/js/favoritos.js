@@ -1,5 +1,5 @@
 (() => {
-  const CATEGORY_LABELS = { calzado: 'Calzado', ropa: 'Ropa', accesorio: 'Accesorio' };
+  const CATEGORY_LABELS = { calzado: 'Calzado' };
 
   // ─── Currency ─────────────────────────────────────────────────────────────────
   let currencyRates = { USD: 1, EUR: 0.92, DOP: 59.48 };

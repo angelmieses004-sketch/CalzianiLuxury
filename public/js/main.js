@@ -38,8 +38,6 @@
       announcement:       'ENVÍO MUNDIAL GRATUITO EN PEDIDOS +$150',
       cat_all:            'Todo',
       cat_calzado:        'Calzado',
-      cat_ropa:           'Ropa',
-      cat_accesorio:      'Accesorios',
       search_placeholder: 'Buscar...',
       sign_in:            'Iniciar sesión',
       hero_eyebrow:       'NUEVA COLECCIÓN',
@@ -58,12 +56,8 @@
       out_of_stock:       'Sin stock',
       add_to_cart:        'Agregar',
       cat_label_calzado:  'Calzado',
-      cat_label_ropa:     'Ropa',
-      cat_label_accesorio:'Accesorio',
       title_all:          'Todos los productos',
       title_calzado:      'Calzado',
-      title_ropa:         'Ropa',
-      title_accesorio:    'Accesorios',
       terms_checkbox:     'Acepto los términos y condiciones de Calziani.',
       terms_read:         'Ver términos completos',
       terms_err:          'Debés aceptar los términos para continuar.',
@@ -79,8 +73,6 @@
       announcement:       'FREE WORLDWIDE SHIPPING ON ORDERS +$150',
       cat_all:            'All',
       cat_calzado:        'Footwear',
-      cat_ropa:           'Clothing',
-      cat_accesorio:      'Accessories',
       search_placeholder: 'Search...',
       sign_in:            'Sign in',
       hero_eyebrow:       'NEW COLLECTION',
@@ -99,12 +91,8 @@
       out_of_stock:       'Out of stock',
       add_to_cart:        'Add',
       cat_label_calzado:  'Footwear',
-      cat_label_ropa:     'Clothing',
-      cat_label_accesorio:'Accessory',
       title_all:          'All products',
       title_calzado:      'Footwear',
-      title_ropa:         'Clothing',
-      title_accesorio:    'Accessories',
       terms_checkbox:     'I accept Calziani\'s terms and conditions.',
       terms_read:         'Read full terms',
       terms_err:          'You must accept the terms to continue.',
@@ -186,19 +174,13 @@
 
   const CATEGORY_LABELS = {
     get calzado()   { return t('cat_label_calzado'); },
-    get ropa()      { return t('cat_label_ropa'); },
-    get accesorio() { return t('cat_label_accesorio'); },
   };
   const TITLE_MAP = {
     get all()       { return t('title_all'); },
     get calzado()   { return t('title_calzado'); },
-    get ropa()      { return t('title_ropa'); },
-    get accesorio() { return t('title_accesorio'); },
   };
   const SIZES_BY_CATEGORY = {
     calzado:   ['35','36','37','38','39','40','41','42','43','44','45'],
-    ropa:      ['XS','S','M','L','XL','XXL'],
-    accesorio: ['Única talla'],
   };
 
   // ─── Currency ─────────────────────────────────────────────────────────────────

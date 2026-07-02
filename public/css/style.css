@@ -3086,9 +3086,23 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   .newsletter-section { padding: 2.5rem 1.25rem; }
   .newsletter-inner { flex-direction: column; gap: 1.5rem; }
   .newsletter-title { font-size: 1.1rem; }
-  .newsletter-form { width: 100%; }
-  .newsletter-input { padding: 0.8rem 0.9rem; font-size: 0.82rem; }
-  .newsletter-btn { padding: 0.8rem 1.1rem; font-size: 0.75rem; white-space: nowrap; }
+  .newsletter-form { width: 100%; flex-direction: column; gap: 8px; }
+  .newsletter-input {
+    flex: none;
+    height: 48px;
+    padding: 0 0.9rem;
+    font-size: 0.84rem;
+    border-right: 1px solid rgba(255,255,255,0.15);
+    border-radius: 2px;
+  }
+  .newsletter-btn {
+    flex: none;
+    height: 48px;
+    padding: 0;
+    width: 100%;
+    font-size: 0.78rem;
+    border-radius: 2px;
+  }
 
   /* ── FOOTER ── */
   .footer__top {
@@ -3653,8 +3667,9 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   .newsletter-section { padding: 2.5rem 1.25rem !important; }
   .newsletter-inner { flex-direction: column !important; gap: 1.5rem !important; }
   .newsletter-title { font-size: 1.1rem !important; }
-  .newsletter-form  { width: 100% !important; flex-direction: row !important; }
-  .newsletter-input { font-size: 0.82rem !important; }
+  .newsletter-form  { width: 100% !important; flex-direction: column !important; gap: 8px !important; }
+  .newsletter-input { flex: none !important; height: 48px !important; padding: 0 0.9rem !important; font-size: 0.82rem !important; border-right: 1px solid rgba(255,255,255,0.15) !important; border-radius: 2px !important; }
+  .newsletter-btn   { flex: none !important; height: 48px !important; width: 100% !important; padding: 0 !important; border-radius: 2px !important; }
 
   /* Footer */
   .footer__top { grid-template-columns: 1fr !important; padding: 2.5rem 1.25rem 2rem !important; gap: 1.75rem !important; }
@@ -3676,10 +3691,10 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   /* Cat cards slightly wider on tiny phones */
   .cat-card { flex: 0 0 56vw !important; }
 
-  /* Newsletter: stack input and button */
-  .newsletter-form { flex-direction: column !important; }
-  .newsletter-input { border-right: 1px solid rgba(255,255,255,0.15) !important; border-radius: 2px !important; border-bottom: none; }
-  .newsletter-btn   { border-radius: 2px !important; width: 100% !important; }
+  /* Newsletter: stack input and button, fixed heights to prevent stretching */
+  .newsletter-form  { flex-direction: column !important; gap: 8px !important; }
+  .newsletter-input { flex: none !important; height: 48px !important; padding: 0 0.9rem !important; border-right: 1px solid rgba(255,255,255,0.15) !important; border-radius: 2px !important; }
+  .newsletter-btn   { flex: none !important; height: 48px !important; border-radius: 2px !important; width: 100% !important; padding: 0 !important; }
 }
 
 /* ─── Sale strip ──────────────────────────────────────────────────────────── */

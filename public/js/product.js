@@ -1,5 +1,5 @@
 (() => {
-  const CATEGORY_LABELS = { calzado: 'Calzado', ropa: 'Ropa', accesorio: 'Accesorio' };
+  const CATEGORY_LABELS = { calzado: 'Calzado' };
 
   // ─── Currency ────────────────────────────────────────────────────────────────
   let currencyRates = { USD: 1, EUR: 0.92, DOP: 59.48 };
@@ -484,7 +484,7 @@
     const imageUrl    = p.images?.[0]?.filename
       ? `${BASE}/img/products/${p.images[0].filename}`
       : `${BASE}/img/587730407_17843809347618797_3290323688225420457_n.jpg`;
-    const catLabel    = { calzado: 'Calzado', ropa: 'Ropa', accesorio: 'Accesorio' }[p.category] || p.category;
+    const catLabel    = { calzado: 'Calzado' }[p.category] || p.category;
     const priceUSD    = Number(p.price).toFixed(2);
     const metaDesc    = p.description
       ? `${p.description.slice(0, 130).trim()}… | Calziani`
