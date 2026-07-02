@@ -612,8 +612,9 @@
   }
 
   // ─── Payment methods ──────────────────────────────────────────────────────────
-  let payConfig   = {};
+  let payConfig    = {};
   let activeMethod = 'cardlink';
+  let pendingOrder = null; // set when user confirms in step 1
 
   const payMethodTabs      = document.querySelectorAll('.pay-method-tab');
   const payPanelCard       = document.getElementById('payPanelCard');
@@ -877,10 +878,60 @@
     }
   });
 
-  // ─── Step 1 → Step 2 transition ─────────────────────────────────────────────
-  document.getElementById('btnGoToCheckout')?.addEventListener('click', () => {
+  // ─── Step 1 → Step 2 transition (saves order immediately) ──────────────────
+  document.getElementById('btnGoToCheckout')?.addEventListener('click', async () => {
     if (!validateShipping()) return;
-    const ct = cartTotals();
+    const cart = getCart();
+    if (!cart.length) return;
+
+    const btn = document.getElementById('btnGoToCheckout');
+    const prevHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Guardando pedido...';
+
+    const ship = getShippingInfo();
+    const ct   = cartTotals();
+
+    try {
+      const res = await fetch('/api/orders/whatsapp-submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          cart,
+          shipping: ship,
+          subtotal: ct.subtotal,
+          shippingFee: ct.shipping,
+          total: ct.total,
+          promoCode: activePromoCode() || undefined,
+          paymentMethod: 'pending',
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || 'No se pudo guardar el pedido.');
+        btn.disabled = false;
+        btn.innerHTML = prevHtml;
+        return;
+      }
+      pendingOrder = {
+        orderNumber:  data.orderNumber  || '',
+        trackingCode: data.trackingCode || '',
+        trackingUrl:  data.trackingUrl  || (data.trackingCode ? `${location.origin}/tracking?code=${encodeURIComponent(data.trackingCode)}` : ''),
+        ct,
+        ship,
+      };
+      window.CalzianiPixel?.trackInitiateCheckout(cart, ct.total);
+    } catch {
+      alert('Error de conexión.');
+      btn.disabled = false;
+      btn.innerHTML = prevHtml;
+      return;
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = prevHtml;
+
     const summaryEl = document.getElementById('ckCheckoutSummary');
     if (summaryEl) {
       summaryEl.innerHTML = `
@@ -904,144 +955,65 @@
   });
 
   // ─── Card link payment ────────────────────────────────────────────────────────
-  btnCardLinkPay?.addEventListener('click', async () => {
-    if (!validateShipping()) return;
+  btnCardLinkPay?.addEventListener('click', () => {
+    if (!pendingOrder) return;
     const cart = getCart();
-    if (!cart.length) return;
-    const ship = getShippingInfo();
-    const ct = cartTotals();
-    const btn = btnCardLinkPay;
-    const prevHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.textContent = 'Procesando...';
-    try {
-      const res = await fetch('/api/orders/card-link-submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cart,
-          shipping: ship,
-          subtotal: ct.subtotal,
-          shippingFee: ct.shipping,
-          total: ct.total,
-          promoCode: activePromoCode() || undefined,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Error al procesar el pedido.');
-        btn.disabled = false;
-        btn.innerHTML = prevHtml;
-        return;
-      }
-      localStorage.setItem('calziani_card_pending', JSON.stringify({
-        orderNumber: data.orderNumber,
-        name: ship.name,
-        phone: ship.phone,
-        country: ship.country,
-        address: ship.address,
-        items: cart,
-        lineSubtotal: ct.lineSubtotal,
-        discountAmt: ct.discountAmt,
-        promoPct: ct.promoPct,
-        shippingFee: SHIPPING_USD,
-        total: ct.total,
-        dopRate: (currencyRates && currencyRates.DOP) || 59.48,
-        date: new Date().toISOString(),
-      }));
-      localStorage.removeItem('calziani_cart');
-      window.location.href = '/card-pending';
-    } catch {
-      alert('Error de conexión. Intentá nuevamente.');
-      btn.disabled = false;
-      btn.innerHTML = prevHtml;
-    }
+    const { orderNumber, ct, ship } = pendingOrder;
+    localStorage.setItem('calziani_card_pending', JSON.stringify({
+      orderNumber,
+      name: ship.name,
+      phone: ship.phone,
+      country: ship.country,
+      address: ship.address,
+      items: cart,
+      lineSubtotal: ct.lineSubtotal,
+      discountAmt: ct.discountAmt,
+      promoPct: ct.promoPct,
+      shippingFee: ct.shipping,
+      total: ct.total,
+      dopRate: (currencyRates && currencyRates.DOP) || 59.48,
+      date: new Date().toISOString(),
+    }));
+    setPromoCalziani(false);
+    localStorage.removeItem('calziani_cart');
+    pendingOrder = null;
+    window.location.href = '/card-pending';
   });
 
-  btnWhatsapp?.addEventListener('click', async () => {
+  btnWhatsapp?.addEventListener('click', () => {
+    if (!pendingOrder) return;
     const cart = getCart();
-    if (!cart.length) return;
-    if (!validateShipping()) return;
-    const ship = getShippingInfo();
-    const ct = cartTotals();
-    const btn = btnWhatsapp;
-    const prevHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.textContent = 'Guardando pedido...';
-
-    let orderNumber = '';
-    let trackingCode = '';
-    let trackingUrl = '';
-    try {
-      const saveRes = await fetch('/api/orders/whatsapp-submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          cart,
-          shipping: ship,
-          subtotal: ct.subtotal,
-          shippingFee: ct.shipping,
-          total: ct.total,
-          promoCode: activePromoCode() || undefined,
-        }),
-      });
-      const saveData = await saveRes.json().catch(() => ({}));
-      if (!saveRes.ok) {
-        alert(saveData.error || 'No se pudo guardar el pedido.');
-        btn.disabled = false;
-        btn.innerHTML = prevHtml;
-        updateCheckoutTermsGate();
-        return;
-      }
-      orderNumber = saveData.orderNumber || '';
-      trackingCode = saveData.trackingCode || '';
-      trackingUrl = saveData.trackingUrl || (trackingCode ? `${location.origin}/tracking?code=${encodeURIComponent(trackingCode)}` : '');
-      window.CalzianiPixel?.trackInitiateCheckout(cart, ct.total);
-      setPromoCalziani(false);
-      if (promoCodeInput) promoCodeInput.value = '';
-      promoClearBtn?.classList.add('hidden');
-    } catch {
-      alert('Error de conexión.');
-      btn.disabled = false;
-      btn.innerHTML = prevHtml;
-      updateCheckoutTermsGate();
-      return;
-    }
+    const { orderNumber, trackingCode, trackingUrl, ct, ship } = pendingOrder;
 
     const items = cart.map(i => `• ${i.name}${i.size ? ` (${i.size})` : ''} x${i.qty} — ${formatUsdCheckout(i.price * i.qty)} / ${formatDopCheckout(i.price * i.qty)}`).join('\n');
     const msg = [
       `Hola! Quiero confirmar mi pedido en Calziani 🛍️`,
-      orderNumber ? `Pedido: *${orderNumber}*` : '',
-      trackingCode ? `Código de tracking: *${trackingCode}*` : '',
-      trackingUrl ? `Link de tracking: ${trackingUrl}` : '',
+      orderNumber  ? `Pedido: *${orderNumber}*`                : '',
+      trackingCode ? `Código de tracking: *${trackingCode}*`  : '',
+      trackingUrl  ? `Link de tracking: ${trackingUrl}`        : '',
       ``,
       items,
       ``,
       `Subtotal: ${formatUsdCheckout(ct.lineSubtotal)} / ${formatDopCheckout(ct.lineSubtotal)}`,
-      ...(ct.promoOn
-        ? [`Descuento promocional −${ct.promoPct}%: ${formatUsdCheckout(ct.discountAmt)} / ${formatDopCheckout(ct.discountAmt)}`]
-        : []),
-      `Envío: ${formatUsdCheckout(SHIPPING_USD)} / ${formatDopCheckout(SHIPPING_USD)}`,
+      ...(ct.promoOn ? [`Descuento −${ct.promoPct}%: ${formatUsdCheckout(ct.discountAmt)} / ${formatDopCheckout(ct.discountAmt)}`] : []),
+      `Envío: ${ct.shipping === 0 ? 'Gratis' : formatUsdCheckout(ct.shipping)}`,
       `*Total: ${formatUsdCheckout(ct.total)} / ${formatDopCheckout(ct.total)}*`,
       ``,
       `📦 Datos de envío:`,
       `Nombre: ${ship.name}`,
       `Teléfono: ${ship.phone}`,
-      `País: ${ship.country}`,
       `Dirección: ${ship.address}`,
       ``,
       `Adjunto comprobante de transferencia.`,
-      ``,
-      activeLang === 'en'
-        ? '✓ I confirm that I accepted Calziani\'s terms and conditions.'
-        : '✓ Confirmo que acepté los términos y condiciones de Calziani.',
     ].filter(Boolean).join('\n');
+
     const phone = (payConfig.whatsapp || '18093076122').replace(/\D/g, '');
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
 
-    // Clear cart so the order cannot be submitted a second time
+    setPromoCalziani(false);
     localStorage.removeItem('calziani_cart');
+    pendingOrder = null;
+
     const ckCheckoutEl = document.getElementById('ckCheckout');
     if (ckCheckoutEl) {
       ckCheckoutEl.innerHTML = `
@@ -1058,90 +1030,39 @@
   });
 
   // ─── COD payment (Santiago only) ─────────────────────────────────────────────
-  btnCodPay?.addEventListener('click', async () => {
+  btnCodPay?.addEventListener('click', () => {
+    if (!pendingOrder) return;
     const cart = getCart();
-    if (!cart.length) return;
-    if (!validateShipping()) return;
-    const ship = getShippingInfo();
-    const ct = cartTotals();
-    const btn = btnCodPay;
-    const prevHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.textContent = 'Guardando pedido...';
-
-    let orderNumber = '';
-    let trackingCode = '';
-    let trackingUrl = '';
-    try {
-      const saveRes = await fetch('/api/orders/whatsapp-submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          cart,
-          shipping: ship,
-          subtotal: ct.subtotal,
-          shippingFee: ct.shipping,
-          total: ct.total,
-          promoCode: activePromoCode() || undefined,
-          paymentMethod: 'cod',
-        }),
-      });
-      const saveData = await saveRes.json().catch(() => ({}));
-      if (!saveRes.ok) {
-        alert(saveData.error || 'No se pudo guardar el pedido.');
-        btn.disabled = false;
-        btn.innerHTML = prevHtml;
-        updateCheckoutTermsGate();
-        return;
-      }
-      orderNumber = saveData.orderNumber || '';
-      trackingCode = saveData.trackingCode || '';
-      trackingUrl = saveData.trackingUrl || (trackingCode ? `${location.origin}/tracking?code=${encodeURIComponent(trackingCode)}` : '');
-      window.CalzianiPixel?.trackInitiateCheckout(cart, ct.total);
-      setPromoCalziani(false);
-      if (promoCodeInput) promoCodeInput.value = '';
-      promoClearBtn?.classList.add('hidden');
-    } catch {
-      alert('Error de conexión.');
-      btn.disabled = false;
-      btn.innerHTML = prevHtml;
-      updateCheckoutTermsGate();
-      return;
-    }
+    const { orderNumber, trackingCode, trackingUrl, ct, ship } = pendingOrder;
 
     const items = cart.map(i => `• ${i.name}${i.size ? ` (${i.size})` : ''} x${i.qty} — ${formatUsdCheckout(i.price * i.qty)} / ${formatDopCheckout(i.price * i.qty)}`).join('\n');
     const msg = [
       `Hola! Quiero confirmar mi pedido en Calziani con pago al recibir 🛍️`,
-      orderNumber ? `Pedido: *${orderNumber}*` : '',
-      trackingCode ? `Código de tracking: *${trackingCode}*` : '',
-      trackingUrl ? `Link de tracking: ${trackingUrl}` : '',
+      orderNumber  ? `Pedido: *${orderNumber}*`                : '',
+      trackingCode ? `Código de tracking: *${trackingCode}*`  : '',
+      trackingUrl  ? `Link de tracking: ${trackingUrl}`        : '',
       ``,
       items,
       ``,
       `Subtotal: ${formatUsdCheckout(ct.lineSubtotal)} / ${formatDopCheckout(ct.lineSubtotal)}`,
-      ...(ct.promoOn
-        ? [`Descuento promocional −${ct.promoPct}%: ${formatUsdCheckout(ct.discountAmt)} / ${formatDopCheckout(ct.discountAmt)}`]
-        : []),
-      `Envío: ${formatUsdCheckout(SHIPPING_USD)} / ${formatDopCheckout(SHIPPING_USD)}`,
+      ...(ct.promoOn ? [`Descuento −${ct.promoPct}%: ${formatUsdCheckout(ct.discountAmt)} / ${formatDopCheckout(ct.discountAmt)}`] : []),
+      `Envío: ${ct.shipping === 0 ? 'Gratis' : formatUsdCheckout(ct.shipping)}`,
       `*Total: ${formatUsdCheckout(ct.total)} / ${formatDopCheckout(ct.total)}*`,
       ``,
       `📦 Datos de entrega:`,
       `Nombre: ${ship.name}`,
       `Teléfono: ${ship.phone}`,
-      `País: ${ship.country}`,
       `Dirección: ${ship.address}`,
       ``,
       `💵 Método de pago: Pago al recibir (Santiago)`,
-      ``,
-      activeLang === 'en'
-        ? '✓ I confirm that I accepted Calziani\'s terms and conditions.'
-        : '✓ Confirmo que acepté los términos y condiciones de Calziani.',
     ].filter(Boolean).join('\n');
+
     const phone = (payConfig.whatsapp || '18093076122').replace(/\D/g, '');
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
 
+    setPromoCalziani(false);
     localStorage.removeItem('calziani_cart');
+    pendingOrder = null;
 
     const ckCheckoutEl2 = document.getElementById('ckCheckout');
     if (ckCheckoutEl2) {

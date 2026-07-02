@@ -1684,7 +1684,7 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
         || !String(s.address || '').trim()) {
       return res.status(400).json({ error: 'Datos de envío incompletos.' });
     }
-    const allowedMethods = ['whatsapp', 'cod'];
+    const allowedMethods = ['whatsapp', 'cod', 'pending'];
     const storedMethod = allowedMethods.includes(req.body?.paymentMethod) ? req.body.paymentMethod : 'whatsapp';
     const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
     const fee = Number(shippingFee);
