@@ -4163,6 +4163,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   color: #666;
   padding: 3px 0;
 }
+.ck-totals__discount #ckDiscount { color: #16a34a; font-weight: 600; }
 .ck-totals__total {
   font-size: 0.86rem;
   font-weight: 700;

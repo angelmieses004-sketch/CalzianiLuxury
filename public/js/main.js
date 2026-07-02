@@ -606,6 +606,18 @@
     const ckTotalEl    = document.getElementById('ckTotal');
     const ckDepositEl  = document.getElementById('ckDeposit');
     if (ckSubtotalEl) ckSubtotalEl.textContent = formatUsdCheckout(ct.lineSubtotal);
+    const ckDiscountRowEl = document.getElementById('ckDiscountRow');
+    const ckDiscountEl    = document.getElementById('ckDiscount');
+    const ckDiscountLbl   = document.getElementById('ckDiscountLabel');
+    if (ckDiscountRowEl) {
+      if (ct.promoOn && ct.discountAmt > 0) {
+        ckDiscountRowEl.classList.remove('hidden');
+        if (ckDiscountLbl) ckDiscountLbl.textContent = `Descuento (${ct.promoPct}%)`;
+        if (ckDiscountEl)  ckDiscountEl.textContent  = '-' + formatUsdCheckout(ct.discountAmt);
+      } else {
+        ckDiscountRowEl.classList.add('hidden');
+      }
+    }
     if (ckShippingEl) ckShippingEl.textContent = ct.shipping === 0 ? 'Gratis' : formatUsdCheckout(ct.shipping);
     if (ckTotalEl)    ckTotalEl.textContent    = formatUsdCheckout(ct.total);
     if (ckDepositEl)  ckDepositEl.textContent  = formatUsdCheckout(Math.round(ct.total * 0.30 * 100) / 100);
