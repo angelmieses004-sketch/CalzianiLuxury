@@ -1792,33 +1792,42 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
     }
     const allowedMethods = ['whatsapp', 'cod', 'pending'];
     const storedMethod = allowedMethods.includes(req.body?.paymentMethod) ? req.body.paymentMethod : 'whatsapp';
+    const isPendingSave = storedMethod === 'pending';
     const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
     const fee = Number(shippingFee);
 
     const stockCheck = validateCartStock(cart);
     if (!stockCheck.ok) return res.status(400).json({ error: stockCheck.error });
 
-    const promoRes = applyPromoCalziani(cart, promoCode, s.phone);
+    // For pending saves skip promo validation — the user hasn't confirmed payment yet
+    const promoRes = isPendingSave
+      ? { ok: true, discountedSubtotal: lineSubtotal, redeem: false }
+      : applyPromoCalziani(cart, promoCode, s.phone);
     if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
 
     const { met: thresholdMet, discount: thresholdDiscount, finalSubtotal: discountedSubtotal } =
       applyCartThreshold(lineSubtotal, promoRes.discountedSubtotal);
 
     if (thresholdMet) {
-      if (Math.abs(fee) > 0.02) return res.status(400).json({ error: 'Envío debe ser gratis con la oferta aplicada.' });
+      if (!isPendingSave && Math.abs(fee) > 0.02) return res.status(400).json({ error: 'Envío debe ser gratis con la oferta aplicada.' });
     } else {
-      if (!validateShippingFee(fee)) return res.status(400).json({ error: 'Costo de envío no válido.' });
+      if (!isPendingSave && !validateShippingFee(fee)) return res.status(400).json({ error: 'Costo de envío no válido.' });
     }
     const shipFee = thresholdMet ? 0 : fee;
 
-    const totalCheck = Math.round((discountedSubtotal + shipFee) * 100) / 100;
     const clientTotal = Number(total);
     const clientSub = Number(subtotal);
-    if (!Number.isFinite(clientTotal) || Math.abs(totalCheck - clientTotal) > 0.02) {
-      return res.status(400).json({ error: 'Total no coincide.' });
-    }
-    if (!Number.isFinite(clientSub) || Math.abs(discountedSubtotal - clientSub) > 0.02) {
-      return res.status(400).json({ error: 'Subtotal no coincide.' });
+    // For pending saves accept the client total directly (promo already applied on frontend)
+    const totalCheck = isPendingSave && Number.isFinite(clientTotal)
+      ? clientTotal
+      : Math.round((discountedSubtotal + shipFee) * 100) / 100;
+    if (!isPendingSave) {
+      if (!Number.isFinite(clientTotal) || Math.abs(totalCheck - clientTotal) > 0.02) {
+        return res.status(400).json({ error: 'Total no coincide.' });
+      }
+      if (!Number.isFinite(clientSub) || Math.abs(discountedSubtotal - clientSub) > 0.02) {
+        return res.status(400).json({ error: 'Subtotal no coincide.' });
+      }
     }
 
     // Duplicate guard: reject if an identical order (same phone + same total) was placed in the last 2 minutes
