@@ -357,6 +357,112 @@ async function sendOrderReceiptEmail({ to, order }) {
   }
 }
 
+async function sendAdminNewOrderEmail(order) {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail || !emailConfigured) return;
+
+  const dopRate  = Number(process.env.USD_RATE) || 59.48;
+  const fmtUsd   = (n) => 'US$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtDop   = (n) => 'RD$' + Math.round(Number(n) * dopRate).toLocaleString('es-DO');
+  const baseUrl  = process.env.BASE_URL || 'https://calziani.com';
+
+  const methodLabels = { whatsapp: 'Transferencia / WhatsApp', cod: 'Pago al recibir (Santiago)', card_link: 'Link de pago (Tarjeta)', pending: 'Pendiente de seleccionar' };
+  const methodLabel  = methodLabels[order.paymentMethod] || order.paymentMethod || '—';
+
+  const itemsRows = (order.items || []).map(i => `
+    <tr>
+      <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#222">${i.name}${i.size ? ` <span style="color:#888">(Talla ${i.size})</span>` : ''} × ${i.qty}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#222;text-align:right;white-space:nowrap">${fmtUsd(i.price * i.qty)}</td>
+    </tr>`).join('');
+
+  const html = `
+  <div style="font-family:Helvetica,Arial,sans-serif;max-width:540px;margin:0 auto;background:#fff;border:1px solid #e5e5e5;border-radius:6px;overflow:hidden">
+    <div style="background:#111;padding:18px 24px;display:flex;align-items:center;justify-content:space-between">
+      <span style="color:#fff;font-size:17px;font-weight:800;letter-spacing:0.12em">CALZIANI</span>
+      <span style="background:#22c55e;color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:0.05em">🛍️ NUEVO PEDIDO</span>
+    </div>
+
+    <div style="padding:20px 24px 4px">
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        <tr>
+          <td style="padding:3px 0;color:#888;width:140px">N.° de pedido</td>
+          <td style="padding:3px 0;font-weight:700;color:#111">${order.orderNumber || '—'}</td>
+        </tr>
+        ${order.trackingCode ? `<tr><td style="padding:3px 0;color:#888">Tracking</td><td style="padding:3px 0;color:#111">${order.trackingCode}</td></tr>` : ''}
+        <tr>
+          <td style="padding:3px 0;color:#888">Método de pago</td>
+          <td style="padding:3px 0;color:#111">${methodLabel}</td>
+        </tr>
+        <tr>
+          <td style="padding:3px 0;color:#888">Fecha</td>
+          <td style="padding:3px 0;color:#111">${order.dateStr || new Date().toLocaleString('es-DO')}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="padding:12px 24px">
+      <p style="font-size:12px;font-weight:700;color:#888;letter-spacing:0.06em;margin:0 0 6px">CLIENTE</p>
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        <tr>
+          <td style="padding:3px 0;color:#888;width:140px">Nombre</td>
+          <td style="padding:3px 0;color:#111">${order.name || '—'}</td>
+        </tr>
+        <tr>
+          <td style="padding:3px 0;color:#888">Teléfono</td>
+          <td style="padding:3px 0;color:#111">${order.phone || '—'}</td>
+        </tr>
+        <tr>
+          <td style="padding:3px 0;color:#888">Dirección</td>
+          <td style="padding:3px 0;color:#111">${order.address || '—'}</td>
+        </tr>
+        <tr>
+          <td style="padding:3px 0;color:#888">País</td>
+          <td style="padding:3px 0;color:#111">${order.country || '—'}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="padding:4px 24px 12px">
+      <p style="font-size:12px;font-weight:700;color:#888;letter-spacing:0.06em;margin:0 0 6px">PRODUCTOS</p>
+      <table style="width:100%;border-collapse:collapse;background:#fafafa;border-radius:4px">
+        ${itemsRows}
+      </table>
+    </div>
+
+    <div style="padding:12px 24px 20px">
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        <tr>
+          <td style="padding:3px 0;color:#888">Subtotal</td>
+          <td style="padding:3px 0;text-align:right;color:#111">${fmtUsd(order.lineSubtotal)}</td>
+        </tr>
+        ${order.discountAmt ? `<tr><td style="padding:3px 0;color:#888">Descuento${order.promoPct ? ` (−${order.promoPct}%)` : ''}</td><td style="padding:3px 0;text-align:right;color:#16a34a">− ${fmtUsd(order.discountAmt)}</td></tr>` : ''}
+        <tr>
+          <td style="padding:3px 0;color:#888">Envío</td>
+          <td style="padding:3px 0;text-align:right;color:#111">${Number(order.shippingFee) > 0 ? fmtUsd(order.shippingFee) : '<span style="color:#16a34a">Gratis</span>'}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 0 0;font-weight:700;font-size:15px;border-top:2px solid #111;color:#111">Total</td>
+          <td style="padding:10px 0 0;text-align:right;font-weight:700;font-size:15px;border-top:2px solid #111;color:#111">${fmtUsd(order.total)}<br><span style="color:#888;font-size:11px">${fmtDop(order.total)}</span></td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="padding:14px 24px;background:#f8f8f8;text-align:center;border-top:1px solid #eee">
+      <a href="${baseUrl}/admin" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 24px;font-size:13px;font-weight:700;letter-spacing:0.06em;border-radius:4px">Ver en panel de admin →</a>
+    </div>
+  </div>`;
+
+  try {
+    await sendEmail({
+      to: adminEmail,
+      subject: `🛍️ Nuevo pedido ${order.orderNumber || ''} — ${order.name || 'cliente'} · ${fmtUsd(order.total)}`,
+      html,
+    });
+  } catch (e) {
+    console.error('[Admin order email]', e.message);
+  }
+}
+
 async function sendVerificationEmail(toEmail, code) {
   const html = `
     <div style="font-family:Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#fff;border:1px solid #e8e8e8">
@@ -1794,27 +1900,27 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
     }).catch(() => {});
 
     const receiptEmail = customerEmail || (userId ? req.user?.email : null);
+    const orderSummary = {
+      orderNumber: orderNum,
+      trackingCode,
+      paymentMethod: storedMethod,
+      name: payload.shipping.name,
+      phone: payload.shipping.phone,
+      country: payload.shipping.country,
+      address: payload.shipping.address,
+      dateStr: new Date().toLocaleString('es-DO', { dateStyle: 'long', timeStyle: 'short' }),
+      items: cart.map(i => ({ name: i.name, size: i.size || '', qty: Number(i.qty) || 1, price: Number(i.price) })),
+      lineSubtotal,
+      discountAmt: promoRes.redeem ? Math.round((lineSubtotal - promoRes.discountedSubtotal) * 100) / 100 : 0,
+      promoPct: promoRes.redeem ? promoRes.percent : 0,
+      shippingFee: shipFee,
+      total: totalCheck,
+    };
     sendOrderReceiptEmail({
       to: receiptEmail,
-      order: {
-        orderNumber: orderNum,
-        trackingCode,
-        name: payload.shipping.name,
-        country: payload.shipping.country,
-        province: payload.shipping.province,
-        address: payload.shipping.address,
-        method: 'Transferencia / WhatsApp',
-        statusLabel: 'Pendiente de confirmación de pago',
-        dateStr: new Date().toLocaleString('es-DO', { dateStyle: 'long', timeStyle: 'short' }),
-        items: cart.map(i => ({ name: i.name, size: i.size || '', qty: Number(i.qty) || 1, price: Number(i.price) })),
-        lineSubtotal,
-        discountAmt: promoRes.redeem ? Math.round((lineSubtotal - promoRes.discountedSubtotal) * 100) / 100 : 0,
-        promoPct: promoRes.redeem ? promoRes.percent : 0,
-        thresholdDiscount: thresholdMet ? thresholdDiscount : 0,
-        shippingFee: shipFee,
-        total: totalCheck,
-      },
+      order: { ...orderSummary, method: 'Transferencia / WhatsApp', statusLabel: 'Pendiente de confirmación de pago', province: payload.shipping.province, thresholdDiscount: thresholdMet ? thresholdDiscount : 0 },
     }).catch(() => {});
+    sendAdminNewOrderEmail(orderSummary).catch(() => {});
 
     res.json({
       ok: true,
