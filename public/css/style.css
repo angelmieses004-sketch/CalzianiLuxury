@@ -4083,6 +4083,59 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 .ck-input::placeholder { color: #bbb; }
 .ck-fields-err { font-size: 0.71rem; color: #dc2626; margin-bottom: 4px; min-height: 1rem; }
 
+/* Promo code */
+.ck-promo { margin: 6px 0 4px; }
+.ck-promo__row {
+  display: flex;
+  gap: 6px;
+}
+.ck-promo__input {
+  flex: 1;
+  border: 1px solid #e0e0e0;
+  border-radius: 7px;
+  padding: 0 12px;
+  height: 38px;
+  font-size: 0.78rem;
+  color: #111;
+  background: #fafafa;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.ck-promo__input:focus { border-color: #111; background: #fff; }
+.ck-promo__input::placeholder { color: #bbb; }
+.ck-promo__btn {
+  height: 38px;
+  padding: 0 14px;
+  background: #111;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.ck-promo__btn:hover { opacity: 0.85; }
+.ck-promo__btn:disabled { opacity: 0.45; cursor: default; }
+.ck-promo__clear {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 0.71rem;
+  cursor: pointer;
+  padding: 3px 0 0;
+  display: block;
+}
+.ck-promo__clear:hover { color: #dc2626; }
+.ck-promo__msg {
+  font-size: 0.72rem;
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+.ck-promo__msg.ok  { color: #16a34a; }
+.ck-promo__msg.err { color: #dc2626; }
+
 /* Info box */
 .ck-info {
   display: flex;
