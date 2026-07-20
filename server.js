@@ -55,6 +55,33 @@ function deleteCustomerPhotoFile(filename) {
   if (filename) fs.unlink(path.join(CUSTOMER_PHOTOS_DIR, filename), () => {});
 }
 
+// Testimonios de clientes: además de fotos, admite video (MP4, MOV) y audio (MP3)
+const CUSTOMER_MEDIA_EXT_BY_MIME = {
+  'video/mp4':       'mp4',
+  'video/quicktime': 'mov',
+  'audio/mpeg':      'mp3',
+  'audio/mp3':       'mp3',
+};
+
+const uploadCustomerMedia = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 60 * 1024 * 1024 },
+  fileFilter(req, file, cb) {
+    if (/^image\/(jpeg|jpg|png|webp|gif)$/i.test(file.mimetype)) return cb(null, true);
+    if (CUSTOMER_MEDIA_EXT_BY_MIME[file.mimetype.toLowerCase()]) return cb(null, true);
+    cb(new Error('Formato no soportado. Usá foto (JPG, PNG, WEBP, GIF), video (MP4, MOV) o audio (MP3).'));
+  },
+});
+
+async function processAndSaveCustomerMedia(file) {
+  if (/^image\//i.test(file.mimetype)) return processAndSaveCustomerPhoto(file.buffer);
+  const ext = CUSTOMER_MEDIA_EXT_BY_MIME[file.mimetype.toLowerCase()];
+  if (!ext) throw new Error('Formato no soportado.');
+  const filename = `c_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+  await fs.promises.writeFile(path.join(CUSTOMER_PHOTOS_DIR, filename), file.buffer);
+  return filename;
+}
+
 function metaSha256(value) {
   if (!value) return null;
   return crypto.createHash('sha256').update(String(value).trim().toLowerCase()).digest('hex');
@@ -775,7 +802,7 @@ app.get('/api/customer-photos', (req, res) => {
         LIMIT ?
       `).all(limit);
     }
-    res.json(rows);
+    res.json(rows.map(r => ({ ...r, media_type: r.filename ? classifyTestimonialMedia(r.filename) : null })));
   } catch (e) {
     console.error('customer-photos public:', e);
     res.status(500).json({ error: 'Error al obtener testimonios.' });
@@ -834,14 +861,14 @@ app.get('/api/admin/customer-photos', requireAuth, (req, res) => {
         AND trim(COALESCE(cp.review_text, '')) = ''
       ORDER BY cp.created_at DESC, cp.id DESC
     `).all();
-    res.json(rows);
+    res.json(rows.map(r => ({ ...r, media_type: r.filename ? classifyTestimonialMedia(r.filename) : null })));
   } catch (e) {
     console.error('customer-photos list:', e);
     res.status(500).json({ error: 'Error al obtener fotos de clientes.' });
   }
 });
 
-app.post('/api/admin/customer-photos', requireAuth, upload.single('image'), async (req, res) => {
+app.post('/api/admin/customer-photos', requireAuth, uploadCustomerMedia.single('image'), async (req, res) => {
   try {
     const rawProductId = req.body?.product_id;
     let productId = null;
@@ -856,13 +883,13 @@ app.post('/api/admin/customer-photos', requireAuth, upload.single('image'), asyn
         return res.status(400).json({ error: 'Solo podés asociar fotos a productos de calzado.' });
       }
     }
-    if (!req.file?.buffer) return res.status(400).json({ error: 'Subí una imagen.' });
+    if (!req.file?.buffer) return res.status(400).json({ error: 'Subí una foto, video o audio.' });
 
     const caption = String(req.body?.caption || '').trim().slice(0, 120);
     const maxPos = productId
       ? db.prepare('SELECT COALESCE(MAX(position), -1) AS m FROM customer_photos WHERE product_id = ?').get(productId).m
       : db.prepare('SELECT COALESCE(MAX(position), -1) AS m FROM customer_photos WHERE product_id IS NULL').get().m;
-    const filename = await processAndSaveCustomerPhoto(req.file.buffer);
+    const filename = await processAndSaveCustomerMedia(req.file);
     const result = db.prepare(`
       INSERT INTO customer_photos (product_id, filename, caption, position, active)
       VALUES (?, ?, ?, ?, 1)
@@ -957,14 +984,14 @@ app.get('/api/admin/reviews', requireAuth, (req, res) => {
          OR trim(COALESCE(cp.review_text, '')) != ''
       ORDER BY cp.created_at DESC, cp.id DESC
     `).all();
-    res.json(rows);
+    res.json(rows.map(r => ({ ...r, media_type: r.filename ? classifyTestimonialMedia(r.filename) : null })));
   } catch (e) {
     console.error('admin reviews list:', e);
     res.status(500).json({ error: 'Error al obtener reseñas.' });
   }
 });
 
-app.put('/api/admin/reviews/:id', requireAuth, upload.single('image'), async (req, res) => {
+app.put('/api/admin/reviews/:id', requireAuth, uploadCustomerMedia.single('image'), async (req, res) => {
   try {
     const row = db.prepare('SELECT * FROM customer_photos WHERE id = ?').get(req.params.id);
     if (!row) return res.status(404).json({ error: 'Reseña no encontrada.' });
@@ -1012,7 +1039,7 @@ app.put('/api/admin/reviews/:id', requireAuth, upload.single('image'), async (re
     }
     if (req.file?.buffer) {
       if (filename) deleteCustomerPhotoFile(filename);
-      filename = await processAndSaveCustomerPhoto(req.file.buffer);
+      filename = await processAndSaveCustomerMedia(req.file);
     }
 
     db.prepare(`

@@ -808,7 +808,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   overflow: hidden;
 }
 
-.trust-modal__item img {
+.trust-modal__item img,
+.trust-modal__item video {
   width: 130px;
   height: 162px;
   object-fit: cover;
@@ -816,6 +817,31 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   border-radius: 8px;
   border: 1px solid #ececec;
 }
+
+.trust-modal__media-wrap { position: relative; }
+.trust-modal__play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.trust-modal__audio {
+  width: 130px;
+  height: 162px;
+  border-radius: 8px;
+  border: 1px solid #ececec;
+  background: linear-gradient(160deg, #8a7a4f 0%, #151716 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.75rem;
+}
+.trust-modal__audio audio { width: 100%; }
 
 .trust-modal__item figcaption {
   margin-top: 0.35rem;
@@ -835,7 +861,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   padding: 1.5rem;
 }
 
-.trust-lightbox img {
+.trust-lightbox img,
+.trust-lightbox video {
   max-width: min(92vw, 520px);
   max-height: 88vh;
   object-fit: contain;

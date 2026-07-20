@@ -1295,6 +1295,15 @@ input:focus, textarea:focus, select:focus {
   display: block;
 }
 
+video.customer-photo-card__img { background: #111; }
+
+audio.customer-photo-card__img {
+  aspect-ratio: unset;
+  height: auto;
+  padding: 2.25rem 0.85rem;
+  background: var(--gray-100);
+}
+
 .customer-photo-card__body { padding: 0.85rem; }
 
 .customer-photo-card__product {
@@ -1368,11 +1377,18 @@ input:focus, textarea:focus, select:focus {
   margin-bottom: 0.5rem;
 }
 
-.review-edit-photo img {
+.review-edit-photo img,
+.review-edit-photo video {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
+
+.review-edit-photo--audio {
+  width: 220px;
+  height: auto;
+}
+.review-edit-photo--audio audio { width: 100%; display: block; }
 
 .review-edit-remove-photo { margin-bottom: 0.5rem; }
 

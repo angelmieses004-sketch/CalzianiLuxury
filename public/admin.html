@@ -554,8 +554,9 @@
           </div>
           <div class="form-row">
             <div class="field">
-              <label for="cpImage">Imagen del cliente</label>
-              <input type="file" id="cpImage" accept="image/jpeg,image/png,image/webp,image/gif" />
+              <label for="cpImage">Foto, video o audio del cliente</label>
+              <input type="file" id="cpImage" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,audio/mpeg" />
+              <p class="field-hint">Foto (JPG, PNG, WEBP, GIF), video (MP4, MOV) o audio (MP3) · máx. 60 MB</p>
             </div>
           </div>
           <div id="cpFormError" class="form-error hidden"></div>
@@ -702,16 +703,18 @@
           </label>
         </div>
         <div class="field edit-order-full">
-          <label>Foto de la compra</label>
+          <label>Foto, video o audio de la compra</label>
           <div id="erPhotoCurrent" class="review-edit-photo hidden">
-            <img id="erPhotoImg" alt="Foto actual" />
+            <img id="erPhotoImg" alt="Foto actual" class="hidden" />
+            <video id="erPhotoVideo" controls class="hidden"></video>
+            <audio id="erPhotoAudio" controls class="hidden"></audio>
           </div>
           <label class="checkbox-label review-edit-remove-photo hidden" id="erRemovePhotoWrap">
             <input type="checkbox" id="erRemovePhoto" />
             Quitar foto actual
           </label>
-          <input type="file" id="erPhotoFile" accept="image/jpeg,image/png,image/webp,image/gif" />
-          <p class="field-hint">Opcional: reemplazá la imagen (JPG, PNG, WEBP · máx. 8 MB)</p>
+          <input type="file" id="erPhotoFile" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,audio/mpeg" />
+          <p class="field-hint">Opcional: reemplazá por foto (JPG, PNG, WEBP, GIF), video (MP4, MOV) o audio (MP3) · máx. 60 MB</p>
         </div>
       </div>
       <div id="editReviewError" class="form-error hidden" style="margin-top:12px"></div>

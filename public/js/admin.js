@@ -88,6 +88,22 @@
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  function customerMediaType(row) {
+    if (row.media_type) return row.media_type;
+    const ext = String(row.filename || '').split('.').pop().toLowerCase();
+    if (['mp4', 'mov', 'webm'].includes(ext)) return 'video';
+    if (['mp3', 'm4a', 'wav'].includes(ext)) return 'audio';
+    return 'image';
+  }
+
+  function customerMediaMarkup(row, cls) {
+    const src = `/img/customer-photos/${escHtml(row.filename)}`;
+    const type = customerMediaType(row);
+    if (type === 'video') return `<video src="${src}" class="${cls}" controls></video>`;
+    if (type === 'audio') return `<audio src="${src}" class="${cls}" controls></audio>`;
+    return `<img src="${src}" alt="Cliente" class="${cls}" />`;
+  }
+
   function renderAdminPagination(page, pages, section) {
     if (!pages || pages <= 1) return '';
     const prev = page > 1
@@ -950,7 +966,7 @@
       }
       customerPhotoList.innerHTML = rows.map(r => `
         <div class="customer-photo-card${r.active ? '' : ' customer-photo-card--hidden'}" data-id="${r.id}">
-          <img src="/img/customer-photos/${escHtml(r.filename)}" alt="Cliente" class="customer-photo-card__img" />
+          ${customerMediaMarkup(r, 'customer-photo-card__img')}
           <div class="customer-photo-card__body">
             <p class="customer-photo-card__product">${r.product_name ? escHtml(r.product_name) : 'Sin producto asociado'}</p>
             ${r.caption ? `<p class="customer-photo-card__caption">${escHtml(r.caption)}</p>` : ''}
@@ -1187,15 +1203,24 @@
     document.getElementById('erPhotoFile').value = '';
     document.getElementById('erRemovePhoto').checked = false;
 
-    const photoWrap = document.getElementById('erPhotoCurrent');
-    const photoImg = document.getElementById('erPhotoImg');
+    const photoWrap  = document.getElementById('erPhotoCurrent');
+    const photoImg   = document.getElementById('erPhotoImg');
+    const photoVideo = document.getElementById('erPhotoVideo');
+    const photoAudio = document.getElementById('erPhotoAudio');
     const removeWrap = document.getElementById('erRemovePhotoWrap');
+    [photoImg, photoVideo, photoAudio].forEach(el => el?.classList.add('hidden'));
+    photoImg?.removeAttribute('src');
+    photoVideo?.removeAttribute('src');
+    photoAudio?.removeAttribute('src');
     if (row.filename) {
-      photoImg.src = `/img/customer-photos/${row.filename}`;
+      const src = `/img/customer-photos/${row.filename}`;
+      const type = customerMediaType(row);
+      const el = type === 'video' ? photoVideo : type === 'audio' ? photoAudio : photoImg;
+      if (el) { el.src = src; el.classList.remove('hidden'); }
       photoWrap?.classList.remove('hidden');
+      photoWrap?.classList.toggle('review-edit-photo--audio', type === 'audio');
       removeWrap?.classList.remove('hidden');
     } else {
-      photoImg?.removeAttribute('src');
       photoWrap?.classList.add('hidden');
       removeWrap?.classList.add('hidden');
     }
