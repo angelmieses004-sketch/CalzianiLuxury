@@ -782,6 +782,48 @@ app.get('/api/customer-photos', (req, res) => {
   }
 });
 
+function classifyTestimonialMedia(filename) {
+  const ext = String(filename || '').split('.').pop().toLowerCase();
+  if (['mp4', 'webm', 'mov', 'ogg'].includes(ext)) return 'video';
+  if (['mp3', 'wav', 'm4a', 'aac'].includes(ext)) return 'audio';
+  return 'image';
+}
+
+// Página pública "Quiénes somos": reutiliza la misma tabla que alimenta
+// "Clientes" y "Reseñas" en el admin, para que lo que se agregue ahí
+// aparezca automáticamente acá.
+app.get('/api/testimonials', (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 40, 1), 60);
+    const rows = db.prepare(`
+      SELECT cp.id, cp.filename, cp.caption, cp.review_text, cp.rating, cp.reviewer_name,
+             cp.product_id, p.name AS product_name, cp.created_at
+      FROM customer_photos cp
+      JOIN products p ON p.id = cp.product_id
+      WHERE cp.active = 1
+      ORDER BY
+        CASE WHEN cp.rating IS NOT NULL OR trim(COALESCE(cp.review_text, '')) != '' THEN 0 ELSE 1 END,
+        cp.position ASC, cp.created_at DESC
+      LIMIT ?
+    `).all(limit);
+
+    res.json(rows.map(r => ({
+      id: r.id,
+      filename: r.filename || null,
+      media_type: r.filename ? classifyTestimonialMedia(r.filename) : null,
+      caption: r.caption || '',
+      review_text: r.review_text || '',
+      rating: r.rating || null,
+      reviewer_name: r.reviewer_name || 'Cliente Calziani',
+      product_name: r.product_name,
+      created_at: r.created_at,
+    })));
+  } catch (e) {
+    console.error('testimonials public:', e);
+    res.status(500).json({ error: 'Error al obtener testimonios.' });
+  }
+});
+
 app.get('/api/admin/customer-photos', requireAuth, (req, res) => {
   try {
     const rows = db.prepare(`
@@ -2561,6 +2603,7 @@ app.get('/sitemap.xml', (req, res) => {
   const staticUrls = [
     { loc: `${base}/`,        priority: '1.0', changefreq: 'daily' },
     { loc: `${base}/tracking`, priority: '0.4', changefreq: 'monthly' },
+    { loc: `${base}/quienes-somos`, priority: '0.6', changefreq: 'monthly' },
   ];
 
   const productUrls = products.map(p => {
@@ -2601,6 +2644,7 @@ app.get('/product/:id', (req, res) => res.sendFile(path.join(__dirname, 'public'
 app.get('/favoritos',        (req, res) => res.sendFile(path.join(__dirname, 'public', 'favoritos.html')));
 app.get('/reset-password',   (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
 app.get('/politicas',        (req, res) => res.sendFile(path.join(__dirname, 'public', 'politicas.html')));
+app.get('/quienes-somos',    (req, res) => res.sendFile(path.join(__dirname, 'public', 'quienes-somos.html')));
 app.get('/payment/success', (req, res) => res.sendFile(path.join(__dirname, 'public', 'payment-success.html')));
 app.get('/payment/cancel',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'payment-cancel.html')));
 app.get('/card-pending',    (req, res) => res.sendFile(path.join(__dirname, 'public', 'card-pending.html')));
