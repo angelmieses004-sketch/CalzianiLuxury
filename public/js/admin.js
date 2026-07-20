@@ -952,7 +952,7 @@
         <div class="customer-photo-card${r.active ? '' : ' customer-photo-card--hidden'}" data-id="${r.id}">
           <img src="/img/customer-photos/${escHtml(r.filename)}" alt="Cliente" class="customer-photo-card__img" />
           <div class="customer-photo-card__body">
-            <p class="customer-photo-card__product">${escHtml(r.product_name)}</p>
+            <p class="customer-photo-card__product">${r.product_name ? escHtml(r.product_name) : 'Sin producto asociado'}</p>
             ${r.caption ? `<p class="customer-photo-card__caption">${escHtml(r.caption)}</p>` : ''}
             <div class="customer-photo-card__actions">
               <button type="button" class="btn btn-ghost btn-sm" data-cp-toggle="${r.id}" data-active="${r.active ? '1' : '0'}">
@@ -971,11 +971,10 @@
     cpFormError.classList.add('hidden');
     const productId = cpProductId?.value;
     const file = cpImage?.files?.[0];
-    if (!productId) { showError(cpFormError, 'Seleccioná un producto de calzado.'); return; }
     if (!file) { showError(cpFormError, 'Elegí una imagen.'); return; }
 
     const fd = new FormData();
-    fd.append('product_id', productId);
+    if (productId) fd.append('product_id', productId);
     fd.append('caption', cpCaption?.value.trim() || '');
     fd.append('image', file);
 

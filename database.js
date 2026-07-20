@@ -184,6 +184,32 @@ try { db.exec(`ALTER TABLE customer_photos ADD COLUMN review_text TEXT DEFAULT '
 try { db.exec(`ALTER TABLE customer_photos ADD COLUMN reviewer_name TEXT DEFAULT ''`); } catch (_) {}
 try { db.exec(`ALTER TABLE customer_photos ADD COLUMN user_id INTEGER REFERENCES users(id)`); } catch (_) {}
 
+// Migration: el producto ya no es obligatorio para una foto/testimonio de cliente
+try {
+  const productIdCol = db.prepare(`PRAGMA table_info(customer_photos)`).all().find(c => c.name === 'product_id');
+  if (productIdCol && productIdCol.notnull) {
+    db.exec(`
+      CREATE TABLE customer_photos_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+        filename TEXT NOT NULL,
+        caption TEXT DEFAULT '',
+        position INTEGER DEFAULT 0,
+        active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT DEFAULT (datetime('now')),
+        rating INTEGER,
+        review_text TEXT DEFAULT '',
+        reviewer_name TEXT DEFAULT '',
+        user_id INTEGER REFERENCES users(id)
+      );
+      INSERT INTO customer_photos_new (id, product_id, filename, caption, position, active, created_at, rating, review_text, reviewer_name, user_id)
+        SELECT id, product_id, filename, caption, position, active, created_at, rating, review_text, reviewer_name, user_id FROM customer_photos;
+      DROP TABLE customer_photos;
+      ALTER TABLE customer_photos_new RENAME TO customer_photos;
+    `);
+  }
+} catch (e) { console.error('customer_photos product_id nullable migration:', e.message); }
+
 try {
   db.exec(`
     CREATE TABLE IF NOT EXISTS featured_products (

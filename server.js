@@ -760,7 +760,7 @@ app.get('/api/customer-photos', (req, res) => {
       rows = db.prepare(`
         SELECT cp.id, cp.filename, cp.caption, cp.product_id, p.name AS product_name
         FROM customer_photos cp
-        JOIN products p ON p.id = cp.product_id
+        LEFT JOIN products p ON p.id = cp.product_id
         WHERE cp.active = 1
         ORDER BY CASE WHEN cp.product_id = ? THEN 0 ELSE 1 END, cp.position ASC, cp.created_at DESC
         LIMIT ?
@@ -769,7 +769,7 @@ app.get('/api/customer-photos', (req, res) => {
       rows = db.prepare(`
         SELECT cp.id, cp.filename, cp.caption, cp.product_id, p.name AS product_name
         FROM customer_photos cp
-        JOIN products p ON p.id = cp.product_id
+        LEFT JOIN products p ON p.id = cp.product_id
         WHERE cp.active = 1
         ORDER BY cp.created_at DESC, cp.position ASC
         LIMIT ?
@@ -799,7 +799,7 @@ app.get('/api/testimonials', (req, res) => {
       SELECT cp.id, cp.filename, cp.caption, cp.review_text, cp.rating, cp.reviewer_name,
              cp.product_id, p.name AS product_name, cp.created_at
       FROM customer_photos cp
-      JOIN products p ON p.id = cp.product_id
+      LEFT JOIN products p ON p.id = cp.product_id
       WHERE cp.active = 1
       ORDER BY
         CASE WHEN cp.rating IS NOT NULL OR trim(COALESCE(cp.review_text, '')) != '' THEN 0 ELSE 1 END,
@@ -829,7 +829,7 @@ app.get('/api/admin/customer-photos', requireAuth, (req, res) => {
     const rows = db.prepare(`
       SELECT cp.*, p.name AS product_name, p.category AS product_category
       FROM customer_photos cp
-      JOIN products p ON p.id = cp.product_id
+      LEFT JOIN products p ON p.id = cp.product_id
       WHERE (cp.rating IS NULL OR cp.rating NOT BETWEEN 1 AND 5)
         AND trim(COALESCE(cp.review_text, '')) = ''
       ORDER BY cp.created_at DESC, cp.id DESC
@@ -843,21 +843,25 @@ app.get('/api/admin/customer-photos', requireAuth, (req, res) => {
 
 app.post('/api/admin/customer-photos', requireAuth, upload.single('image'), async (req, res) => {
   try {
-    const productId = Number(req.body?.product_id);
-    if (!Number.isFinite(productId) || productId <= 0) {
-      return res.status(400).json({ error: 'Seleccioná un producto.' });
-    }
-    const product = db.prepare('SELECT id, category FROM products WHERE id = ?').get(productId);
-    if (!product) return res.status(404).json({ error: 'Producto no encontrado.' });
-    if (product.category !== 'calzado') {
-      return res.status(400).json({ error: 'Solo podés asociar fotos a productos de calzado.' });
+    const rawProductId = req.body?.product_id;
+    let productId = null;
+    if (rawProductId != null && String(rawProductId).trim() !== '') {
+      productId = Number(rawProductId);
+      if (!Number.isFinite(productId) || productId <= 0) {
+        return res.status(400).json({ error: 'Producto inválido.' });
+      }
+      const product = db.prepare('SELECT id, category FROM products WHERE id = ?').get(productId);
+      if (!product) return res.status(404).json({ error: 'Producto no encontrado.' });
+      if (product.category !== 'calzado') {
+        return res.status(400).json({ error: 'Solo podés asociar fotos a productos de calzado.' });
+      }
     }
     if (!req.file?.buffer) return res.status(400).json({ error: 'Subí una imagen.' });
 
     const caption = String(req.body?.caption || '').trim().slice(0, 120);
-    const maxPos = db.prepare(
-      'SELECT COALESCE(MAX(position), -1) AS m FROM customer_photos WHERE product_id = ?'
-    ).get(productId).m;
+    const maxPos = productId
+      ? db.prepare('SELECT COALESCE(MAX(position), -1) AS m FROM customer_photos WHERE product_id = ?').get(productId).m
+      : db.prepare('SELECT COALESCE(MAX(position), -1) AS m FROM customer_photos WHERE product_id IS NULL').get().m;
     const filename = await processAndSaveCustomerPhoto(req.file.buffer);
     const result = db.prepare(`
       INSERT INTO customer_photos (product_id, filename, caption, position, active)
@@ -888,14 +892,19 @@ app.put('/api/admin/customer-photos/:id', requireAuth, (req, res) => {
     let productId = row.product_id;
 
     if (req.body?.product_id != null) {
-      productId = Number(req.body.product_id);
-      if (!Number.isFinite(productId) || productId <= 0) {
-        return res.status(400).json({ error: 'Producto inválido.' });
-      }
-      const product = db.prepare('SELECT id, category FROM products WHERE id = ?').get(productId);
-      if (!product) return res.status(404).json({ error: 'Producto no encontrado.' });
-      if (product.category !== 'calzado') {
-        return res.status(400).json({ error: 'Solo podés asociar fotos a productos de calzado.' });
+      const raw = String(req.body.product_id).trim();
+      if (raw === '') {
+        productId = null;
+      } else {
+        productId = Number(raw);
+        if (!Number.isFinite(productId) || productId <= 0) {
+          return res.status(400).json({ error: 'Producto inválido.' });
+        }
+        const product = db.prepare('SELECT id, category FROM products WHERE id = ?').get(productId);
+        if (!product) return res.status(404).json({ error: 'Producto no encontrado.' });
+        if (product.category !== 'calzado') {
+          return res.status(400).json({ error: 'Solo podés asociar fotos a productos de calzado.' });
+        }
       }
     }
 
@@ -943,7 +952,7 @@ app.get('/api/admin/reviews', requireAuth, (req, res) => {
     const rows = db.prepare(`
       SELECT cp.*, p.name AS product_name, p.category AS product_category
       FROM customer_photos cp
-      JOIN products p ON p.id = cp.product_id
+      LEFT JOIN products p ON p.id = cp.product_id
       WHERE (cp.rating IS NOT NULL AND cp.rating BETWEEN 1 AND 5)
          OR trim(COALESCE(cp.review_text, '')) != ''
       ORDER BY cp.created_at DESC, cp.id DESC
