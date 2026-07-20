@@ -168,7 +168,7 @@
       activeLang = activeLang === 'es' ? 'en' : 'es';
       localStorage.setItem('calziani_lang', activeLang);
       applyTranslations();
-      renderProducts(lastProducts);
+      renderProducts(lastProducts, lastProductsMeta.total, lastProductsMeta.page, lastProductsMeta.pages);
     });
   }
 
@@ -223,7 +223,7 @@
       activeCurrency = sel.value;
       localStorage.setItem('calziani_currency', activeCurrency);
       updateCartUI();
-      renderProducts(lastProducts);
+      renderProducts(lastProducts, lastProductsMeta.total, lastProductsMeta.page, lastProductsMeta.pages);
     });
   }
 
@@ -1095,9 +1095,11 @@
   }
 
   let lastProducts = [];
+  let lastProductsMeta = { total: 0, page: 1, pages: 1 };
   let lastSaleProducts = [];
   const STOREFRONT_PER_PAGE = 12;
   let currentProductsPage = 1;
+  let productsRequestId = 0;
 
   // ─── Selección de Calziani ───────────────────────────────────────────────────
   async function loadSeleccionSection() {
@@ -1188,6 +1190,7 @@
   // ─── Fetch & render ─────────────────────────────────────────────────────────
   async function fetchProducts(category = 'all', search = '', size = 'all', page = currentProductsPage, brand = currentBrand) {
     currentProductsPage = page;
+    const requestId = ++productsRequestId;
     grid.innerHTML = '<div class="loading">Cargando...</div>';
     const params = new URLSearchParams();
     if (category !== 'all') params.set('category', category);
@@ -1201,9 +1204,12 @@
       const res = await fetch(`/api/products?${params}`);
       if (!res.ok) throw new Error();
       const data = await res.json();
+      if (requestId !== productsRequestId) return; // respuesta vieja llegó tarde, se ignora
       lastProducts = data.products;
+      lastProductsMeta = { total: data.total, page: data.page, pages: data.pages };
       renderProducts(data.products, data.total, data.page, data.pages);
     } catch {
+      if (requestId !== productsRequestId) return;
       grid.innerHTML = '<div class="empty-state"><span class="empty-state__icon">!</span>Error al cargar productos.</div>';
     }
   }
@@ -1229,6 +1235,8 @@
 
     if (!products.length) {
       grid.innerHTML = `<div class="empty-state"><span class="empty-state__icon">—</span>No hay productos en esta categoría aún.</div>`;
+      const staleEmptyPagination = document.getElementById('storefrontPagination');
+      if (staleEmptyPagination) staleEmptyPagination.innerHTML = '';
       return;
     }
 
@@ -1755,7 +1763,7 @@
         excludedProductIds: data.excludedProductIds || [],
         floorProductPrices: data.floorProductPrices || {},
       });
-      if (lastProducts.length) renderProducts(lastProducts);
+      if (lastProducts.length) renderProducts(lastProducts, lastProductsMeta.total, lastProductsMeta.page, lastProductsMeta.pages);
       loadSeleccionSection();
     } catch { /* ignore */ }
   })();
