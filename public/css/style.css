@@ -4123,6 +4123,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   font-size: 0.79rem; color: #111; outline: none;
 }
 .ck-input::placeholder { color: #bbb; }
+.ck-field-hint { font-size: 0.71rem; color: #888; margin: 4px 0 6px; line-height: 1.4; }
 .ck-fields-err { font-size: 0.71rem; color: #dc2626; margin-bottom: 4px; min-height: 1rem; }
 
 /* Promo code */
