@@ -1814,6 +1814,32 @@ document.addEventListener('DOMContentLoaded', function () {
   var opened = false;
   var timer;
 
+  // Contador regresivo hasta el domingo (fin de semana de la oferta)
+  var cdDays  = document.getElementById('cpnCdDays');
+  var cdHours = document.getElementById('cpnCdHours');
+  var cdMins  = document.getElementById('cpnCdMins');
+  var cdSecs  = document.getElementById('cpnCdSecs');
+  function nextSundayEnd() {
+    var now = new Date();
+    var daysUntilSunday = (7 - now.getDay()) % 7; // 0 si hoy ya es domingo
+    var target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilSunday, 23, 59, 59, 999);
+    return target;
+  }
+  function updateCountdown() {
+    if (!cdSecs) return;
+    var diff = nextSundayEnd().getTime() - Date.now();
+    if (diff < 0) diff = 0;
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    cdDays.textContent  = String(Math.floor(diff / 86400000));
+    cdHours.textContent = pad(Math.floor((diff / 3600000) % 24));
+    cdMins.textContent  = pad(Math.floor((diff / 60000) % 60));
+    cdSecs.textContent  = pad(Math.floor((diff / 1000) % 60));
+  }
+  if (cdSecs) {
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+  }
+
   function open() {
     if (opened) return;
     opened = true;

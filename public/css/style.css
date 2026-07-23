@@ -1257,7 +1257,63 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   font-size: .6rem; letter-spacing: .22em; color: #1A1A1A;
   margin: 0 0 4px;
 }
-.cpn-week { font-size: .74rem; color: #999; margin: 0 0 16px; }
+.cpn-week { font-size: .74rem; color: #999; margin: 0 0 12px; }
+
+.cpn-countdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 16px;
+}
+.cpn-countdown__label {
+  font-size: .74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: #C4102C;
+}
+.cpn-countdown__boxes {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.cpn-countdown__box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 44px;
+  background: #C4102C;
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 8px 5px;
+  animation: cpnCountdownPulse 1.6s ease-in-out infinite;
+}
+.cpn-countdown__num {
+  font-family: 'Courier New', 'Courier', monospace;
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.cpn-countdown__unit {
+  font-size: .55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 3px;
+}
+.cpn-countdown__sep {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #C4102C;
+  margin-bottom: 14px;
+}
+
+@keyframes cpnCountdownPulse {
+  0%, 100% { box-shadow: 0 3px 10px rgba(196, 16, 44, 0.35); transform: scale(1); }
+  50%      { box-shadow: 0 4px 18px rgba(196, 16, 44, 0.65); transform: scale(1.04); }
+}
 
 /* Fila del código */
 .cpn-code-row {
