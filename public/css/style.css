@@ -1675,7 +1675,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 
 /* ─── Sale section ───────────────────────────────────────────────────────────── */
 .sale-section {
-  background: var(--gray-100);
+  background: var(--white);
   padding: 0;
 }
 .sale-section .main { padding-top: 2.5rem; padding-bottom: 3rem; }
