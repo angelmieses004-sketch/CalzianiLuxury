@@ -3140,26 +3140,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   .trust-strip__item span   { font-size: 0.68rem; }
   .trust-strip__item svg    { width: 18px; height: 18px; }
 
-  /* ── CAT SHOWCASE ── */
-  .cat-showcase { overflow: hidden; }
-  .cat-showcase__inner {
-    padding: 1.25rem 1.25rem;
-    gap: 0.75rem;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    flex-wrap: nowrap;
-  }
-  .cat-showcase__inner::-webkit-scrollbar { display: none; }
-  .cat-card {
-    flex: 0 0 calc(50vw - 1.5rem);
-    min-width: 140px;
-    max-width: 180px;
-    padding: 1.5rem 1rem;
-    gap: 0.65rem;
-  }
-  .cat-card__icon { width: 46px; height: 46px; }
-
   /* ── PROOF BAR ── */
   .proof-bar__inner { padding: 0.6rem 1.25rem; gap: 0.5rem; }
   .proof-bar__sep, .proof-bar__tag { display: none; }
@@ -3273,8 +3253,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
 
   .trust-strip__item strong { font-size: 0.7rem; }
   .trust-strip__item span   { display: none; }
-
-  .cat-card { flex: 0 0 calc(60vw - 1rem); }
 
   .newsletter-section { padding: 2rem 1rem; }
   .newsletter-title { font-size: 1rem; }
@@ -3418,66 +3396,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   color: var(--gray-600);
   margin-top: 1px;
 }
-
-/* ─── Category Showcase ─────────────────────────────────────────────────────── */
-.cat-showcase {
-  background: #f5f5f5;
-  border-bottom: 1px solid var(--gray-200);
-}
-.cat-showcase__inner {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2.5rem 2rem;
-  display: flex;
-  gap: 1rem;
-}
-.cat-card {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.85rem;
-  padding: 2.25rem 1.5rem;
-  background: #fff;
-  border: 1px solid var(--gray-200);
-  border-radius: 2px;
-  cursor: pointer;
-  text-align: center;
-  transition: border-color var(--transition), box-shadow var(--transition), transform 0.2s;
-}
-.cat-card:hover {
-  border-color: var(--black);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-  transform: translateY(-2px);
-}
-.cat-card__icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: #f5f5f5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background var(--transition);
-}
-.cat-card:hover .cat-card__icon { background: #111; color: #fff; }
-.cat-card__icon svg { transition: color var(--transition); }
-.cat-card:hover .cat-card__icon svg { stroke: #fff; }
-.cat-card__label {
-  font-size: 0.88rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--black);
-}
-.cat-card__cta {
-  font-size: 0.72rem;
-  color: var(--gray-400);
-  letter-spacing: 0.06em;
-  transition: color var(--transition);
-}
-.cat-card:hover .cat-card__cta { color: var(--black); }
 
 /* ─── Social Proof Bar ──────────────────────────────────────────────────────── */
 .proof-bar {
@@ -3718,27 +3636,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   .trust-strip__item strong { font-size: 0.73rem; }
   .trust-strip__item span   { font-size: 0.67rem; }
 
-  /* Cat showcase: horizontal scroll */
-  .cat-showcase__inner {
-    padding: 1.25rem !important;
-    overflow-x: auto !important;
-    flex-wrap: nowrap !important;
-    gap: 0.75rem !important;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .cat-showcase__inner::-webkit-scrollbar { display: none; }
-  .cat-card {
-    flex: 0 0 44vw !important;
-    min-width: 140px !important;
-    max-width: 170px !important;
-    padding: 1.4rem 0.85rem !important;
-    gap: 0.6rem !important;
-  }
-  .cat-card__icon { width: 44px !important; height: 44px !important; }
-  .cat-card__label { font-size: 0.8rem !important; }
-  .cat-card__cta { font-size: 0.68rem !important; }
-
   /* Proof bar: minimal */
   .proof-bar__inner { padding: 0.6rem 1.25rem !important; flex-wrap: nowrap; gap: 0.5rem !important; }
   .proof-bar__sep, .proof-bar__tag { display: none !important; }
@@ -3770,9 +3667,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--black); }
   .hero__title { font-size: clamp(2rem, 14vw, 3rem) !important; letter-spacing: 0.1em !important; }
   .hero__actions { margin-top: 1.75rem !important; }
   .hero__cta { font-size: 0.7rem !important; padding: 0.78rem 1rem !important; max-width: 100% !important; }
-
-  /* Cat cards slightly wider on tiny phones */
-  .cat-card { flex: 0 0 56vw !important; }
 
   /* Newsletter: stack input and button, fixed heights to prevent stretching */
   .newsletter-form  { flex-direction: column !important; gap: 8px !important; }
