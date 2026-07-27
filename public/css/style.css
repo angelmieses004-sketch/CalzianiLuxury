@@ -1855,25 +1855,71 @@ input:focus, textarea:focus, select:focus { border-color: var(--oxblood); }
   50%      { opacity: 1; transform: scaleY(1.15); }
 }
 
-@media (max-width: 980px) {
-  .hero__grid { grid-template-columns: 1fr; }
-  .hero__side { flex-direction: row; }
-  .hero__card { flex: 1 1 0; }
-}
+/* Mobile keeps the exact same arrangement as desktop — main card next to a
+   stacked sidebar column, copy next to the sketch inside the main card —
+   just scaled down. No restructuring into a different layout, so every box
+   sits in the same relative position as PC, only smaller. */
 @media (max-width: 860px) {
-  .hero__main { flex-direction: column; text-align: center; padding: 2.25rem 1.75rem; }
-  .hero__copy { text-align: center; max-width: none; }
-  .hero__eyebrow { margin-left: auto; margin-right: auto; }
-  .hero__actions { justify-content: center; }
-  .hero__follow { justify-content: center; }
-  .hero__sketch { max-width: 240px; margin-top: 1rem; }
-  .hero__tag { top: -1rem; right: -0.5rem; }
-  .hero__side { flex-direction: column; }
+  .hero { padding: 0.85rem 0.6rem 2rem; }
+  .hero__grid { gap: 0.75rem; }
+  .hero__main { padding: 1.1rem 1rem; gap: 0.85rem; }
+  .hero__copy { max-width: none; }
+  .hero__eyebrow { font-size: 0.66rem; padding: 0.3rem 0.6rem; gap: 0.3rem; margin-bottom: 0.6rem; }
+  .hero__eyebrow svg { width: 10px; height: 10px; }
+  .hero__title { font-size: clamp(1.3rem, 4.8vw, 1.9rem); line-height: 1.05; }
+  .hero__sub { margin-top: 0.5rem; font-size: 0.7rem; line-height: 1.45; max-width: none; }
+  .hero__actions { margin-top: 0.8rem; gap: 0.4rem; }
+  .hero__cta { padding: 0.55rem 0.9rem; font-size: 0.66rem; white-space: nowrap; }
+  .hero__follow { margin-top: 0.8rem; gap: 0.4rem; font-size: 0.56rem; }
+  .hero__follow svg { width: 12px; height: 12px; }
+  .hero__sketch { max-width: 34%; margin-top: 0; }
+  .hero__tag { top: -0.5rem; right: -0.4rem; }
+  .hero__tag-card { width: 80%; padding: 0.65rem 0.5rem 0.45rem; border-radius: 7px; }
+  .hero__tag-label { font-size: 0.46rem; }
+  .hero__tag-serial { font-size: 0.85rem; }
+  .hero__tag-rule { margin: 0.4rem 0; }
+  .hero__tag-sub { font-size: 0.42rem; }
+
+  .hero__side { gap: 0.75rem; }
+  .hero__card { padding: 0.85rem 0.9rem; }
+  .hero__card-label { font-size: 0.62rem; }
+  .hero__swatches { margin-top: 0.55rem; gap: 0.35rem; }
+  .hero__swatches span { width: 16px; height: 16px; }
+  .hero__card--stat .hero__card-num { font-size: 1.15rem; }
+  .hero__card-link { margin-top: 0.5rem; font-size: 0.6rem; }
+  .hero__card-title { font-size: 0.76rem; }
+  .hero__card--ship svg { width: 15px; height: 15px; margin-bottom: 0.45rem; }
 }
 @media (max-width: 480px) {
-  .hero { padding: 1rem 0.75rem 2rem; }
-  .hero__grid { gap: 0.85rem; }
-  .hero__side { flex-direction: column; }
+  /* Further squeeze for small phones — same boxes, same positions, smaller
+     still. */
+  .hero { padding: 0.5rem 0.4rem 1.5rem; }
+  .hero__grid { gap: 0.5rem; }
+  .hero__main { padding: 0.8rem 0.7rem; gap: 0.5rem; }
+  .hero__eyebrow { font-size: 0.56rem; padding: 0.22rem 0.5rem; margin-bottom: 0.4rem; }
+  .hero__eyebrow svg { width: 8px; height: 8px; }
+  .hero__title { font-size: clamp(1.05rem, 5.4vw, 1.4rem); }
+  .hero__sub { margin-top: 0.35rem; font-size: 0.58rem; line-height: 1.4; }
+  .hero__actions { margin-top: 0.55rem; gap: 0.3rem; }
+  .hero__cta { padding: 0.42rem 0.65rem; font-size: 0.54rem; border-radius: var(--radius); }
+  .hero__follow { margin-top: 0.5rem; gap: 0.3rem; font-size: 0.48rem; }
+  .hero__follow svg { width: 10px; height: 10px; }
+  .hero__sketch { max-width: 32%; }
+  .hero__tag { top: -0.35rem; right: -0.3rem; }
+  .hero__tag-card { padding: 0.5rem 0.4rem 0.35rem; }
+  .hero__tag-label { font-size: 0.38rem; }
+  .hero__tag-serial { font-size: 0.68rem; }
+  .hero__tag-sub { font-size: 0.34rem; }
+
+  .hero__side { gap: 0.5rem; }
+  .hero__card { padding: 0.6rem 0.65rem; }
+  .hero__card-label { font-size: 0.52rem; }
+  .hero__swatches { margin-top: 0.4rem; gap: 0.25rem; }
+  .hero__swatches span { width: 12px; height: 12px; }
+  .hero__card--stat .hero__card-num { font-size: 0.92rem; }
+  .hero__card-link { margin-top: 0.35rem; font-size: 0.5rem; }
+  .hero__card-title { font-size: 0.62rem; margin-bottom: 0.1rem; }
+  .hero__card--ship svg { width: 12px; height: 12px; margin-bottom: 0.3rem; }
 }
 
 /* ─── Sale Banner ───────────────────────────────────────────────────────────── */
@@ -3315,7 +3361,9 @@ input:focus, textarea:focus, select:focus { border-color: var(--oxblood); }
   .header__search input {
     width: 100% !important;
     font-size: 0.82rem;
-    padding: 0.45rem 0.8rem;
+    /* keep room on the left for .header__search-icon — a flat padding here
+       was overlapping the icon with the "Buscar..." placeholder text */
+    padding: 0.55rem 0.8rem 0.55rem 2.2rem;
     border-radius: 20px;
   }
   /* Row 3: nav horizontal scroll */
@@ -3328,8 +3376,9 @@ input:focus, textarea:focus, select:focus { border-color: var(--oxblood); }
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    border-top: 1px solid var(--gray-200);
-    padding: 0.4rem 0 0.5rem;
+    /* horizontal padding so the active pill's white background/shadow
+       doesn't sit flush against the outer pill's rounded edge */
+    padding: 0.4rem 0.3rem 0.5rem;
     gap: 0.1rem;
   }
   .header__nav::-webkit-scrollbar { display: none; }
@@ -3393,11 +3442,9 @@ input:focus, textarea:focus, select:focus { border-color: var(--oxblood); }
   }
 
   /* ── HERO ── */
-  .hero { padding: 3.5rem 1.25rem 3rem; }
-  .hero__title { font-size: clamp(2.4rem, 13vw, 4.5rem); letter-spacing: 0.12em; }
-  .hero__eyebrow { letter-spacing: 0.2em; }
-  .hero__actions { flex-direction: column; gap: 0.6rem; margin-top: 2rem; }
-  .hero__cta { width: 100%; max-width: 280px; text-align: center; padding: 0.85rem 1.5rem; }
+  /* Sizing lives in the hero's own 980/860/480px breakpoints now — this
+     stale block used to fight them (later in the cascade, same specificity,
+     forcing the old stacked/condensed layout back). */
   .hero__scroll-hint { display: none; }
 
   /* ── TRUST STRIP ── */
@@ -3521,14 +3568,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--oxblood); }
   .pc-price { font-size: 0.82rem; }
 
   .cart-drawer__panel, .ck-panel { width: 100vw; }
-
-  .hero { padding: 2.75rem 1rem 2.5rem; }
-  .hero__title { font-size: clamp(2rem, 14vw, 3rem); letter-spacing: 0.1em; }
-  .hero__eyebrow { font-size: 0.6rem; letter-spacing: 0.18em; }
-  .hero__cta { max-width: 100%; font-size: 0.7rem; padding: 0.78rem 1.25rem; }
-
-  .trust-strip__item strong { font-size: 0.7rem; }
-  .trust-strip__item span   { display: none; }
 
   .newsletter-section { padding: 2rem 1rem; }
   .newsletter-title { font-size: 1rem; }
@@ -3678,10 +3717,15 @@ input:focus, textarea:focus, select:focus { border-color: var(--oxblood); }
   margin-top: 2px;
 }
 @media (max-width: 860px) {
-  .trust-strip__inner { grid-template-columns: repeat(2, 1fr); }
+  .trust-strip__inner { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+  .trust-strip__item { padding: 1rem; gap: 0.6rem; }
 }
 @media (max-width: 480px) {
-  .trust-strip__inner { grid-template-columns: 1fr; padding: 0 0.75rem 1rem; }
+  .trust-strip__inner { padding: 0 0.6rem 0.85rem; gap: 0.6rem; }
+  .trust-strip__item { padding: 0.85rem 0.75rem; }
+  .trust-strip__item svg { width: 18px; height: 18px; }
+  .trust-strip__item strong { font-size: 0.74rem; }
+  .trust-strip__item span { font-size: 0.66rem; }
 }
 
 /* ─── Brand Strip ───────────────────────────────────────────────────────────── */
@@ -4003,15 +4047,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--oxblood); }
 }
 
 @media (max-width: 480px) {
-  /* Trust strip: hide subtitle text, keep icon + title only */
-  .trust-strip__item span { display: none !important; }
-  .trust-strip__item strong { font-size: 0.7rem !important; }
-  .trust-strip__item { padding: 0.75rem 0.75rem !important; }
-
-  /* Hero */
-  .hero__title { font-size: clamp(2rem, 14vw, 3rem) !important; letter-spacing: 0.1em !important; }
-  .hero__actions { margin-top: 1.75rem !important; }
-  .hero__cta { font-size: 0.7rem !important; padding: 0.78rem 1rem !important; max-width: 100% !important; }
+  /* Trust strip and hero sizing now live in their own breakpoints — this
+     block used !important to force the old layout back over them. */
 
   /* Newsletter: stack input and button, fixed heights to prevent stretching */
   .newsletter-form  { flex-direction: column !important; gap: 8px !important; }
