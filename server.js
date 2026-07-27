@@ -2416,15 +2416,16 @@ app.get('/api/admin/orders/export', requireAuth, (req, res) => {
   if (format === 'csv') {
     const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const rows = [
-      ['Pedido','Fecha','Cliente','Email','Tracking','Productos','Tallas','Total USD','Estado'].join(','),
+      ['Pedido','Fecha','Cliente','Teléfono','Email','Tracking','Productos','Tallas','Total USD','Estado'].join(','),
       ...orders.map(o => {
         let data = {}; try { data = JSON.parse(o.items_json || '{}'); } catch {}
         const cart = Array.isArray(data.cart) ? data.cart : [];
         const names  = cart.map(i => `${i.name} x${i.qty}`).join(' | ');
         const sizes  = cart.map(i => i.size || '—').join(' | ');
+        const phone  = data.shipping?.phone || '';
         return [
           esc(o.order_number), esc((o.created_at||'').slice(0,10)),
-          esc(o.customer_name), esc(o.customer_email),
+          esc(o.customer_name), esc(phone), esc(o.customer_email),
           esc(o.tracking_code), esc(names), esc(sizes),
           esc(Number(o.total).toFixed(2)), esc(o.status),
         ].join(',');
@@ -2447,10 +2448,12 @@ app.get('/api/admin/orders/export', requireAuth, (req, res) => {
     let data = {}; try { data = JSON.parse(o.items_json || '{}'); } catch {}
     const cart = Array.isArray(data.cart) ? data.cart : [];
     const items = cart.map(i => `${escH(i.name)}${i.size ? ` (${escH(i.size)})` : ''} ×${i.qty}`).join('<br>');
+    const phone = data.shipping?.phone || '—';
     return `<tr>
       <td>${escH(o.order_number)}</td>
       <td>${fmtDate(o.created_at)}</td>
       <td>${escH(o.customer_name||'—')}</td>
+      <td>${escH(phone)}</td>
       <td>${escH(o.tracking_code||'—')}</td>
       <td style="font-size:11px">${items||'—'}</td>
       <td>${fmtUsd(o.total)}<br><small style="color:#888">${fmtDop(o.total)}</small></td>
@@ -2475,8 +2478,8 @@ app.get('/api/admin/orders/export', requireAuth, (req, res) => {
   <h1>CALZIANI · Pedidos</h1>
   <p class="period">Período: ${escH(period)} · Total: ${orders.length} pedido(s)</p>
   <table>
-    <thead><tr><th>Pedido</th><th>Fecha</th><th>Cliente</th><th>Tracking</th><th>Productos</th><th>Total</th><th>Estado</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="7">Sin pedidos en el período.</td></tr>'}</tbody>
+    <thead><tr><th>Pedido</th><th>Fecha</th><th>Cliente</th><th>Teléfono</th><th>Tracking</th><th>Productos</th><th>Total</th><th>Estado</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="8">Sin pedidos en el período.</td></tr>'}</tbody>
   </table>
   <script>window.onload=()=>window.print();<\/script>
   </body></html>`;
