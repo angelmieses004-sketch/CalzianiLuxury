@@ -1203,7 +1203,6 @@
               <h3 class="pc-name">${escHtml(p.name)}</h3>
               <div class="pc-pricing">${priceHtml}</div>
               ${couponHtml}
-              ${p.sizes?.length ? `<div class="pc-sizes">${p.sizes.map(s => `<span class="pc-size">${s}</span>`).join('')}</div>` : ''}
             </div>
           </a>
           ${lowStockMsg}
@@ -1340,7 +1339,6 @@
             <h3 class="pc-name">${escHtml(p.name)}</h3>
             <div class="pc-pricing">${priceHtml}</div>
             ${couponHtml}
-            ${p.sizes && p.sizes.length ? `<div class="pc-sizes">${p.sizes.map(s => `<span class="pc-size">${s}</span>`).join('')}</div>` : ''}
           </div>
         </a>
         ${lowStockMsg}

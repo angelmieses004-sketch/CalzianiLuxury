@@ -393,7 +393,7 @@ async function sendAdminNewOrderEmail(order) {
   const fmtDop   = (n) => 'RD$' + Math.round(Number(n) * dopRate).toLocaleString('es-DO');
   const baseUrl  = process.env.BASE_URL || 'https://calziani.com';
 
-  const methodLabels = { whatsapp: 'Transferencia / WhatsApp', cod: 'Pago al recibir (Santiago)', card_link: 'Link de pago (Tarjeta)', pending: 'Pendiente de seleccionar' };
+  const methodLabels = { whatsapp: 'Transferencia / WhatsApp', cod: 'Pago al recibir (Santiago)', card_link: 'Link de pago (Tarjeta)', azul: 'Tarjeta (AZUL, pago directo)', pending: 'Pendiente de seleccionar' };
   const methodLabel  = methodLabels[order.paymentMethod] || order.paymentMethod || '—';
 
   const itemsRows = (order.items || []).map(i => `
@@ -2106,27 +2106,33 @@ app.post('/api/orders/card-link-submit', (req, res) => {
     });
     tx();
 
+    const cardLinkOrderSummary = {
+      orderNumber: orderNum,
+      trackingCode,
+      paymentMethod: 'card_link',
+      name: payload.shipping.name,
+      phone: payload.shipping.phone,
+      country: payload.shipping.country,
+      address: payload.shipping.address,
+      dateStr: new Date().toLocaleString('es-DO', { dateStyle: 'long', timeStyle: 'short' }),
+      items: cart.map(i => ({ name: i.name, size: i.size || '', qty: Number(i.qty) || 1, price: Number(i.price) })),
+      lineSubtotal,
+      discountAmt: promoRes.redeem ? Math.round((lineSubtotal - promoRes.discountedSubtotal) * 100) / 100 : 0,
+      promoPct: promoRes.redeem ? promoRes.percent : 0,
+      shippingFee: shipFee,
+      total: totalCheck,
+    };
     sendOrderReceiptEmail({
       to: customerEmail,
       order: {
-        orderNumber: orderNum,
-        trackingCode,
-        name: payload.shipping.name,
-        country: payload.shipping.country,
-        province: payload.shipping.province,
-        address: payload.shipping.address,
+        ...cardLinkOrderSummary,
         method: 'Tarjeta débito/crédito',
         statusLabel: 'Pendiente — te enviaremos el link de pago por WhatsApp',
-        dateStr: new Date().toLocaleString('es-DO', { dateStyle: 'long', timeStyle: 'short' }),
-        items: cart.map(i => ({ name: i.name, size: i.size || '', qty: Number(i.qty) || 1, price: Number(i.price) })),
-        lineSubtotal,
-        discountAmt: promoRes.redeem ? Math.round((lineSubtotal - promoRes.discountedSubtotal) * 100) / 100 : 0,
-        promoPct: promoRes.redeem ? promoRes.percent : 0,
+        province: payload.shipping.province,
         thresholdDiscount: thresholdMet ? thresholdDiscount : 0,
-        shippingFee: shipFee,
-        total: totalCheck,
       },
     }).catch(() => {});
+    sendAdminNewOrderEmail(cardLinkOrderSummary).catch(() => {});
 
     res.json({ ok: true, orderNumber: orderNum, trackingCode });
   } catch (e) {
@@ -2250,27 +2256,33 @@ app.post('/api/azul/checkout', (req, res) => {
   }
 
   const azulReceiptEmail = azulEmail || (req.user?.email || null);
+  const azulOrderSummary = {
+    orderNumber: orderNum,
+    trackingCode: azulTrackingCode,
+    paymentMethod: 'azul',
+    name: shipping?.name || '',
+    phone: shipping?.phone || '',
+    country: shipping?.country || '',
+    address: shipping?.address || '',
+    dateStr: new Date().toLocaleString('es-DO', { dateStyle: 'long', timeStyle: 'short' }),
+    items: cart.map(i => ({ name: i.name, size: i.size || '', qty: Number(i.qty) || 1, price: Number(i.price) })),
+    lineSubtotal,
+    discountAmt: promoRes.redeem ? Math.round((lineSubtotal - promoRes.discountedSubtotal) * 100) / 100 : 0,
+    promoPct: promoRes.redeem ? promoRes.percent : 0,
+    shippingFee: azulShipFee,
+    total: totalUSDCheck,
+  };
   sendOrderReceiptEmail({
     to: azulReceiptEmail,
     order: {
-      orderNumber: orderNum,
-      trackingCode: azulTrackingCode,
-      name: shipping?.name || '',
-      country: shipping?.country || '',
-      province: shipping?.province || '',
-      address: shipping?.address || '',
+      ...azulOrderSummary,
       method: 'Tarjeta de crédito/débito (AZUL)',
       statusLabel: 'Pago en proceso',
-      dateStr: new Date().toLocaleString('es-DO', { dateStyle: 'long', timeStyle: 'short' }),
-      items: cart.map(i => ({ name: i.name, size: i.size || '', qty: Number(i.qty) || 1, price: Number(i.price) })),
-      lineSubtotal,
-      discountAmt: promoRes.redeem ? Math.round((lineSubtotal - promoRes.discountedSubtotal) * 100) / 100 : 0,
-      promoPct: promoRes.redeem ? promoRes.percent : 0,
+      province: shipping?.province || '',
       thresholdDiscount: thresholdMet ? thresholdDiscount : 0,
-      shippingFee: azulShipFee,
-      total: totalUSDCheck,
     },
   }).catch(() => {});
+  sendAdminNewOrderEmail(azulOrderSummary).catch(() => {});
 
   res.json({
     azulUrl: AZUL_URL,

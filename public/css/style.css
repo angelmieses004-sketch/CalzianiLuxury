@@ -2309,22 +2309,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--oxblood); }
   font-weight: 500;
 }
 
-.pc-sizes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  margin-top: 0.35rem;
-}
-
-.pc-size {
-  font-family: var(--font-mono);
-  font-size: 0.64rem;
-  letter-spacing: 0.02em;
-  color: var(--gray-600);
-  border: 1px solid var(--gray-200);
-  padding: 0.1rem 0.4rem;
-}
-
 /* ─── Empty / Loading states ───────────────────────────────────────────────── */
 .loading, .empty-state {
   grid-column: 1 / -1;
@@ -3541,10 +3525,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--oxblood); }
   .pc-price-orig {
     min-width: 0;
   }
-  .pc-sizes {
-    margin-top: 0.35rem;
-  }
-
   /* ── FOOTER (old inner/contact already hidden via display:none) ── */
   .footer { padding: 0; }
 

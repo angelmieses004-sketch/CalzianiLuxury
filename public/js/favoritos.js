@@ -114,7 +114,6 @@
             <p class="pc-category">${CATEGORY_LABELS[p.category] || p.category}</p>
             <h3 class="pc-name">${escHtml(p.name)}</h3>
             <div class="pc-pricing">${priceHtml}</div>
-            ${p.sizes && p.sizes.length ? `<div class="pc-sizes">${p.sizes.map(s => `<span class="pc-size">${s}</span>`).join('')}</div>` : ''}
           </div>
         </a>
       </div>`;
