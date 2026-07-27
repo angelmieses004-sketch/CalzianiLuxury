@@ -40,13 +40,13 @@
       cat_calzado:        'Calzado',
       search_placeholder: 'Buscar...',
       sign_in:            'Iniciar sesión',
-      hero_eyebrow:       'NUEVA COLECCIÓN',
-      hero_sub:           'LUXURY IN EACH STEP.',
+      hero_eyebrow:       'Est. Santiago, RD',
+      hero_sub:           'Calzado de marca verificado como auténtico. Coordinamos la entrega por WhatsApp hasta tu puerta.',
       hero_cta:           'Explorar colección',
       sale_title:         'OFERTAS DE TEMPORADA',
       sale_sub:           'Aprovecha los mejores precios en productos seleccionados',
       sale_cta:           'Ver ofertas',
-      sale_products_title:'— OFERTAS —',
+      sale_products_title:'Ofertas',
       all_products:       'Todos los productos',
       size_label:         'Talle',
       loading:            'Cargando...',
@@ -75,13 +75,13 @@
       cat_calzado:        'Footwear',
       search_placeholder: 'Search...',
       sign_in:            'Sign in',
-      hero_eyebrow:       'NEW COLLECTION',
-      hero_sub:           'LUXURY IN EACH STEP.',
+      hero_eyebrow:       'Est. Santiago, RD',
+      hero_sub:           'Brand-name footwear verified authentic. We coordinate delivery over WhatsApp, right to your door.',
       hero_cta:           'Shop collection',
       sale_title:         'SEASONAL SALE',
       sale_sub:           'Get the best prices on selected products',
       sale_cta:           'View sale',
-      sale_products_title:'— SALE —',
+      sale_products_title:'Sale',
       all_products:       'All products',
       size_label:         'Size',
       loading:            'Loading...',
@@ -393,6 +393,42 @@
   const ckItems     = document.getElementById('ckItems');
   const cartEmpty   = document.getElementById('cartEmpty');
   const ckBody      = document.getElementById('ckBody');
+  const ckSteps     = document.getElementById('ckSteps');
+  const ckCompleted = document.getElementById('ckCompleted');
+  const ckCheckoutEl= document.getElementById('ckCheckout');
+
+  function setCkStep(n) {
+    ckSteps?.querySelectorAll('.ck-step').forEach(el => {
+      const step = Number(el.dataset.step);
+      el.classList.toggle('ck-step--done', step < n);
+      el.classList.toggle('ck-step--active', step === n);
+    });
+  }
+
+  function showCkCompleted({ orderNumber, trackingUrl, subMessage, methodLabel, total }) {
+    const titleEl  = document.getElementById('ckCompletedTitle');
+    const subEl    = document.getElementById('ckCompletedSub');
+    const orderEl  = document.getElementById('ckCompletedOrder');
+    const methodEl = document.getElementById('ckCompletedMethod');
+    const totalEl  = document.getElementById('ckCompletedTotal');
+    const trackEl  = document.getElementById('ckCompletedTrackLink');
+
+    if (titleEl)  titleEl.textContent  = '¡Pedido confirmado!';
+    if (subEl)    subEl.textContent    = subMessage || 'Te contactaremos por WhatsApp para coordinar la entrega.';
+    if (orderEl)  orderEl.textContent  = orderNumber || '—';
+    if (methodEl) methodEl.textContent = methodLabel || '—';
+    if (totalEl)  totalEl.textContent  = total != null ? formatUsdCheckout(total) : '—';
+    if (trackEl) {
+      if (trackingUrl) { trackEl.href = trackingUrl; trackEl.classList.remove('hidden'); }
+      else trackEl.classList.add('hidden');
+    }
+
+    ckCheckoutEl?.classList.add('hidden');
+    ckCompleted?.classList.remove('hidden');
+    setCkStep(3);
+  }
+
+  document.getElementById('ckCompletedContinue')?.addEventListener('click', () => { location.href = '/'; });
   const cartSubtotalUsd = document.getElementById('cartSubtotalUsd');
   const cartSubtotalDop = document.getElementById('cartSubtotalDop');
   const cartShippingUsd = document.getElementById('cartShippingUsd');
@@ -549,13 +585,23 @@
     }
 
     // Empty / filled state
+    // Once an order has been placed (step 3 showing), leave the confirmation
+    // panel alone — an emptied cart shouldn't pop the "empty cart" state over it.
+    const orderJustCompleted = ckCompleted && !ckCompleted.classList.contains('hidden');
     if (!cart.length) {
-      cartEmpty?.classList.remove('hidden');
-      ckBody?.classList.add('hidden');
+      if (!orderJustCompleted) {
+        cartEmpty?.classList.remove('hidden');
+        ckBody?.classList.add('hidden');
+        ckSteps?.classList.add('hidden');
+      }
       return;
     }
+    ckSteps?.classList.remove('hidden');
     cartEmpty?.classList.add('hidden');
-    ckBody?.classList.remove('hidden');
+    // Don't pop step 1 back over step 2/3 — e.g. a currency switch while
+    // reviewing payment shouldn't yank the user back to the info form.
+    const onPaymentOrDone = (ckCheckoutEl && !ckCheckoutEl.classList.contains('hidden')) || orderJustCompleted;
+    if (!onPaymentOrDone) ckBody?.classList.remove('hidden');
 
     // Render items
     if (ckItems) {
@@ -940,12 +986,14 @@
     }
     renderTransferInfo();
     ckBody?.classList.add('hidden');
-    document.getElementById('ckCheckout')?.classList.remove('hidden');
+    ckCheckoutEl?.classList.remove('hidden');
+    setCkStep(2);
   });
 
   document.getElementById('ckBack')?.addEventListener('click', () => {
-    document.getElementById('ckCheckout')?.classList.add('hidden');
+    ckCheckoutEl?.classList.add('hidden');
     ckBody?.classList.remove('hidden');
+    setCkStep(1);
   });
 
   // ─── Card link payment ────────────────────────────────────────────────────────
@@ -1008,18 +1056,13 @@
     localStorage.removeItem('calziani_cart');
     pendingOrder = null;
 
-    const ckCheckoutEl = document.getElementById('ckCheckout');
-    if (ckCheckoutEl) {
-      ckCheckoutEl.innerHTML = `
-        <div style="padding:60px 20px;text-align:center">
-          <div style="width:56px;height:56px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:1.6rem">✓</div>
-          <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:8px">¡Pedido registrado!</h3>
-          <p style="font-size:0.82rem;color:#555;margin-bottom:4px">Pedido: <strong>${orderNumber}</strong></p>
-          <p style="font-size:0.82rem;color:#555;margin-bottom:20px">Te contactaremos por WhatsApp para coordinar la entrega.</p>
-          ${trackingUrl ? `<a href="${trackingUrl}" target="_blank" style="font-size:0.8rem;color:#111;text-decoration:underline;display:block;margin-bottom:16px">Ver seguimiento de pedido</a>` : ''}
-          <button onclick="location.href='/'" style="background:#111;color:#fff;border:none;padding:12px 28px;font-size:0.82rem;font-weight:700;letter-spacing:0.08em;cursor:pointer;border-radius:6px">Seguir comprando</button>
-        </div>`;
-    }
+    showCkCompleted({
+      orderNumber,
+      trackingUrl,
+      methodLabel: 'Transferencia',
+      total: ct.total,
+      subMessage: 'Te contactaremos por WhatsApp para coordinar la entrega.',
+    });
     updateCartUI();
   });
 
@@ -1058,18 +1101,13 @@
     localStorage.removeItem('calziani_cart');
     pendingOrder = null;
 
-    const ckCheckoutEl2 = document.getElementById('ckCheckout');
-    if (ckCheckoutEl2) {
-      ckCheckoutEl2.innerHTML = `
-        <div style="padding:60px 20px;text-align:center">
-          <div style="width:56px;height:56px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:1.6rem">✓</div>
-          <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:8px">¡Pedido registrado!</h3>
-          <p style="font-size:0.82rem;color:#555;margin-bottom:4px">Pedido: <strong>${orderNumber}</strong></p>
-          <p style="font-size:0.82rem;color:#555;margin-bottom:20px">Un asesor se comunicará contigo para coordinar la entrega.</p>
-          ${trackingUrl ? `<a href="${trackingUrl}" target="_blank" style="font-size:0.8rem;color:#111;text-decoration:underline;display:block;margin-bottom:16px">Ver seguimiento de pedido</a>` : ''}
-          <button onclick="location.href='/'" style="background:#111;color:#fff;border:none;padding:12px 28px;font-size:0.82rem;font-weight:700;letter-spacing:0.08em;cursor:pointer;border-radius:6px">Seguir comprando</button>
-        </div>`;
-    }
+    showCkCompleted({
+      orderNumber,
+      trackingUrl,
+      methodLabel: 'Pago al recibir',
+      total: ct.total,
+      subMessage: 'Un asesor se comunicará contigo para coordinar la entrega.',
+    });
     updateCartUI();
   });
 
@@ -1434,10 +1472,41 @@
     } catch { /* no brands, hide bar */ }
   }
 
+  async function initBrandStrip() {
+    const strip = document.getElementById('brandStrip');
+    const list  = document.getElementById('brandStripList');
+    if (!strip || !list) return;
+    try {
+      const res    = await fetch('/api/brands');
+      const brands = res.ok ? await res.json() : [];
+      if (!brands.length) return;
+      list.innerHTML = brands.map(b => `<span class="brand-strip__name">${escHtml(b.name)}</span>`).join('');
+      strip.classList.remove('hidden');
+    } catch { /* no brands, keep hidden */ }
+  }
+
   // ─── Search ──────────────────────────────────────────────────────────────────
+  // While the user is searching, show "Todos los productos" above "Selección de
+  // Calziani" so the actual results aren't buried below the curated section.
+  const productsSection = document.getElementById('products');
+  const seleccionSection = document.getElementById('seleccionSection');
+  let searchSectionsSwapped = false;
+  function updateSearchSectionOrder() {
+    if (!productsSection || !seleccionSection) return;
+    const hasQuery = !!searchInput.value.trim();
+    if (hasQuery === searchSectionsSwapped) return;
+    searchSectionsSwapped = hasQuery;
+    if (hasQuery) {
+      productsSection.parentNode.insertBefore(productsSection, seleccionSection);
+    } else {
+      productsSection.parentNode.insertBefore(seleccionSection, productsSection);
+    }
+  }
+
   searchInput.addEventListener('input', () => {
     clearTimeout(searchTimer);
     currentProductsPage = 1;
+    updateSearchSectionOrder();
     searchTimer = setTimeout(() => fetchProducts(currentCategory, searchInput.value, currentSize, 1, currentBrand), 350);
   });
 
@@ -1639,6 +1708,7 @@
   if (_qParam) {
     searchInput.value = _qParam.trim();
     history.replaceState(null, '', '/');
+    updateSearchSectionOrder();
     fetchProducts(currentCategory, searchInput.value, currentSize, 1, currentBrand);
   }
 
@@ -1728,6 +1798,7 @@
   initLangBtn();
   renderSizeFilter(currentCategory);
   initBrandFilter();
+  initBrandStrip();
 
   // Revalidate any stored promo code — clear it if the code was disabled or expired on the server
   (async () => {
@@ -1878,6 +1949,7 @@ document.addEventListener('DOMContentLoaded', function () {
       setTimeout(function () {
         btn.textContent = 'COPIAR';
         btn.classList.remove('cpn-copied');
+        close();
       }, 1500);
     }
     if (navigator.clipboard && window.isSecureContext) {

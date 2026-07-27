@@ -8,56 +8,83 @@
   <link rel="stylesheet" href="/css/style.css?v=20260426g" />
   <link rel="icon" href="/img/587730407_17843809347618797_3290323688225420457_n.jpg" />
   <style>
-    body { background: #fafafa; }
+    body { background: var(--paper); }
 
     .cp-page {
-      max-width: 680px;
+      max-width: 640px;
       margin: 0 auto;
       padding: 3rem 1.25rem 4rem;
       text-align: center;
     }
 
     .cp-brand {
-      font-size: 1.1rem;
-      font-weight: 800;
-      letter-spacing: 0.18em;
-      color: #111;
-      margin-bottom: 2rem;
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--black);
+      margin-bottom: 1.75rem;
+    }
+
+    .cp-icon {
+      position: relative;
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 1.25rem;
+      border-radius: 50%;
+      background: #dcfce7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+    }
+    .cp-icon::before {
+      content: '';
+      position: absolute;
+      inset: -14px;
+      z-index: -1;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(34,197,94,0.28) 0%, rgba(34,197,94,0) 72%);
     }
 
     .cp-title {
-      font-size: 2rem;
+      font-family: var(--font-display);
+      font-size: clamp(1.8rem, 4vw, 2.3rem);
       font-weight: 700;
-      letter-spacing: 0.04em;
-      margin-bottom: 0.4rem;
+      letter-spacing: -0.01em;
+      color: var(--black);
+      margin-bottom: 0.5rem;
     }
 
     .cp-subtitle {
       font-size: 1rem;
-      color: #333;
+      color: var(--gray-600);
       margin-bottom: 0.75rem;
     }
-    .cp-subtitle strong { color: #111; }
+    .cp-subtitle strong { color: var(--black); }
 
     .cp-notice {
       font-size: 0.85rem;
-      color: #555;
+      color: var(--gray-600);
       margin-bottom: 0.4rem;
       line-height: 1.6;
     }
     .cp-wa-note {
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
+      gap: 0.5rem;
       font-size: 0.82rem;
-      color: #16a34a;
+      color: #15803d;
       font-weight: 600;
+      background: #f0fdf4;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-full);
       margin-bottom: 2rem;
     }
 
     .cp-time {
       font-size: 0.75rem;
-      color: #aaa;
+      color: var(--gray-400);
       margin-bottom: 2rem;
       display: flex;
       align-items: center;
@@ -70,55 +97,57 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1rem;
-      margin-bottom: 2rem;
+      margin-bottom: 1.25rem;
       text-align: left;
     }
     @media (max-width: 500px) {
       .cp-cards { grid-template-columns: 1fr; }
     }
     .cp-card {
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 1rem 1.1rem;
-      background: #fff;
+      border: none;
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.35rem;
+      background: var(--white);
+      box-shadow: var(--shadow-card);
     }
     .cp-card__label {
-      font-size: 0.68rem;
+      font-size: 0.66rem;
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: #888;
-      margin-bottom: 0.5rem;
+      color: var(--gray-400);
+      margin-bottom: 0.6rem;
     }
     .cp-card__val {
-      font-size: 0.83rem;
-      color: #111;
-      line-height: 1.6;
+      font-size: 0.85rem;
+      color: var(--black);
+      line-height: 1.65;
     }
     .cp-card__val strong { display: block; }
 
     /* Order list */
     .cp-section {
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
+      background: var(--white);
+      border: none;
+      border-radius: var(--radius-lg);
       overflow: hidden;
-      margin-bottom: 1rem;
+      margin-bottom: 1.25rem;
       text-align: left;
+      box-shadow: var(--shadow-card);
     }
     .cp-section__head {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 0.75rem 1.25rem;
-      border-bottom: 1px solid #f0f0f0;
+      padding: 1rem 1.35rem;
+      border-bottom: 1px solid var(--gray-100);
     }
     .cp-section__head h3 {
-      font-size: 0.78rem;
+      font-size: 0.7rem;
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: #444;
+      color: var(--gray-600);
       margin: 0;
     }
 
@@ -127,72 +156,73 @@
       display: flex;
       align-items: center;
       gap: 0.85rem;
-      padding: 0.85rem 1.25rem;
-      border-bottom: 1px solid #f5f5f5;
+      padding: 0.9rem 1.35rem;
+      border-bottom: 1px solid var(--gray-100);
     }
     .cp-items li:last-child { border-bottom: none; }
     .cp-item__img {
       width: 52px;
       height: 52px;
       object-fit: cover;
-      border-radius: 4px;
-      background: #f3f4f6;
+      border-radius: var(--radius);
+      background: var(--gray-100);
       flex-shrink: 0;
     }
     .cp-item__info { flex: 1; }
-    .cp-item__name { font-size: 0.82rem; font-weight: 600; color: #111; }
-    .cp-item__meta { font-size: 0.72rem; color: #888; margin-top: 2px; }
-    .cp-item__price { font-size: 0.82rem; font-weight: 700; color: #111; white-space: nowrap; text-align: right; }
-    .cp-item__price span { display: block; font-size: 0.68rem; font-weight: 400; color: #aaa; }
+    .cp-item__name { font-size: 0.82rem; font-weight: 600; color: var(--black); }
+    .cp-item__meta { font-size: 0.72rem; color: var(--gray-400); margin-top: 2px; }
+    .cp-item__price { font-size: 0.82rem; font-weight: 700; color: var(--black); white-space: nowrap; text-align: right; }
+    .cp-item__price span { display: block; font-size: 0.68rem; font-weight: 400; color: var(--gray-400); }
 
     /* Summary */
-    .cp-summary { padding: 0.85rem 1.25rem; }
+    .cp-summary { padding: 0.9rem 1.35rem 1.1rem; }
     .cp-summary__row {
       display: flex;
       justify-content: space-between;
       font-size: 0.82rem;
-      color: #555;
-      padding: 3px 0;
+      color: var(--gray-600);
+      padding: 4px 0;
     }
     .cp-summary__row.total {
       font-size: 1rem;
       font-weight: 800;
-      color: #111;
-      border-top: 2px solid #111;
-      margin-top: 6px;
-      padding-top: 10px;
+      color: var(--black);
+      border-top: 1px solid var(--gray-200);
+      margin-top: 8px;
+      padding-top: 12px;
     }
     .cp-summary__row.total small {
       display: block;
       font-size: 0.7rem;
       font-weight: 400;
-      color: #888;
+      color: var(--gray-400);
     }
-    .cp-summary__discount { color: #16a34a; }
+    .cp-summary__discount { color: #15803d; }
 
     .cp-actions {
       display: flex;
-      gap: 1rem;
+      gap: 0.85rem;
       justify-content: center;
       flex-wrap: wrap;
-      margin-top: 2rem;
+      margin-top: 2.5rem;
     }
     .cp-btn {
-      padding: 0.75rem 2rem;
+      padding: 0.9rem 2rem;
       font-size: 0.82rem;
       font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      border-radius: 2px;
+      letter-spacing: 0.01em;
+      text-transform: none;
+      border-radius: var(--radius-full);
       text-decoration: none;
       display: inline-block;
       cursor: pointer;
       border: none;
+      transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s, background 0.15s;
     }
-    .cp-btn-primary { background: #111; color: #fff; }
-    .cp-btn-primary:hover { opacity: 0.85; }
-    .cp-btn-secondary { border: 1px solid #e0e0e0; color: #111; background: #fff; }
-    .cp-btn-secondary:hover { background: #f5f5f5; }
+    .cp-btn-primary { background: var(--lime); color: var(--lime-ink); border: 1.5px solid var(--lime); }
+    .cp-btn-primary:hover { transform: translateY(-1px); box-shadow: var(--shadow-card); }
+    .cp-btn-secondary { border: 1.5px solid var(--gray-200); color: var(--black); background: var(--white); }
+    .cp-btn-secondary:hover { border-color: var(--black); }
 
     @media print { .cp-actions { display: none !important; } }
   </style>
@@ -200,6 +230,10 @@
 <body>
   <div class="cp-page">
     <div class="cp-brand">CALZIANI</div>
+
+    <div class="cp-icon">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
 
     <h1 class="cp-title">¡Gracias!</h1>
     <p class="cp-subtitle" id="cpSubtitle">Tu pedido ha sido registrado.</p>
