@@ -1822,7 +1822,7 @@
       const res = await fetch('/api/promo/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: 'CALZIANI15' }),
+        body: JSON.stringify({ code: 'VERANO' }),
       });
       if (!res.ok) return;
       const data = await res.json();
@@ -1869,7 +1869,7 @@
 document.addEventListener('DOMContentLoaded', function () {
 (function () {
   var KEY  = 'calziani_cpn_seen';
-  var CODE = 'CALZIANI15';
+  var CODE = 'VERANO';
 
   // Una sola vez por sesión
   if (sessionStorage.getItem(KEY)) return;

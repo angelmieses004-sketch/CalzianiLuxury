@@ -163,6 +163,7 @@ try {
   );
   seedPromo.run('CALZIANI',  20, 0, '2026-05-10T00:00:00Z');
   seedPromo.run('EXCLUSIVE', 25, 1, null);
+  seedPromo.run('VERANO',    10, 1, null);
 } catch (_) {}
 
 try {
