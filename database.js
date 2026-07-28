@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 // In production (Railway) use /data volume; locally use project root
 const DATA_DIR = process.env.DATA_DIR || __dirname;
@@ -240,5 +241,34 @@ const _insertSetting = db.prepare(`INSERT OR IGNORE INTO settings (key, value) V
 for (const [k, v] of settingsDefaults) _insertSetting.run(k, v);
 // Standard shipping is free (offer) — reset if it was incorrectly set to 30 by a previous migration
 try { db.prepare(`UPDATE settings SET value = '0' WHERE key = 'shipping_standard_usd' AND value = '30'`).run(); } catch (_) {}
+
+// ── Blog / SEO webhook ──────────────────────────────────────────────────────
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS articles (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      slug         TEXT NOT NULL UNIQUE,
+      title        TEXT NOT NULL,
+      content      TEXT NOT NULL,
+      excerpt      TEXT DEFAULT '',
+      cover_image  TEXT DEFAULT '',
+      author       TEXT DEFAULT 'Calziani',
+      tags         TEXT DEFAULT '[]',
+      status       TEXT NOT NULL DEFAULT 'published' CHECK(status IN ('published', 'draft')),
+      source       TEXT DEFAULT '',
+      created_at   TEXT DEFAULT (datetime('now')),
+      updated_at   TEXT DEFAULT (datetime('now')),
+      published_at TEXT
+    );
+  `);
+} catch (_) {}
+
+// Token used by external SEO/CMS software to authenticate against /api/webhook/seo-publish.
+// Generated once and persisted here so it survives restarts without needing an env var.
+const existingWebhookToken = db.prepare(`SELECT value FROM settings WHERE key = 'seo_webhook_token'`).get();
+if (!existingWebhookToken) {
+  db.prepare(`INSERT INTO settings (key, value) VALUES ('seo_webhook_token', ?)`)
+    .run(crypto.randomBytes(24).toString('hex'));
+}
 
 module.exports = db;

@@ -545,6 +545,86 @@ function requireAuth(req, res, next) {
   next();
 }
 
+function requireWebhookAuth(req, res, next) {
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  const row = db.prepare(`SELECT value FROM settings WHERE key = 'seo_webhook_token'`).get();
+  const expected = row && row.value;
+  if (!expected || !token || token !== expected) {
+    return res.status(401).json({ error: 'Token de autorización inválido' });
+  }
+  next();
+}
+
+function slugify(str) {
+  return String(str || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 120);
+}
+
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function blogPageShell({ title, description, canonical, image, jsonLd, bodyHtml }) {
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(description)}" />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#151716" />
+  <link rel="canonical" href="${escapeHtml(canonical)}" />
+  <meta property="og:type" content="article" />
+  <meta property="og:locale" content="es_DO" />
+  <meta property="og:site_name" content="Calziani" />
+  <meta property="og:title" content="${escapeHtml(title)}" />
+  <meta property="og:description" content="${escapeHtml(description)}" />
+  <meta property="og:url" content="${escapeHtml(canonical)}" />
+  ${image ? `<meta property="og:image" content="${escapeHtml(image)}" />` : ''}
+  ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : ''}
+  <link rel="stylesheet" href="/css/style.css?v=20260727" />
+  <link rel="stylesheet" href="/css/blog.css?v=20260728" />
+  <link rel="icon" href="/img/587730407_17843809347618797_3290323688225420457_n.jpg" />
+</head>
+<body class="blog-body">
+  <header class="header">
+    <div class="header__inner">
+      <a href="/" class="header__logo">CALZIANI</a>
+      <nav class="header__nav">
+        <button class="nav-btn" onclick="location.href='/'">Todo</button>
+        <button class="nav-btn" onclick="location.href='/blog'">Blog</button>
+      </nav>
+    </div>
+  </header>
+  <main class="blog">
+${bodyHtml}
+  </main>
+  <footer class="footer footer--legal">
+    <div class="footer__inner">
+      <span class="footer__brand">CALZIANI</span>
+      <div class="footer__contact">
+        <a class="footer__contact-link" href="/politicas">Políticas</a>
+        <a class="footer__contact-link" href="mailto:info@calziani.com">info@calziani.com</a>
+        <a class="footer__contact-link" href="tel:+18093076122">+1 809 307-6122</a>
+      </div>
+      <span class="footer__copy">&copy; 2026 Calziani · Santiago de los Caballeros, RD</span>
+    </div>
+  </footer>
+</body>
+</html>`;
+}
+
 // ─── Public routes ─────────────────────────────────────────────────────────────
 
 app.get('/api/brands', (req, res) => {
@@ -2638,6 +2718,127 @@ app.get('/api/tracking/:code', (req, res) => {
   });
 });
 
+// ─── Blog / SEO webhook ─────────────────────────────────────────────────────
+// El software de SEO hace POST acá con el artículo (Bearer token en Authorization).
+app.post('/api/webhook/seo-publish', requireWebhookAuth, (req, res) => {
+  const body = req.body || {};
+  const title = body.title;
+  const content = body.content || body.html || body.body;
+  if (!title || !content) {
+    return res.status(400).json({ error: 'Faltan campos requeridos: title, content' });
+  }
+
+  const slug = slugify(body.slug || title);
+  if (!slug) return res.status(400).json({ error: 'No se pudo generar un slug válido' });
+
+  const cleanContent = String(content).replace(/<script[\s\S]*?<\/script>/gi, '');
+  const excerpt = body.excerpt || body.meta_description || '';
+  const coverImage = body.cover_image || body.image || '';
+  const author = body.author || 'Calziani';
+  const tagsInput = body.tags;
+  const tags = JSON.stringify(
+    Array.isArray(tagsInput) ? tagsInput
+      : (typeof tagsInput === 'string' && tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(Boolean) : [])
+  );
+  const status = body.status === 'draft' ? 'draft' : 'published';
+
+  try {
+    const existing = db.prepare('SELECT id FROM articles WHERE slug = ?').get(slug);
+    if (existing) {
+      db.prepare(`
+        UPDATE articles
+           SET title = ?, content = ?, excerpt = ?, cover_image = ?, author = ?, tags = ?, status = ?,
+               updated_at = datetime('now'),
+               published_at = CASE WHEN ? = 'published' AND published_at IS NULL THEN datetime('now') ELSE published_at END
+         WHERE id = ?
+      `).run(title, cleanContent, excerpt, coverImage, author, tags, status, status, existing.id);
+    } else {
+      db.prepare(`
+        INSERT INTO articles (slug, title, content, excerpt, cover_image, author, tags, status, published_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'published' THEN datetime('now') ELSE NULL END)
+      `).run(slug, title, cleanContent, excerpt, coverImage, author, tags, status, status);
+    }
+  } catch (err) {
+    return res.status(500).json({ error: 'Error al guardar el artículo: ' + err.message });
+  }
+
+  const base = `${req.protocol}://${req.get('host')}`;
+  res.json({ success: true, slug, url: `${base}/blog/${slug}` });
+});
+
+app.get('/api/blog/articles', (req, res) => {
+  const rows = db.prepare(`
+    SELECT slug, title, excerpt, cover_image, author, published_at
+      FROM articles WHERE status = 'published' ORDER BY published_at DESC
+  `).all();
+  res.json(rows);
+});
+
+app.get('/blog', (req, res) => {
+  const base = `${req.protocol}://${req.get('host')}`;
+  const articles = db.prepare(`
+    SELECT slug, title, excerpt, cover_image, published_at
+      FROM articles WHERE status = 'published' ORDER BY published_at DESC
+  `).all();
+
+  const cardsHtml = articles.length
+    ? articles.map(a => `
+      <article class="blog-card">
+        ${a.cover_image ? `<a href="/blog/${escapeHtml(a.slug)}" class="blog-card__img"><img src="${escapeHtml(a.cover_image)}" alt="${escapeHtml(a.title)}" loading="lazy" /></a>` : ''}
+        <div class="blog-card__body">
+          <h2 class="blog-card__title"><a href="/blog/${escapeHtml(a.slug)}">${escapeHtml(a.title)}</a></h2>
+          ${a.excerpt ? `<p class="blog-card__excerpt">${escapeHtml(a.excerpt)}</p>` : ''}
+          <a class="blog-card__link" href="/blog/${escapeHtml(a.slug)}">Leer más →</a>
+        </div>
+      </article>`).join('\n')
+    : `<p class="blog-empty">Todavía no hay artículos publicados.</p>`;
+
+  res.send(blogPageShell({
+    title: 'Blog — Calziani',
+    description: 'Novedades, guías y tendencias de moda y calzado en Calziani.',
+    canonical: `${base}/blog`,
+    bodyHtml: `
+      <section class="blog-list">
+        <a href="/" class="blog-back">← Volver a la tienda</a>
+        <h1 class="blog-list__title">Blog Calziani</h1>
+        <div class="blog-list__grid">${cardsHtml}</div>
+      </section>`,
+  }));
+});
+
+app.get('/blog/:slug', (req, res) => {
+  const base = `${req.protocol}://${req.get('host')}`;
+  const article = db.prepare(`SELECT * FROM articles WHERE slug = ? AND status = 'published'`).get(req.params.slug);
+  if (!article) return res.status(404).sendFile(path.join(__dirname, 'public', 'index.html'));
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: article.title,
+    description: article.excerpt || undefined,
+    image: article.cover_image || undefined,
+    author: { '@type': 'Organization', name: article.author || 'Calziani' },
+    datePublished: article.published_at || article.created_at,
+    dateModified: article.updated_at,
+  };
+
+  res.send(blogPageShell({
+    title: `${article.title} — Calziani`,
+    description: article.excerpt || `${article.title} — Blog de Calziani`,
+    canonical: `${base}/blog/${article.slug}`,
+    image: article.cover_image || undefined,
+    jsonLd,
+    bodyHtml: `
+      <article class="blog-post">
+        <a href="/blog" class="blog-back">← Volver al blog</a>
+        <h1 class="blog-post__title">${escapeHtml(article.title)}</h1>
+        <p class="blog-post__meta">${escapeHtml(article.author || 'Calziani')} · ${escapeHtml((article.published_at || article.created_at || '').slice(0, 10))}</p>
+        ${article.cover_image ? `<img class="blog-post__cover" src="${escapeHtml(article.cover_image)}" alt="${escapeHtml(article.title)}" />` : ''}
+        <div class="blog-post__content">${article.content}</div>
+      </article>`,
+  }));
+});
+
 // ─── Sitemap.xml dinámico ─────────────────────────────────────────────────────
 app.get('/sitemap.xml', (req, res) => {
   const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
@@ -2655,6 +2856,7 @@ app.get('/sitemap.xml', (req, res) => {
     { loc: `${base}/`,        priority: '1.0', changefreq: 'daily' },
     { loc: `${base}/tracking`, priority: '0.4', changefreq: 'monthly' },
     { loc: `${base}/quienes-somos`, priority: '0.6', changefreq: 'monthly' },
+    { loc: `${base}/blog`, priority: '0.6', changefreq: 'weekly' },
   ];
 
   const productUrls = products.map(p => {
@@ -2662,7 +2864,17 @@ app.get('/sitemap.xml', (req, res) => {
     return { loc: `${base}/product/${p.id}`, priority: '0.8', changefreq: 'weekly', lastmod };
   });
 
-  const allUrls = [...staticUrls, ...productUrls];
+  const articles = db.prepare(
+    `SELECT slug, updated_at, published_at FROM articles WHERE status = 'published' ORDER BY id ASC`
+  ).all();
+  const articleUrls = articles.map(a => ({
+    loc: `${base}/blog/${a.slug}`,
+    priority: '0.6',
+    changefreq: 'monthly',
+    lastmod: (a.updated_at || a.published_at || now).slice(0, 10),
+  }));
+
+  const allUrls = [...staticUrls, ...productUrls, ...articleUrls];
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
