@@ -1958,9 +1958,15 @@ document.addEventListener('DOMContentLoaded', function () {
     function fallback() {
       var ta = document.createElement('textarea');
       ta.value = CODE;
+      // readonly + inputmode="none" let the textarea be selected and copied
+      // without popping the on-screen keyboard on mobile — focusing it
+      // otherwise resizes the viewport for the keyboard and back almost
+      // instantly, which reads as the page content below flickering away.
+      ta.setAttribute('readonly', '');
+      ta.setAttribute('inputmode', 'none');
       ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
       document.body.appendChild(ta);
-      ta.focus(); ta.select();
+      ta.focus({ preventScroll: true }); ta.select();
       try { document.execCommand('copy'); } catch (_) {}
       document.body.removeChild(ta);
       showCopied();
