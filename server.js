@@ -2735,9 +2735,24 @@ app.get('/api/tracking/:code', (req, res) => {
 // ─── Blog / SEO webhook ─────────────────────────────────────────────────────
 // El software de SEO hace POST acá con el artículo (Bearer token en Authorization).
 app.post('/api/webhook/seo-publish', requireWebhookAuth, (req, res) => {
-  const body = req.body || {};
-  const title = body.title;
-  const content = body.content || body.html || body.body;
+  const raw = req.body || {};
+
+  // Registro temporal del último payload crudo recibido, para depurar el formato
+  // exacto que manda cada integración (nombres de campo varían entre proveedores).
+  try {
+    db.prepare(`
+      INSERT INTO settings (key, value) VALUES ('last_webhook_payload', ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value
+    `).run(JSON.stringify({
+      receivedAt: new Date().toISOString(),
+      contentType: req.headers['content-type'] || null,
+      body: raw,
+    }));
+  } catch (_) {}
+
+  const body = raw.article || raw.data || raw.post || raw;
+  const title = body.title || body.headline || body.post_title || body.name;
+  const content = body.content || body.html || body.body || body.post_content || body.markdown || body.articleBody || body.content_html;
 
   // Algunas integraciones hacen "Test Connection" con un payload vacío, solo para
   // verificar que el endpoint responde y el token es válido — sin datos de artículo.
@@ -2785,6 +2800,13 @@ app.post('/api/webhook/seo-publish', requireWebhookAuth, (req, res) => {
 
   const base = `${req.protocol}://${req.get('host')}`;
   res.json({ success: true, slug, url: `${base}/blog/${slug}` });
+});
+
+// Diagnóstico: último payload crudo recibido en el webhook (para ver qué formato manda cada integración).
+app.get('/api/webhook/debug', requireWebhookAuth, (req, res) => {
+  const row = db.prepare(`SELECT value FROM settings WHERE key = 'last_webhook_payload'`).get();
+  if (!row) return res.json({ found: false });
+  res.json({ found: true, ...JSON.parse(row.value) });
 });
 
 // Diagnóstico: devuelve el artículo sin importar su status (para depurar el webhook).
