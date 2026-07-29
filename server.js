@@ -2738,6 +2738,13 @@ app.post('/api/webhook/seo-publish', requireWebhookAuth, (req, res) => {
   const body = req.body || {};
   const title = body.title;
   const content = body.content || body.html || body.body;
+
+  // Algunas integraciones hacen "Test Connection" con un payload vacío, solo para
+  // verificar que el endpoint responde y el token es válido — sin datos de artículo.
+  if (!title && !content) {
+    return res.json({ success: true, message: 'Webhook conectado correctamente.' });
+  }
+
   if (!title || !content) {
     return res.status(400).json({ error: 'Faltan campos requeridos: title, content' });
   }
