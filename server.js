@@ -2934,8 +2934,20 @@ app.get('/payment/cancel',  (req, res) => res.sendFile(path.join(__dirname, 'pub
 app.get('/card-pending',    (req, res) => res.sendFile(path.join(__dirname, 'public', 'card-pending.html')));
 app.get('/{*splat}', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Calziani corriendo en http://localhost:${PORT}`);
   console.log(`Admin panel: http://localhost:${PORT}/admin`);
   console.log(`Usuario admin: admin | Contraseña: calziani2024`);
 });
+
+// En despliegues (Railway, etc.) el proceso recibe SIGTERM antes de que el contenedor
+// se apague. Sin este handler, escrituras recientes en modo WAL de SQLite pueden
+// perderse si el proceso muere antes de hacer checkpoint del WAL al archivo principal.
+function gracefulShutdown() {
+  server.close(() => {
+    try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch (_) {}
+    process.exit(0);
+  });
+}
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
