@@ -1653,6 +1653,20 @@ app.put('/api/admin/password', requireAuth, (req, res) => {
   }
 });
 
+app.get('/api/admin/webhook-token', requireAuth, (req, res) => {
+  const row = db.prepare(`SELECT value FROM settings WHERE key = 'seo_webhook_token'`).get();
+  res.json({ token: row ? row.value : null });
+});
+
+app.post('/api/admin/webhook-token/regenerate', requireAuth, (req, res) => {
+  const newToken = crypto.randomBytes(24).toString('hex');
+  db.prepare(`
+    INSERT INTO settings (key, value) VALUES ('seo_webhook_token', ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `).run(newToken);
+  res.json({ token: newToken });
+});
+
 // ─── Currency rates ───────────────────────────────────────────────────────────
 app.get('/api/currency-rates', (req, res) => {
   res.json({

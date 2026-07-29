@@ -330,7 +330,7 @@
     if (name === 'customers') loadCustomersView();
     if (name === 'reviews')   loadReviewsView();
     if (name === 'seleccion') loadSeleccion();
-    if (name === 'settings')  loadShippingConfig();
+    if (name === 'settings')  { loadShippingConfig(); loadWebhookToken(); }
   }
 
   function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -1501,6 +1501,50 @@
         return;
       }
       msgEl.textContent = '¡Configuración de envío guardada!';
+      msgEl.className = '';
+      msgEl.style.color = '#16a34a';
+    } catch {
+      msgEl.textContent = 'Error de conexión.';
+      msgEl.className = 'form-error';
+    }
+  });
+
+  // ─── SEO webhook token ────────────────────────────────────────────────────────
+  async function loadWebhookToken() {
+    const urlEl = document.getElementById('wtUrl');
+    if (urlEl) urlEl.value = `${location.origin}/api/webhook/seo-publish`;
+    try {
+      const res = await fetch('/api/admin/webhook-token', { headers: authHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      document.getElementById('wtToken').value = data.token || '';
+    } catch { /* ignore */ }
+  }
+
+  document.getElementById('wtCopyUrl')?.addEventListener('click', () => {
+    navigator.clipboard.writeText(document.getElementById('wtUrl').value);
+    showToast('URL copiada.');
+  });
+
+  document.getElementById('wtCopyToken')?.addEventListener('click', () => {
+    navigator.clipboard.writeText(document.getElementById('wtToken').value);
+    showToast('Token copiado.');
+  });
+
+  document.getElementById('wtRegenerate')?.addEventListener('click', async () => {
+    const msgEl = document.getElementById('wtMsg');
+    msgEl.className = 'hidden';
+    if (!confirm('¿Regenerar el token? El software de SEO dejará de funcionar hasta que lo actualices con el nuevo valor.')) return;
+    try {
+      const res = await fetch('/api/admin/webhook-token/regenerate', { method: 'POST', headers: authHeaders() });
+      const data = await res.json();
+      if (!res.ok) {
+        msgEl.textContent = data.error || 'Error al regenerar.';
+        msgEl.className = 'form-error';
+        return;
+      }
+      document.getElementById('wtToken').value = data.token;
+      msgEl.textContent = 'Token regenerado. Actualizalo en tu software de SEO.';
       msgEl.className = '';
       msgEl.style.color = '#16a34a';
     } catch {

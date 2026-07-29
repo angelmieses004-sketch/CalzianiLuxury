@@ -639,6 +639,31 @@
         </div>
 
         <div class="settings-card">
+          <h3 class="settings-card__title">Webhook SEO (blog)</h3>
+          <p style="font-size:0.82rem;color:var(--admin-muted,#666);margin-bottom:0.75rem">
+            Usá estos datos en la integración "Generic Webhook" de tu software de SEO.
+          </p>
+          <div class="field">
+            <label>Webhook URL</label>
+            <div style="display:flex;gap:0.5rem">
+              <input type="text" id="wtUrl" readonly style="flex:1" />
+              <button type="button" class="btn" id="wtCopyUrl">Copiar</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Auth Token</label>
+            <div style="display:flex;gap:0.5rem">
+              <input type="text" id="wtToken" readonly style="flex:1" />
+              <button type="button" class="btn" id="wtCopyToken">Copiar</button>
+            </div>
+          </div>
+          <p id="wtMsg" class="hidden" style="font-size:0.8rem;margin-top:0.5rem"></p>
+          <div class="form-btns" style="margin-top:0.5rem">
+            <button type="button" class="btn btn-primary" id="wtRegenerate">Regenerar token</button>
+          </div>
+        </div>
+
+        <div class="settings-card">
           <h3 class="settings-card__title">Cambiar contraseña</h3>
           <form id="passwordForm" class="product-form" novalidate>
             <div class="field">
