@@ -2787,6 +2787,13 @@ app.post('/api/webhook/seo-publish', requireWebhookAuth, (req, res) => {
   res.json({ success: true, slug, url: `${base}/blog/${slug}` });
 });
 
+// Diagnóstico: devuelve el artículo sin importar su status (para depurar el webhook).
+app.get('/api/webhook/seo-publish/:slug', requireWebhookAuth, (req, res) => {
+  const article = db.prepare('SELECT id, slug, title, status, created_at, updated_at, published_at FROM articles WHERE slug = ?').get(req.params.slug);
+  if (!article) return res.status(404).json({ found: false });
+  res.json({ found: true, article });
+});
+
 app.get('/api/blog/articles', (req, res) => {
   const rows = db.prepare(`
     SELECT slug, title, excerpt, cover_image, author, published_at
