@@ -2750,9 +2750,10 @@ app.post('/api/webhook/seo-publish', requireWebhookAuth, (req, res) => {
     }));
   } catch (_) {}
 
-  const body = raw.article || raw.data || raw.post || raw;
+  const body = (raw.data && raw.data.article) || raw.article || raw.data || raw.post || raw;
   const title = body.title || body.headline || body.post_title || body.name;
-  const content = body.content || body.html || body.body || body.post_content || body.markdown || body.articleBody || body.content_html;
+  const content = body.content_html || body.content || body.html || body.body
+    || body.post_content || body.articleBody || body.content_markdown || body.markdown;
 
   // Algunas integraciones hacen "Test Connection" con un payload vacío, solo para
   // verificar que el endpoint responde y el token es válido — sin datos de artículo.
@@ -2768,8 +2769,8 @@ app.post('/api/webhook/seo-publish', requireWebhookAuth, (req, res) => {
   if (!slug) return res.status(400).json({ error: 'No se pudo generar un slug válido' });
 
   const cleanContent = String(content).replace(/<script[\s\S]*?<\/script>/gi, '');
-  const excerpt = body.excerpt || body.meta_description || '';
-  const coverImage = body.cover_image || body.image || '';
+  const excerpt = body.meta_description || body.excerpt || '';
+  const coverImage = body.cover_image || body.image || body.image_url || '';
   const author = body.author || 'Calziani';
   const tagsInput = body.tags;
   const tags = JSON.stringify(
