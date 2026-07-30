@@ -245,6 +245,7 @@ window.CalzianiI18n = (function () {
       pp_shipping_info_title:          'Envío y entrega',
       pp_shipping_info_text:           'Envío a todo el mundo. Coordinamos la entrega final por WhatsApp y podés hacer seguimiento en tiempo real desde "Rastrear pedido".',
       pp_size_placeholder:             'Elegí talla',
+      pp_size_modal_title:             'Selecciona una talla',
 
       // Product card
       out_of_stock:      'Sin stock',
@@ -500,6 +501,7 @@ window.CalzianiI18n = (function () {
       pp_shipping_info_title:          'Shipping & delivery',
       pp_shipping_info_text:           'Worldwide shipping. We coordinate final delivery over WhatsApp and you can track your order in real time from "Track order".',
       pp_size_placeholder:             'Choose size',
+      pp_size_modal_title:             'Select a size',
 
       out_of_stock:      'Out of stock',
       stock_low_hint:     'Few units left',

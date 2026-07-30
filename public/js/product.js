@@ -626,22 +626,52 @@
          </div>`
       : `<div class="pp-pricing"><span class="pp-price">${formatPrice(p.price)}</span>${dopRefHtml}</div>`;
 
-    // ── Sizes HTML (collapsed dropdown — click to reveal all sizes) ──────────
+    // ── Sizes HTML — trigger only; opens the size-select bottom sheet ────────
     const sizesHtml = p.sizes && p.sizes.length
       ? `<div class="pp-sizes">
-           <div class="pp-size-select-wrap">
-             <button type="button" class="pp-size-select" id="ppSizeTrigger" aria-haspopup="listbox" aria-expanded="false">
-               <span id="ppSizeTriggerText">${t('pp_size_placeholder')}</span>
-               <svg class="pp-size-select__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-             </button>
-             <div class="pp-size-panel hidden" id="ppSizePanel" role="listbox">
-               <div class="pp-sizes-list" id="ppSizesList">
-                 ${p.sizes.map(s => `<button class="pp-size-tag pp-size-btn" data-size="${escHtml(s)}" type="button" role="option">${escHtml(s)}</button>`).join('')}
-               </div>
-             </div>
-           </div>
+           <button type="button" class="pp-size-select" id="ppSizeTrigger" aria-haspopup="dialog">
+             <span id="ppSizeTriggerText">${t('pp_size_placeholder')}</span>
+             <svg class="pp-size-select__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+           </button>
            <p class="pp-size-urgency hidden" id="ppSizeUrgency"></p>
            <p class="pp-size-err hidden" id="ppSizeErr">${t('pp_size_select_err')}</p>
+         </div>`
+      : '';
+
+    // ── Size-select bottom sheet (Farfetch-style) ─────────────────────────────
+    const sizeModalHtml = p.sizes && p.sizes.length
+      ? `<div class="pp-size-modal" id="ppSizeModal" aria-hidden="true">
+           <div class="pp-size-modal__backdrop" id="ppSizeModalBackdrop"></div>
+           <div class="pp-size-modal__sheet" role="dialog" aria-modal="true" aria-label="${t('pp_size_modal_title')}">
+             <div class="pp-size-modal__head">
+               <h2 class="pp-size-modal__title">${t('pp_size_modal_title')}</h2>
+               <button type="button" class="pp-size-modal__close" id="ppSizeModalClose" aria-label="Cerrar">
+                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="4" x2="16" y2="16"/><line x1="16" y1="4" x2="4" y2="16"/></svg>
+               </button>
+             </div>
+             <div class="pp-size-modal__list" id="ppSizeModalList">
+               ${p.sizes.map(s => {
+                 const stock = p.sizes_stock?.[s];
+                 const out = stock === 0;
+                 const low = stock !== undefined && stock > 0 && stock <= 3;
+                 const hint = out ? t('pp_out_of_stock_size') : (low ? `${t('pp_urgency_prefix')} ${stock}` : '');
+                 return `<button type="button" class="pp-size-row${out ? ' out' : ''}" data-size="${escHtml(s)}" ${out ? 'disabled' : ''}>
+                   <span class="pp-size-row__value">${escHtml(s)}</span>
+                   ${hint ? `<span class="pp-size-row__hint">${hint}</span>` : ''}
+                 </button>`;
+               }).join('')}
+             </div>
+             <button type="button" class="pp-size-modal__guide" id="ppSizeModalGuide">
+               <span>${t('pp_size_guide_title')}</span>
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+             </button>
+             <p class="pp-size-modal__guide-text hidden" id="ppSizeModalGuideText">${t('pp_size_guide_text')}</p>
+             <p class="pp-size-err hidden" id="ppSizeModalErr">${t('pp_size_select_err')}</p>
+             <div class="pp-size-modal__actions">
+               <button type="button" class="pp-btn-cart" id="ppSizeModalCart">${t('pp_add_to_cart')}</button>
+               <button type="button" class="pp-btn-buy" id="ppSizeModalBuy">${t('pp_buy_now')}</button>
+             </div>
+           </div>
          </div>`
       : '';
 
@@ -794,7 +824,8 @@
           <h2 class="pp-related__title">${t('pp_related_title')}</h2>
           <div class="pp-related__grid" id="ppRelatedGrid"></div>
         </section>
-      </div>`;
+      </div>
+      ${sizeModalHtml}`;
 
     // ── Returns policy modal ───────────────────────────────────────────────────
     const returnsModal = document.getElementById('returnsModal');
@@ -815,53 +846,54 @@
       if (isOffer) initOfferCountdown();
       fetchProductStock(p.id);
 
-    // ── Size dropdown (collapsed by default — click to reveal all sizes) ─────
+    // ── Size-select bottom sheet ───────────────────────────────────────────────
     const sizeTrigger = document.getElementById('ppSizeTrigger');
-    const sizePanel = document.getElementById('ppSizePanel');
-    function openSizePanel() {
-      if (!sizeTrigger || !sizePanel) return;
-      sizePanel.classList.remove('hidden');
-      sizeTrigger.classList.add('open');
-      sizeTrigger.setAttribute('aria-expanded', 'true');
+    const sizeModal = document.getElementById('ppSizeModal');
+    function openSizeModal() {
+      if (!sizeModal) return;
+      sizeModal.classList.add('open');
+      sizeModal.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('pp-size-modal-open'); // hides the WhatsApp float so it can't overlap the sheet
     }
-    function closeSizePanel() {
-      if (!sizeTrigger || !sizePanel) return;
-      sizePanel.classList.add('hidden');
-      sizeTrigger.classList.remove('open');
-      sizeTrigger.setAttribute('aria-expanded', 'false');
+    function closeSizeModal() {
+      if (!sizeModal) return;
+      sizeModal.classList.remove('open');
+      sizeModal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      document.body.classList.remove('pp-size-modal-open');
     }
-    sizeTrigger?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      sizePanel?.classList.contains('hidden') ? openSizePanel() : closeSizePanel();
-    });
-    document.addEventListener('click', (e) => {
-      if (sizePanel && !sizePanel.classList.contains('hidden') && !e.target.closest('.pp-size-select-wrap')) {
-        closeSizePanel();
-      }
+    sizeTrigger?.addEventListener('click', openSizeModal);
+    document.getElementById('ppSizeModalBackdrop')?.addEventListener('click', closeSizeModal);
+    document.getElementById('ppSizeModalClose')?.addEventListener('click', closeSizeModal);
+
+    document.getElementById('ppSizeModalGuide')?.addEventListener('click', (e) => {
+      e.currentTarget.classList.toggle('open');
+      document.getElementById('ppSizeModalGuideText')?.classList.toggle('hidden');
     });
 
-    // ── Size selection ────────────────────────────────────────────────────────
-    document.querySelectorAll('.pp-size-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.pp-size-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        selectedSize = btn.dataset.size;
-        selectedQty = 1;
-        const triggerText = document.getElementById('ppSizeTriggerText');
-        if (triggerText) triggerText.textContent = `${t('size_label')} — ${selectedSize}`;
-        document.getElementById('ppSizeErr')?.classList.add('hidden');
-        updateSizeUrgency(p.id, selectedSize);
-        updateQtyUI(p);
-        closeSizePanel();
-        // Show stock for selected size
-        const sizeStock = p.sizes_stock?.[selectedSize];
-        const stockEl = document.querySelector('.pp-stock');
-        if (stockEl && sizeStock !== undefined) {
-          if (sizeStock === 0) { stockEl.textContent = t('pp_out_of_stock_size'); stockEl.className = 'pp-stock pp-stock--out'; }
-          else if (sizeStock > 0 && sizeStock < 5) { stockEl.textContent = t('pp_low_stock'); stockEl.className = 'pp-stock pp-stock--low'; }
-          else { stockEl.textContent = t('pp_available'); stockEl.className = 'pp-stock pp-stock--ok'; }
-        }
-      });
+    // ── Size selection (rows inside the bottom sheet) ─────────────────────────
+    function selectSize(size) {
+      selectedSize = size;
+      selectedQty = 1;
+      document.querySelectorAll('.pp-size-row').forEach(r => r.classList.toggle('selected', r.dataset.size === size));
+      const triggerText = document.getElementById('ppSizeTriggerText');
+      if (triggerText) triggerText.textContent = `${t('size_label')} — ${selectedSize}`;
+      document.getElementById('ppSizeErr')?.classList.add('hidden');
+      document.getElementById('ppSizeModalErr')?.classList.add('hidden');
+      updateSizeUrgency(p.id, selectedSize);
+      updateQtyUI(p);
+      // Show stock for selected size
+      const sizeStock = p.sizes_stock?.[selectedSize];
+      const stockEl = document.querySelector('.pp-stock');
+      if (stockEl && sizeStock !== undefined) {
+        if (sizeStock === 0) { stockEl.textContent = t('pp_out_of_stock_size'); stockEl.className = 'pp-stock pp-stock--out'; }
+        else if (sizeStock > 0 && sizeStock < 5) { stockEl.textContent = t('pp_low_stock'); stockEl.className = 'pp-stock pp-stock--low'; }
+        else { stockEl.textContent = t('pp_available'); stockEl.className = 'pp-stock pp-stock--ok'; }
+      }
+    }
+    document.querySelectorAll('.pp-size-row:not(.out)').forEach(row => {
+      row.addEventListener('click', () => selectSize(row.dataset.size));
     });
 
     // ── Quantity stepper ──────────────────────────────────────────────────────
@@ -886,14 +918,8 @@
       });
     });
 
-    // ── Add to cart ───────────────────────────────────────────────────────────
-    document.getElementById('ppAddCart')?.addEventListener('click', () => {
-      if (p.sizes?.length && !selectedSize) {
-        document.getElementById('ppSizeErr')?.classList.remove('hidden');
-        openSizePanel();
-        sizeTrigger?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        return;
-      }
+    // ── Add to cart / Buy now ──────────────────────────────────────────────────
+    function runAddToCart() {
       const maxQty = getMaxQtyAvailable(p);
       addToCart({ id: p.id, name: p.name, price: p.price, cover: p.images?.[0]?.filename || '', size: selectedSize, qty: selectedQty, maxQty });
       selectedQty = 1;
@@ -904,19 +930,31 @@
         btn.classList.add('added');
         setTimeout(() => { btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> ${t('pp_add_to_cart')}`; btn.classList.remove('added'); }, 2000);
       }
-    });
-
-    // ── Buy now ───────────────────────────────────────────────────────────────
-    document.getElementById('ppBuyNow')?.addEventListener('click', () => {
-      if (p.sizes?.length && !selectedSize) {
-        document.getElementById('ppSizeErr')?.classList.remove('hidden');
-        openSizePanel();
-        sizeTrigger?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        return;
-      }
+    }
+    function runBuyNow() {
       const maxQtyBuy = getMaxQtyAvailable(p);
       addToCart({ id: p.id, name: p.name, price: p.price, cover: p.images?.[0]?.filename || '', size: selectedSize, qty: selectedQty, maxQty: maxQtyBuy });
       window.location.href = '/?cart=open';
+    }
+    function needsSize() { return p.sizes?.length && !selectedSize; }
+
+    document.getElementById('ppAddCart')?.addEventListener('click', () => {
+      if (needsSize()) { document.getElementById('ppSizeErr')?.classList.remove('hidden'); openSizeModal(); return; }
+      runAddToCart();
+    });
+    document.getElementById('ppBuyNow')?.addEventListener('click', () => {
+      if (needsSize()) { document.getElementById('ppSizeErr')?.classList.remove('hidden'); openSizeModal(); return; }
+      runBuyNow();
+    });
+    // Same actions, reachable from inside the size sheet once a size is picked
+    document.getElementById('ppSizeModalCart')?.addEventListener('click', () => {
+      if (needsSize()) { document.getElementById('ppSizeModalErr')?.classList.remove('hidden'); return; }
+      runAddToCart();
+      closeSizeModal();
+    });
+    document.getElementById('ppSizeModalBuy')?.addEventListener('click', () => {
+      if (needsSize()) { document.getElementById('ppSizeModalErr')?.classList.remove('hidden'); return; }
+      runBuyNow();
     });
 
     // ── Favorite ──────────────────────────────────────────────────────────────
