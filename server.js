@@ -211,6 +211,23 @@ function attachImages(product) {
   };
 }
 
+// Maison Margiela product pages show their other colorways as swatches under
+// the size picker (each colorway is stored as its own product, not a variant field).
+function getColorVariants(product) {
+  if (!product.brand_id) return [];
+  const brand = db.prepare('SELECT name FROM brands WHERE id = ?').get(product.brand_id);
+  if (!brand || !/margiela/i.test(brand.name)) return [];
+  const siblings = db.prepare(
+    'SELECT id, name FROM products WHERE brand_id = ? AND id != ? ORDER BY created_at ASC'
+  ).all(product.brand_id, product.id);
+  return siblings.map(s => {
+    const firstImg = db.prepare(
+      'SELECT filename FROM product_images WHERE product_id = ? ORDER BY position ASC, id ASC LIMIT 1'
+    ).get(s.id);
+    return { id: s.id, name: s.name, cover: firstImg ? firstImg.filename : null };
+  });
+}
+
 // ─── Simple SQLite session store (extends EventEmitter as required) ───────────
 const Session = require('express-session');
 
@@ -1152,7 +1169,9 @@ app.delete('/api/admin/reviews/:id', requireAuth, (req, res) => {
 app.get('/api/products/:id', (req, res) => {
   const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
-  res.json(attachImages(product));
+  const payload = attachImages(product);
+  payload.color_variants = getColorVariants(product);
+  res.json(payload);
 });
 
 app.get('/api/products/:id/stock', (req, res) => {

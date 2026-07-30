@@ -180,17 +180,17 @@
   <!-- TRACKING DROPDOWN -->
   <div id="trkDropdown" class="trk-dropdown" aria-hidden="true">
     <div class="trk-dropdown__inner">
-      <p class="trk-dropdown__label">SEGUIMIENTO DE PEDIDO</p>
+      <p class="trk-dropdown__label" data-i18n="trk_label">SEGUIMIENTO DE PEDIDO</p>
       <div class="trk-dropdown__form">
         <input type="text" id="trkHdrInput" class="trk-dropdown__input"
-          placeholder="Ej: CLZ-A1B2C3" maxlength="20" autocomplete="off" spellcheck="false" />
-        <button type="button" id="trkHdrBtn" class="trk-dropdown__btn">Rastrear</button>
+          placeholder="Ej: CLZ-A1B2C3" data-i18n-placeholder="trk_placeholder" maxlength="20" autocomplete="off" spellcheck="false" />
+        <button type="button" id="trkHdrBtn" class="trk-dropdown__btn" data-i18n="trk_btn">Rastrear</button>
       </div>
       <p class="trk-dropdown__error hidden" id="trkHdrError"></p>
       <div class="trk-dropdown__result hidden" id="trkHdrResult">
         <div class="trk-dropdown__result-head">
           <span class="trk-dropdown__order-num" id="trkHdrOrderNum"></span>
-          <a class="trk-dropdown__full-link" id="trkHdrFullLink" href="#" target="_blank" rel="noopener">Ver detalle →</a>
+          <a class="trk-dropdown__full-link" id="trkHdrFullLink" href="#" target="_blank" rel="noopener" data-i18n="trk_detail_link">Ver detalle →</a>
         </div>
         <div class="trk-dropdown__steps" id="trkHdrSteps"></div>
         <div class="trk-dropdown__notes hidden" id="trkHdrNotes"></div>
@@ -208,7 +208,7 @@
       <div class="ck-head">
         <span class="ck-head__secure">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          Pago seguro
+          <span data-i18n="ck_secure_payment">Pago seguro</span>
         </span>
         <span class="ck-head__logo">CALZIANI</span>
         <button class="ck-head__close" id="cartClose" aria-label="Cerrar">&times;</button>
@@ -218,24 +218,24 @@
       <div class="ck-steps" id="ckSteps">
         <div class="ck-step ck-step--active" data-step="1">
           <span class="ck-step__dot">1</span>
-          <span class="ck-step__label">Información</span>
+          <span class="ck-step__label" data-i18n="ck_step_info">Información</span>
         </div>
         <span class="ck-step__line"></span>
         <div class="ck-step" data-step="2">
           <span class="ck-step__dot">2</span>
-          <span class="ck-step__label">Pago</span>
+          <span class="ck-step__label" data-i18n="ck_step_pay">Pago</span>
         </div>
         <span class="ck-step__line"></span>
         <div class="ck-step" data-step="3">
           <span class="ck-step__dot">3</span>
-          <span class="ck-step__label">Confirmado</span>
+          <span class="ck-step__label" data-i18n="ck_step_done">Confirmado</span>
         </div>
       </div>
 
       <!-- Empty state -->
       <div class="ck-empty hidden" id="cartEmpty">
         <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        <p>Tu carrito está vacío</p>
+        <p data-i18n="ck_empty">Tu carrito está vacío</p>
       </div>
 
       <!-- Main checkout body -->
@@ -246,75 +246,75 @@
 
         <!-- Trust badges -->
         <div class="ck-trust">
-          <span>✓ 100% original</span>
-          <span>✓ Pagás al recibir</span>
-          <span>★ 4.9 · +300 clientes</span>
+          <span data-i18n="ck_trust_original">✓ 100% original</span>
+          <span data-i18n="ck_trust_pay_on_receipt">✓ Pagás al recibir</span>
+          <span data-i18n="ck_trust_rating">★ 4.9 · +300 clientes</span>
         </div>
 
         <!-- Form -->
-        <p class="ck-form-lbl">Tus datos</p>
+        <p class="ck-form-lbl" data-i18n="ck_form_title">Tus datos</p>
         <div class="ck-fields">
           <div class="ck-field-group">
-            <label for="shipName">Nombre completo <span class="ck-field-req">*</span></label>
-            <input class="ck-input" id="shipName" type="text" placeholder="Ej. Juan Pérez" autocomplete="name" />
+            <label for="shipName"><span data-i18n="ck_field_name">Nombre completo</span> <span class="ck-field-req">*</span></label>
+            <input class="ck-input" id="shipName" type="text" placeholder="Ej. Juan Pérez" data-i18n-placeholder="ck_field_name_ph" autocomplete="name" />
           </div>
           <div class="ck-field-group">
-            <label for="shipPhone">Teléfono (WhatsApp) <span class="ck-field-req">*</span></label>
-            <input class="ck-input" id="shipPhone" type="tel" placeholder="Tu número personal" autocomplete="tel" />
+            <label for="shipPhone"><span data-i18n="ck_field_phone">Teléfono (WhatsApp)</span> <span class="ck-field-req">*</span></label>
+            <input class="ck-input" id="shipPhone" type="tel" placeholder="Tu número personal" data-i18n-placeholder="ck_field_phone_ph" autocomplete="tel" />
           </div>
           <div class="ck-field-group">
-            <label for="shipAddress">Dirección <span class="ck-field-req">*</span></label>
-            <input class="ck-input" id="shipAddress" type="text" placeholder="Ciudad, provincia" autocomplete="street-address" />
+            <label for="shipAddress"><span data-i18n="ck_field_address">Dirección</span> <span class="ck-field-req">*</span></label>
+            <input class="ck-input" id="shipAddress" type="text" placeholder="Ciudad, provincia" data-i18n-placeholder="ck_field_address_ph" autocomplete="street-address" />
           </div>
         </div>
-        <p class="ck-field-hint">Necesitamos tu número personal para coordinar la entrega por WhatsApp.</p>
-        <p class="ck-fields-err hidden" id="shippingErr">Completá todos los datos para continuar.</p>
+        <p class="ck-field-hint" data-i18n="ck_field_hint">Necesitamos tu número personal para coordinar la entrega por WhatsApp.</p>
+        <p class="ck-fields-err hidden" id="shippingErr" data-i18n="ck_field_err">Completá todos los datos para continuar.</p>
 
         <!-- Promo code -->
         <div class="ck-promo">
           <div class="ck-promo__row">
-            <input type="text" id="promoCodeInput" class="ck-promo__input" placeholder="Código de descuento" maxlength="32" autocomplete="off" />
-            <button type="button" class="ck-promo__btn" id="promoApplyBtn">Aplicar</button>
+            <input type="text" id="promoCodeInput" class="ck-promo__input" placeholder="Código de descuento" data-i18n-placeholder="ck_promo_ph" maxlength="32" autocomplete="off" />
+            <button type="button" class="ck-promo__btn" id="promoApplyBtn" data-i18n="ck_promo_apply">Aplicar</button>
           </div>
-          <button type="button" class="ck-promo__clear hidden" id="promoClearBtn">✕ Quitar código</button>
+          <button type="button" class="ck-promo__clear hidden" id="promoClearBtn" data-i18n="ck_promo_clear">✕ Quitar código</button>
           <p class="ck-promo__msg hidden" id="promoMsg" role="status"></p>
         </div>
 
         <!-- Green info box -->
         <div class="ck-info">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" style="flex-shrink:0;margin-top:2px"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <p>Apartás con el <strong>30%</strong> y pagás el resto <strong>al recibir</strong>. Te contactamos por WhatsApp para coordinar la entrega.</p>
+          <p data-i18n="ck_info_box">Apartás con el <strong>30%</strong> y pagás el resto <strong>al recibir</strong>. Te contactamos por WhatsApp para coordinar la entrega.</p>
         </div>
 
         <!-- Totals -->
         <div class="ck-totals">
           <div class="ck-totals__row">
-            <span>Subtotal</span>
+            <span data-i18n="ck_subtotal">Subtotal</span>
             <span id="ckSubtotal">—</span>
           </div>
           <div class="ck-totals__row ck-totals__discount hidden" id="ckDiscountRow">
-            <span id="ckDiscountLabel">Descuento</span>
+            <span id="ckDiscountLabel" data-i18n="ck_discount">Descuento</span>
             <span id="ckDiscount">—</span>
           </div>
           <div class="ck-totals__row">
-            <span>Envío prioritario</span>
+            <span data-i18n="ck_shipping">Envío prioritario</span>
             <span id="ckShipping">—</span>
           </div>
           <div class="ck-totals__row ck-totals__total">
-            <span>Total</span>
+            <span data-i18n="ck_total">Total</span>
             <span id="ckTotal">—</span>
           </div>
         </div>
 
         <!-- Deposit highlight -->
         <div class="ck-deposit">
-          <span class="ck-deposit__lbl">Apartás hoy (30%)</span>
+          <span class="ck-deposit__lbl" data-i18n="ck_deposit_label">Apartás hoy (30%)</span>
           <strong class="ck-deposit__amt" id="ckDeposit">—</strong>
         </div>
 
         <!-- CTA → goes to payment step -->
-        <button class="ck-cta" id="btnGoToCheckout">Confirmar mi pedido</button>
-        <p class="ck-cta-sub">Sin pagar ahora · coordinamos por WhatsApp</p>
+        <button class="ck-cta" id="btnGoToCheckout" data-i18n="ck_cta">Confirmar mi pedido</button>
+        <p class="ck-cta-sub" data-i18n="ck_cta_sub">Sin pagar ahora · coordinamos por WhatsApp</p>
 
       </div><!-- /ck-body -->
 
@@ -325,43 +325,43 @@
         <div class="ck-checkout__head">
           <button class="ck-checkout__back" id="ckBack">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="15 18 9 12 15 6"/></svg>
-            Volver
+            <span data-i18n="ck_back">Volver</span>
           </button>
-          <span class="ck-checkout__title">Ingresá el método de pago</span>
+          <span class="ck-checkout__title" data-i18n="ck_pay_title">Ingresá el método de pago</span>
         </div>
 
         <!-- Order summary strip -->
         <div class="ck-checkout__summary" id="ckCheckoutSummary"></div>
 
-        <p class="ck-method-lbl">Seleccioná un método</p>
+        <p class="ck-method-lbl" data-i18n="ck_method_label">Seleccioná un método</p>
         <!-- Payment method cards -->
         <div class="pay-method-tabs">
           <button class="pay-method-tab active" data-method="cardlink">
             <span class="pay-method-tab__icon">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             </span>
-            <span class="pay-method-tab__label">Tarjeta</span>
+            <span class="pay-method-tab__label" data-i18n="ck_method_card">Tarjeta</span>
           </button>
           <button class="pay-method-tab" data-method="transfer">
             <span class="pay-method-tab__icon">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             </span>
-            <span class="pay-method-tab__label">Transferencia</span>
+            <span class="pay-method-tab__label" data-i18n="ck_method_transfer">Transferencia</span>
           </button>
           <button class="pay-method-tab" data-method="cod">
             <span class="pay-method-tab__icon">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
             </span>
-            <span class="pay-method-tab__label">Al recibir</span>
+            <span class="pay-method-tab__label" data-i18n="ck_method_cod">Al recibir</span>
           </button>
         </div>
 
         <!-- Card link panel (default) -->
         <div class="pay-panel active" id="payPanelCardLink">
-          <p class="cardlink-note">Recibirás un link de pago seguro por WhatsApp para completar tu compra con tarjeta débito/crédito.</p>
+          <p class="cardlink-note" data-i18n="ck_cardlink_note">Recibirás un link de pago seguro por WhatsApp para completar tu compra con tarjeta débito/crédito.</p>
           <button class="btn-cardlink-pay" id="btnCardLinkPay">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-            Solicitar link de pago
+            <span data-i18n="ck_cardlink_btn">Solicitar link de pago</span>
           </button>
         </div>
 
@@ -370,7 +370,7 @@
           <div class="transfer-info" id="transferInfo"></div>
           <button class="btn-whatsapp" id="btnWhatsapp">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
-            Confirmar por WhatsApp
+            <span data-i18n="ck_whatsapp_btn">Confirmar por WhatsApp</span>
           </button>
         </div>
 
@@ -378,17 +378,17 @@
         <div class="pay-panel" id="payPanelCod">
           <p class="cod-note">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            Opción disponible <strong>solo en Santiago</strong>. Un asesor coordinará la entrega y el cobro.
+            <span data-i18n="ck_cod_note">Opción disponible <strong>solo en Santiago</strong>. Un asesor coordinará la entrega y el cobro.</span>
           </p>
           <button class="btn-whatsapp btn-cod-pay" id="btnCodPay">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
-            Confirmar pago al recibir
+            <span data-i18n="ck_cod_btn">Confirmar pago al recibir</span>
           </button>
         </div>
 
         <!-- Payment badges -->
         <div class="cart-pay-badges" style="margin-top:auto;padding-top:14px">
-          <span class="cart-pay-badges__label">Pago seguro con</span>
+          <span class="cart-pay-badges__label" data-i18n="ck_pay_secure_label">Pago seguro con</span>
           <img src="/img/payment/visa.png" alt="Visa" />
           <img src="/img/payment/mastercard.png" alt="Mastercard" />
           <span class="cart-pay-3ds"><img src="/img/payment/visa-secure.png" alt="Visa Secure" /></span>
@@ -402,20 +402,20 @@
         <div class="ck-completed__icon">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
         </div>
-        <h3 class="ck-completed__title" id="ckCompletedTitle">¡Pedido confirmado!</h3>
-        <p class="ck-completed__sub" id="ckCompletedSub">Te contactaremos por WhatsApp para coordinar la entrega.</p>
+        <h3 class="ck-completed__title" id="ckCompletedTitle" data-i18n="ck_done_title">¡Pedido confirmado!</h3>
+        <p class="ck-completed__sub" id="ckCompletedSub" data-i18n="ck_done_sub">Te contactaremos por WhatsApp para coordinar la entrega.</p>
 
         <div class="ck-completed__card">
-          <div class="ck-completed__row"><span>Pedido</span><strong id="ckCompletedOrder">—</strong></div>
-          <div class="ck-completed__row"><span>Método</span><strong id="ckCompletedMethod">—</strong></div>
-          <div class="ck-completed__row"><span>Entrega</span><strong>Coordinada por WhatsApp</strong></div>
-          <div class="ck-completed__row ck-completed__row--total"><span>Total</span><strong id="ckCompletedTotal">—</strong></div>
+          <div class="ck-completed__row"><span data-i18n="ck_done_order">Pedido</span><strong id="ckCompletedOrder">—</strong></div>
+          <div class="ck-completed__row"><span data-i18n="ck_done_method">Método</span><strong id="ckCompletedMethod">—</strong></div>
+          <div class="ck-completed__row"><span data-i18n="ck_done_delivery">Entrega</span><strong data-i18n="ck_done_delivery_val">Coordinada por WhatsApp</strong></div>
+          <div class="ck-completed__row ck-completed__row--total"><span data-i18n="ck_done_total">Total</span><strong id="ckCompletedTotal">—</strong></div>
         </div>
 
         <div class="ck-completed__divider"></div>
 
-        <a href="#" class="ck-completed__track hidden" id="ckCompletedTrackLink" target="_blank" rel="noopener">Ver seguimiento de pedido →</a>
-        <button type="button" class="ck-completed__cta" id="ckCompletedContinue">Seguir comprando</button>
+        <a href="#" class="ck-completed__track hidden" id="ckCompletedTrackLink" target="_blank" rel="noopener" data-i18n="ck_done_track">Ver seguimiento de pedido →</a>
+        <button type="button" class="ck-completed__cta" id="ckCompletedContinue" data-i18n="ck_done_continue">Seguir comprando</button>
       </div><!-- /ck-completed -->
 
     </div><!-- /ck-panel -->
@@ -431,21 +431,21 @@
       <!-- Brand header -->
       <div class="auth-brand">
         <span class="auth-brand__logo">CALZIANI</span>
-        <p class="auth-brand__sub" id="authBrandSub">Bienvenido de nuevo</p>
+        <p class="auth-brand__sub" id="authBrandSub" data-i18n="auth_welcome">Bienvenido de nuevo</p>
       </div>
 
       <!-- Google button (always on top) -->
       <button class="btn-google" id="btnGoogle">
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
-        Continuar con Google
+        <span data-i18n="auth_google">Continuar con Google</span>
       </button>
 
-      <div class="auth-divider"><span>o</span></div>
+      <div class="auth-divider"><span data-i18n="auth_or">o</span></div>
 
       <!-- Tab switcher -->
       <div class="auth-tabs">
-        <button class="auth-tab active" data-tab="login">Iniciar sesión</button>
-        <button class="auth-tab" data-tab="register">Crear cuenta</button>
+        <button class="auth-tab active" data-tab="login" data-i18n="auth_tab_login">Iniciar sesión</button>
+        <button class="auth-tab" data-tab="register" data-i18n="auth_tab_register">Crear cuenta</button>
       </div>
 
       <!-- LOGIN FORM -->
@@ -454,46 +454,46 @@
           <div class="auth-field">
             <label for="loginEmail">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
-              Email
+              <span data-i18n="auth_email">Email</span>
             </label>
-            <input type="email" id="loginEmail" placeholder="tu@email.com" autocomplete="email" />
+            <input type="email" id="loginEmail" placeholder="tu@email.com" data-i18n-placeholder="auth_email_ph" autocomplete="email" />
           </div>
           <div class="auth-field">
             <label for="loginPassword">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              Contraseña
+              <span data-i18n="auth_password">Contraseña</span>
             </label>
-            <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password" />
+            <input type="password" id="loginPassword" placeholder="••••••••" data-i18n-placeholder="auth_password_ph" autocomplete="current-password" />
           </div>
         </div>
-        <button type="button" class="auth-forgot-btn" id="forgotBtn">¿Olvidaste tu contraseña?</button>
+        <button type="button" class="auth-forgot-btn" id="forgotBtn" data-i18n="auth_forgot">¿Olvidaste tu contraseña?</button>
         <div id="loginError" class="auth-error hidden"></div>
-        <button type="button" class="btn-auth-submit" id="loginSubmitBtn">Iniciar sesión</button>
-        <p class="auth-footer-text">¿No tenés cuenta? <button class="auth-link-btn" data-to="register">Crear cuenta gratis</button></p>
+        <button type="button" class="btn-auth-submit" id="loginSubmitBtn" data-i18n="auth_login_submit">Iniciar sesión</button>
+        <p class="auth-footer-text"><span data-i18n="auth_no_account">¿No tenés cuenta?</span> <button class="auth-link-btn" data-to="register" data-i18n="auth_create_free">Crear cuenta gratis</button></p>
       </div>
 
       <!-- FORGOT PASSWORD PANEL -->
       <div class="auth-panel" id="panelForgot">
         <div class="auth-back-row">
-          <button class="auth-link-btn auth-back-btn" data-to="login">← Volver</button>
+          <button class="auth-link-btn auth-back-btn" data-to="login" data-i18n="auth_back">← Volver</button>
         </div>
         <div class="auth-info-block">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1" fill="#111"/></svg>
-          <p class="auth-info-title">Recuperar contraseña</p>
-          <p class="auth-info-sub">Ingresá tu email y te enviamos un enlace para crear una nueva contraseña.</p>
+          <p class="auth-info-title" data-i18n="auth_recover_title">Recuperar contraseña</p>
+          <p class="auth-info-sub" data-i18n="auth_recover_sub">Ingresá tu email y te enviamos un enlace para crear una nueva contraseña.</p>
         </div>
         <div class="auth-fields">
           <div class="auth-field">
             <label for="forgotEmail">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
-              Tu email
+              <span data-i18n="auth_your_email">Tu email</span>
             </label>
-            <input type="email" id="forgotEmail" placeholder="tu@email.com" autocomplete="email" />
+            <input type="email" id="forgotEmail" placeholder="tu@email.com" data-i18n-placeholder="auth_email_ph" autocomplete="email" />
           </div>
         </div>
         <div id="forgotError" class="auth-error hidden"></div>
         <div id="forgotSuccess" class="auth-success hidden"></div>
-        <button type="button" class="btn-auth-submit" id="forgotSubmitBtn">Enviar enlace</button>
+        <button type="button" class="btn-auth-submit" id="forgotSubmitBtn" data-i18n="auth_send_link">Enviar enlace</button>
       </div>
 
       <!-- REGISTER FORM -->
@@ -502,29 +502,29 @@
           <div class="auth-field">
             <label for="regName">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-              Nombre completo
+              <span data-i18n="auth_full_name">Nombre completo</span>
             </label>
-            <input type="text" id="regName" placeholder="Tu nombre" autocomplete="name" />
+            <input type="text" id="regName" placeholder="Tu nombre" data-i18n-placeholder="auth_full_name_ph" autocomplete="name" />
           </div>
           <div class="auth-field">
             <label for="regEmail">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
-              Email
+              <span data-i18n="auth_email">Email</span>
             </label>
-            <input type="email" id="regEmail" placeholder="tu@email.com" autocomplete="email" />
+            <input type="email" id="regEmail" placeholder="tu@email.com" data-i18n-placeholder="auth_email_ph" autocomplete="email" />
           </div>
           <div class="auth-field">
             <label for="regPassword">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              Contraseña
+              <span data-i18n="auth_password">Contraseña</span>
             </label>
-            <input type="password" id="regPassword" placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
-            <span class="auth-field-hint">Al menos 6 caracteres</span>
+            <input type="password" id="regPassword" placeholder="Mínimo 6 caracteres" data-i18n-placeholder="auth_min_chars_ph" autocomplete="new-password" />
+            <span class="auth-field-hint" data-i18n="auth_min_chars_hint">Al menos 6 caracteres</span>
           </div>
         </div>
         <div id="registerError" class="auth-error hidden"></div>
-        <button type="button" class="btn-auth-submit" id="regSubmitBtn">Crear cuenta</button>
-        <p class="auth-footer-text">¿Ya tenés cuenta? <button class="auth-link-btn" data-to="login">Iniciar sesión</button></p>
+        <button type="button" class="btn-auth-submit" id="regSubmitBtn" data-i18n="auth_register_submit">Crear cuenta</button>
+        <p class="auth-footer-text"><span data-i18n="auth_have_account">¿Ya tenés cuenta?</span> <button class="auth-link-btn" data-to="login" data-i18n="auth_tab_login">Iniciar sesión</button></p>
       </div>
     </div>
   </div>
@@ -539,7 +539,7 @@
       </div>
     </div>
     <div class="user-dropdown__divider"></div>
-    <button class="user-dropdown__item" id="logoutBtn">Cerrar sesión</button>
+    <button class="user-dropdown__item" id="logoutBtn" data-i18n="auth_logout">Cerrar sesión</button>
   </div>
 
   <!-- HERO -->
@@ -553,14 +553,14 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
             <span data-i18n="hero_eyebrow">Est. Santiago, RD</span>
           </p>
-          <h1 class="hero__title">Lujo que<br>se camina.</h1>
+          <h1 class="hero__title" data-i18n="hero_title">Lujo que<br>se camina.</h1>
           <p class="hero__sub" data-i18n="hero_sub">Calzado de marca verificado como auténtico. Coordinamos la entrega por WhatsApp hasta tu puerta.</p>
           <div class="hero__actions">
             <a href="#products" class="hero__cta" data-i18n="hero_cta">Explorar colección</a>
-            <a href="#products" class="hero__cta hero__cta--ghost" data-cat-click="calzado">Ver calzado</a>
+            <a href="#products" class="hero__cta hero__cta--ghost" data-cat-click="calzado" data-i18n="hero_cta_ghost">Ver calzado</a>
           </div>
           <div class="hero__follow">
-            <span>Seguinos</span>
+            <span data-i18n="hero_follow">Seguinos</span>
             <a href="https://www.instagram.com/calziani.luxury" target="_blank" rel="noopener" aria-label="Instagram">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
             </a>
@@ -590,10 +590,10 @@
             <span class="hero__tag-string"></span>
             <div class="hero__tag-card">
               <span class="hero__tag-hole"></span>
-              <p class="hero__tag-label">Auténtico</p>
+              <p class="hero__tag-label" data-i18n="hero_authentic">Auténtico</p>
               <p class="hero__tag-serial">Nº 001</p>
               <div class="hero__tag-rule"></div>
-              <p class="hero__tag-sub">100% original<br>Envío mundial</p>
+              <p class="hero__tag-sub" data-i18n="hero_tag_sub">100% original<br>Envío mundial</p>
             </div>
           </div>
         </div>
@@ -602,7 +602,7 @@
       <!-- Sidebar cards -->
       <aside class="hero__side">
         <div class="hero__card">
-          <p class="hero__card-label">Colores populares</p>
+          <p class="hero__card-label" data-i18n="hero_colors">Colores populares</p>
           <div class="hero__swatches">
             <span style="background:#15130F" title="Negro"></span>
             <span style="background:#FFFFFF" title="Blanco"></span>
@@ -613,13 +613,13 @@
         </div>
         <div class="hero__card hero__card--stat">
           <p class="hero__card-num">★ 4.9</p>
-          <p class="hero__card-label">+300 clientes felices</p>
-          <button type="button" class="hero__card-link" data-trust-open>Ver reseñas →</button>
+          <p class="hero__card-label" data-i18n="hero_happy">+300 clientes felices</p>
+          <button type="button" class="hero__card-link" data-trust-open data-i18n="hero_see_reviews">Ver reseñas →</button>
         </div>
         <div class="hero__card hero__card--ship">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          <p class="hero__card-title">Envío mundial</p>
-          <p class="hero__card-label">Gratis en pedidos +$150</p>
+          <p class="hero__card-title" data-i18n="hero_ship_title">Envío mundial</p>
+          <p class="hero__card-label" data-i18n="hero_ship_sub">Gratis en pedidos +$150</p>
         </div>
       </aside>
 
@@ -635,29 +635,29 @@
       <div class="trust-strip__item">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         <div>
-          <strong>Envío Mundial</strong>
-          <span>Gratis en pedidos +$150</span>
+          <strong data-i18n="trust_ship_title">Envío Mundial</strong>
+          <span data-i18n="trust_ship_sub">Gratis en pedidos +$150</span>
         </div>
       </div>
       <div class="trust-strip__item">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         <div>
-          <strong>Pago 100% Seguro</strong>
+          <strong data-i18n="trust_pay_title">Pago 100% Seguro</strong>
           <span>SSL · 3D Secure · AZUL</span>
         </div>
       </div>
       <div class="trust-strip__item">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         <div>
-          <strong>Tracking en Tiempo Real</strong>
-          <span>Seguí tu pedido al instante</span>
+          <strong data-i18n="trust_track_title">Tracking en Tiempo Real</strong>
+          <span data-i18n="trust_track_sub">Seguí tu pedido al instante</span>
         </div>
       </div>
       <div class="trust-strip__item">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
         <div>
-          <strong>Productos Auténticos</strong>
-          <span>Marcas certificadas</span>
+          <strong data-i18n="trust_auth_title">Productos Auténticos</strong>
+          <span data-i18n="trust_auth_sub">Marcas certificadas</span>
         </div>
       </div>
     </div>
@@ -666,7 +666,7 @@
   <!-- BRAND STRIP -->
   <section class="brand-strip hidden" id="brandStrip" aria-label="Marcas que vendemos">
     <div class="brand-strip__inner">
-      <span class="brand-strip__label">Marcas que vendemos</span>
+      <span class="brand-strip__label" data-i18n="brand_strip_label">Marcas que vendemos</span>
       <div class="brand-strip__list" id="brandStripList"></div>
     </div>
   </section>
@@ -694,10 +694,10 @@
   <div class="proof-bar">
     <div class="proof-bar__inner">
       <div class="proof-bar__stars">★★★★★</div>
-      <span class="proof-bar__text"><strong>4.9</strong> · +300 clientes satisfechos</span>
+      <span class="proof-bar__text" data-i18n="proof_text"><strong>4.9</strong> · +300 clientes satisfechos</span>
       <span class="proof-bar__sep">·</span>
-      <span class="proof-bar__tag">Golden Goose · Lacoste · Polo Ralph Lauren</span>
-      <button type="button" class="proof-bar__btn" data-trust-open>Ver reseñas →</button>
+      <span class="proof-bar__tag" data-i18n="proof_brands">Golden Goose · Lacoste · Polo Ralph Lauren</span>
+      <button type="button" class="proof-bar__btn" data-trust-open data-i18n="proof_cta">Ver reseñas →</button>
     </div>
   </div>
 
@@ -705,7 +705,7 @@
   <section class="seleccion-section hidden" id="seleccionSection">
     <div class="main">
       <div class="section-header">
-        <h2 class="seleccion-section__title">Selección de Calziani</h2>
+        <h2 class="seleccion-section__title" data-i18n="seleccion_title">Selección de Calziani</h2>
       </div>
       <div id="seleccionGrid" class="product-grid"></div>
     </div>
@@ -730,7 +730,7 @@
     </div>
 
     <div id="productGrid" class="product-grid">
-      <div class="loading" data-i18n="loading">Cargando productos...</div>
+      <div class="loading" data-i18n="loading_products">Cargando productos...</div>
     </div>
   </main>
 
@@ -738,25 +738,25 @@
   <section class="newsletter-section">
     <div class="newsletter-inner">
       <div class="newsletter-text">
-        <p class="newsletter-eyebrow">ACCESO EXCLUSIVO</p>
-        <h2 class="newsletter-title">Sé el primero en ver los nuevos drops</h2>
-        <p class="newsletter-sub">Ofertas exclusivas, nuevas llegadas y contenido para miembros. Sin spam.</p>
+        <p class="newsletter-eyebrow" data-i18n="newsletter_eyebrow">ACCESO EXCLUSIVO</p>
+        <h2 class="newsletter-title" data-i18n="newsletter_title">Sé el primero en ver los nuevos drops</h2>
+        <p class="newsletter-sub" data-i18n="newsletter_sub">Ofertas exclusivas, nuevas llegadas y contenido para miembros. Sin spam.</p>
       </div>
       <form class="newsletter-form" id="newsletterForm">
-        <input type="email" class="newsletter-input" id="newsletterEmail" placeholder="Tu correo electrónico" autocomplete="email" required />
-        <button type="submit" class="newsletter-btn">Suscribirme</button>
+        <input type="email" class="newsletter-input" id="newsletterEmail" placeholder="Tu correo electrónico" data-i18n-placeholder="newsletter_placeholder" autocomplete="email" required />
+        <button type="submit" class="newsletter-btn" data-i18n="newsletter_btn">Suscribirme</button>
       </form>
-      <p class="newsletter-success hidden" id="newsletterSuccess">¡Listo! Te avisamos con los próximos drops.</p>
+      <p class="newsletter-success hidden" id="newsletterSuccess" data-i18n="newsletter_success">¡Listo! Te avisamos con los próximos drops.</p>
     </div>
   </section>
 
   <!-- TRUST / SOCIAL PROOF -->
   <section class="trust-banner" aria-label="Confianza Calziani">
     <div class="trust-banner__inner">
-      <p class="trust-banner__eyebrow">Confianza Calziani</p>
-      <h2 class="trust-banner__title">Comprá con tranquilidad</h2>
-      <p class="trust-banner__sub">Más de 300 clientes felices ya confían en nosotros.</p>
-      <button type="button" class="trust-banner__btn" data-trust-open>¿Cómo confiar en nosotros?</button>
+      <p class="trust-banner__eyebrow" data-i18n="trust_banner_eyebrow">Confianza Calziani</p>
+      <h2 class="trust-banner__title" data-i18n="trust_banner_title">Comprá con tranquilidad</h2>
+      <p class="trust-banner__sub" data-i18n="trust_banner_sub">Más de 300 clientes felices ya confían en nosotros.</p>
+      <button type="button" class="trust-banner__btn" data-trust-open data-i18n="trust_banner_btn">¿Cómo confiar en nosotros?</button>
     </div>
   </section>
 
@@ -765,7 +765,7 @@
     <div class="footer__top">
       <div class="footer__col footer__col--brand">
         <span class="footer__brand">CALZIANI</span>
-        <p class="footer__tagline">Moda luxury accesible.<br>Envío a todo el mundo.</p>
+        <p class="footer__tagline" data-i18n="footer_tagline">Moda luxury accesible.<br>Envío a todo el mundo.</p>
         <div class="footer__social">
           <a class="footer__social-link" href="https://www.instagram.com/calziani.luxury?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" target="_blank" rel="noopener" aria-label="Instagram">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
@@ -776,22 +776,22 @@
         </div>
       </div>
       <div class="footer__col">
-        <p class="footer__col-title">Ayuda</p>
+        <p class="footer__col-title" data-i18n="footer_help_title">Ayuda</p>
         <nav class="footer__col-links">
-          <a href="/quienes-somos">Quiénes somos</a>
-          <a href="/politicas#devoluciones">Devoluciones y reembolsos</a>
-          <a href="/politicas#entrega">Entrega y envío</a>
-          <a href="/politicas#servicio-cliente">Servicio al cliente</a>
-          <a href="/politicas#seguridad">Seguridad</a>
+          <a href="/quienes-somos" data-i18n="footer_link_about">Quiénes somos</a>
+          <a href="/politicas#devoluciones" data-i18n="footer_link_returns">Devoluciones y reembolsos</a>
+          <a href="/politicas#entrega" data-i18n="footer_link_shipping">Entrega y envío</a>
+          <a href="/politicas#servicio-cliente" data-i18n="footer_link_support">Servicio al cliente</a>
+          <a href="/politicas#seguridad" data-i18n="footer_link_security">Seguridad</a>
         </nav>
       </div>
       <div class="footer__col">
-        <p class="footer__col-title">Contacto</p>
+        <p class="footer__col-title" data-i18n="footer_contact_title">Contacto</p>
         <div class="footer__col-links">
           <a href="mailto:info@calziani.com">info@calziani.com</a>
           <a href="tel:+18093076122">+1 809 307-6122</a>
           <a href="https://wa.me/18093076122" target="_blank" rel="noopener">WhatsApp</a>
-          <span style="color:#888;font-size:0.78rem">Santiago, Rep. Dominicana</span>
+          <span style="color:#888;font-size:0.78rem" data-i18n="footer_location">Santiago, Rep. Dominicana</span>
         </div>
       </div>
     </div>
@@ -804,8 +804,8 @@
         <span class="footer__pay-3ds"><img src="/img/payment/mastercard-idcheck.png" alt="Mastercard ID Check" /></span>
       </div>
       <nav class="footer__links" aria-label="Legal">
-        <a class="footer__link" href="/politicas#privacidad">Privacidad</a>
-        <a class="footer__link" href="/politicas#entrega">Envío</a>
+        <a class="footer__link" href="/politicas#privacidad" data-i18n="footer_privacy">Privacidad</a>
+        <a class="footer__link" href="/politicas#entrega" data-i18n="footer_shipping">Envío</a>
       </nav>
     </div>
   </footer>
@@ -852,13 +852,14 @@
   <script>
     /* ── Tracking header dropdown ── */
     (function () {
-      const STAGES = [
-        { key: 'received',              label: 'Recibido' },
-        { key: 'in_europe',             label: 'En Europa' },
-        { key: 'in_usa',                label: 'En EE.UU.' },
-        { key: 'in_dominican_republic', label: 'En RD' },
-        { key: 'delivered',             label: 'Entregado' },
-      ];
+      const STAGES_LABELS = {
+        es: { received: 'Recibido', in_europe: 'En Europa', in_usa: 'En EE.UU.', in_dominican_republic: 'En RD', delivered: 'Entregado' },
+        en: { received: 'Received', in_europe: 'In Europe', in_usa: 'In the US', in_dominican_republic: 'In DR', delivered: 'Delivered' },
+      };
+      const STAGES = ['received', 'in_europe', 'in_usa', 'in_dominican_republic', 'delivered'].map(key => ({
+        key,
+        get label() { return (STAGES_LABELS[window.CalzianiI18n.lang] || STAGES_LABELS.es)[key]; },
+      }));
 
       const triggerBtn = document.getElementById('trkHeaderBtn');
       const dropdown   = document.getElementById('trkDropdown');
@@ -891,16 +892,16 @@
 
       async function doSearch() {
         const code = (input.value || '').trim().toUpperCase();
-        if (!code) { showErr('Ingresá tu código de tracking.'); return; }
+        if (!code) { showErr(window.CalzianiI18n.lang === 'en' ? 'Enter your tracking code.' : 'Ingresá tu código de tracking.'); return; }
         clearErr();
         searchBtn.disabled = true;
         searchBtn.textContent = '...';
         try {
           const res  = await fetch('/api/tracking/' + encodeURIComponent(code));
           const data = await res.json();
-          if (!res.ok) { showErr(data.error || 'Código no encontrado.'); return; }
+          if (!res.ok) { showErr(data.error || (window.CalzianiI18n.lang === 'en' ? 'Code not found.' : 'Código no encontrado.')); return; }
 
-          document.getElementById('trkHdrOrderNum').textContent = 'Pedido ' + (data.order_number || '—');
+          document.getElementById('trkHdrOrderNum').textContent = (window.CalzianiI18n.lang === 'en' ? 'Order ' : 'Pedido ') + (data.order_number || '—');
           const link = document.getElementById('trkHdrFullLink');
           link.href = '/tracking?code=' + encodeURIComponent(code);
 
@@ -918,8 +919,8 @@
           } else { notesEl.classList.add('hidden'); }
 
           result.classList.remove('hidden');
-        } catch { showErr('Error de conexión.'); }
-        finally { searchBtn.disabled = false; searchBtn.textContent = 'Rastrear'; }
+        } catch { showErr(window.CalzianiI18n.lang === 'en' ? 'Connection error.' : 'Error de conexión.'); }
+        finally { searchBtn.disabled = false; searchBtn.textContent = window.CalzianiI18n.t('trk_btn'); }
       }
 
       searchBtn.addEventListener('click', doSearch);
@@ -933,14 +934,14 @@
     <div class="modal__box trust-modal__box">
       <button type="button" class="auth-modal-close" id="trustModalClose" aria-label="Cerrar">&times;</button>
       <div class="trust-modal__hero">
-        <p class="trust-modal__eyebrow">Calziani</p>
-        <h2 class="trust-modal__title" id="trustModalTitle">Más de 300 clientes felices</h2>
-        <p class="trust-modal__tagline">Pioneros en vender lujo exclusivo y accesible en RD</p>
+        <p class="trust-modal__eyebrow" data-i18n="trust_modal_eyebrow">Calziani</p>
+        <h2 class="trust-modal__title" id="trustModalTitle" data-i18n="trust_modal_title">Más de 300 clientes felices</h2>
+        <p class="trust-modal__tagline" data-i18n="trust_modal_tagline">Pioneros en vender lujo exclusivo y accesible en RD</p>
       </div>
       <div class="trust-modal__divider"></div>
-      <p class="trust-modal__gallery-label">Testimonios reales</p>
+      <p class="trust-modal__gallery-label" data-i18n="trust_modal_gallery">Testimonios reales</p>
       <div id="trustGallery" class="trust-modal__gallery">
-        <p class="trust-modal__loading">Cargando testimonios...</p>
+        <p class="trust-modal__loading" data-i18n="trust_modal_loading">Cargando testimonios...</p>
       </div>
     </div>
   </div>
@@ -948,7 +949,8 @@
   <script src="/js/whatsapp-float.js?v=20260701"></script>
   <script src="/js/pixel.js?v=20260701"></script>
   <script src="/js/trust.js?v=20260701"></script>
-  <script src="/js/main.js?v=20260727c"></script>
+  <script src="/js/i18n.js?v=20260729"></script>
+  <script src="/js/main.js?v=20260729"></script>
 
   <script>
     // Category showcase + hero ghost CTA clicks
@@ -996,7 +998,7 @@
 
       <!-- Sección superior con borde festoneado -->
       <div class="cpn-red">
-        <span class="cpn-badge">CÓDIGO LIMITADO</span>
+        <span class="cpn-badge" data-i18n="cpn_badge">CÓDIGO LIMITADO</span>
         <p class="cpn-brand" id="cpnTitle">CALZIANI <span class="cpn-x-icon">×</span> VERANO</p>
         <p class="cpn-pct">10% OFF</p>
         <div class="cpn-wm" aria-hidden="true">VERANO</div>
@@ -1007,43 +1009,43 @@
 
       <!-- Sección crema -->
       <div class="cpn-cream">
-        <p class="cpn-valid-lbl">VÁLIDO POR TIEMPO LIMITADO</p>
-        <p class="cpn-week">Solo esta semana · cantidad limitada</p>
+        <p class="cpn-valid-lbl" data-i18n="cpn_valid">VÁLIDO POR TIEMPO LIMITADO</p>
+        <p class="cpn-week" data-i18n="cpn_week">Solo esta semana · cantidad limitada</p>
 
         <div class="cpn-countdown" id="cpnCountdown">
-          <span class="cpn-countdown__label">¡Termina en!</span>
+          <span class="cpn-countdown__label" data-i18n="cpn_ends_in">¡Termina en!</span>
           <div class="cpn-countdown__boxes">
             <div class="cpn-countdown__box">
               <span class="cpn-countdown__num" id="cpnCdDays">0</span>
-              <span class="cpn-countdown__unit">Días</span>
+              <span class="cpn-countdown__unit" data-i18n="cpn_days">Días</span>
             </div>
             <span class="cpn-countdown__sep">:</span>
             <div class="cpn-countdown__box">
               <span class="cpn-countdown__num" id="cpnCdHours">00</span>
-              <span class="cpn-countdown__unit">Hrs</span>
+              <span class="cpn-countdown__unit" data-i18n="cpn_hours">Hrs</span>
             </div>
             <span class="cpn-countdown__sep">:</span>
             <div class="cpn-countdown__box">
               <span class="cpn-countdown__num" id="cpnCdMins">00</span>
-              <span class="cpn-countdown__unit">Min</span>
+              <span class="cpn-countdown__unit" data-i18n="cpn_mins">Min</span>
             </div>
             <span class="cpn-countdown__sep">:</span>
             <div class="cpn-countdown__box">
               <span class="cpn-countdown__num" id="cpnCdSecs">00</span>
-              <span class="cpn-countdown__unit">Seg</span>
+              <span class="cpn-countdown__unit" data-i18n="cpn_secs">Seg</span>
             </div>
           </div>
         </div>
 
         <div class="cpn-code-row">
           <span class="cpn-code">VERANO</span>
-          <button class="cpn-copy" id="couponCopy">COPIAR</button>
+          <button class="cpn-copy" id="couponCopy" data-i18n="cpn_copy">COPIAR</button>
         </div>
 
         <div class="cpn-bars" aria-hidden="true"></div>
 
-        <p class="cpn-trust">Pagás contra entrega en Santiago · Auténticos</p>
-        <p class="cpn-fine">*No acumulable con otras promociones. Válido en todos los productos.</p>
+        <p class="cpn-trust" data-i18n="cpn_trust">Pagás contra entrega en Santiago · Auténticos</p>
+        <p class="cpn-fine" data-i18n="cpn_fine">*No acumulable con otras promociones. Válido en todos los productos.</p>
       </div>
 
     </article>

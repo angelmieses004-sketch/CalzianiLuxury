@@ -99,14 +99,15 @@
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
-    gallery.innerHTML = '<p class="trust-modal__loading">Cargando testimonios...</p>';
+    const isEn = window.CalzianiI18n && window.CalzianiI18n.lang === 'en';
+    gallery.innerHTML = `<p class="trust-modal__loading">${isEn ? 'Loading testimonials...' : 'Cargando testimonios...'}</p>`;
 
     try {
       const photos = await fetchPhotos(productId);
       gallery.innerHTML = renderGallery(photos);
       wireGallery(gallery);
     } catch {
-      gallery.innerHTML = '<p class="trust-modal__empty">No pudimos cargar los testimonios. Intentá nuevamente.</p>';
+      gallery.innerHTML = `<p class="trust-modal__empty">${isEn ? "We couldn't load the testimonials. Please try again." : 'No pudimos cargar los testimonios. Intentá nuevamente.'}</p>`;
     }
   }
 

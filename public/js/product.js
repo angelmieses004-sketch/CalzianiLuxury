@@ -1,5 +1,8 @@
 (() => {
-  const CATEGORY_LABELS = { calzado: 'Calzado' };
+  const t = window.CalzianiI18n.t;
+  const CATEGORY_LABELS = {
+    get calzado() { return t('cat_label_calzado'); },
+  };
 
   // ─── Currency ────────────────────────────────────────────────────────────────
   let currencyRates = { USD: 1, EUR: 0.92, DOP: 59.48 };
@@ -47,9 +50,9 @@
   }
 
   function stockLabel(stock) {
-    if (stock === 0) return { text: 'Sin stock', cls: 'out' };
-    if (stock > 0 && stock < 5)  return { text: 'Quedan pocas unidades', cls: 'low' };
-    return { text: 'En stock', cls: '' };
+    if (stock === 0) return { text: t('pp_out_of_stock'), cls: 'out' };
+    if (stock > 0 && stock < 5)  return { text: t('pp_low_stock'), cls: 'low' };
+    return { text: t('pp_available'), cls: '' };
   }
 
   // ─── Cart (localStorage, shared with main page) ───────────────────────────
@@ -63,11 +66,12 @@
     const key  = `${productData.id}__${productData.size || ''}`;
     const existing = cart.find(i => `${i.id}__${i.size || ''}` === key);
     const maxQty = productData.maxQty ?? Infinity;
+    const addQty = Math.max(1, Number(productData.qty) || 1);
     if (existing) {
-      existing.qty = Math.min(maxQty, existing.qty + 1);
+      existing.qty = Math.min(maxQty, existing.qty + addQty);
       if (productData.maxQty !== undefined) existing.maxQty = productData.maxQty;
     } else {
-      cart.push({ ...productData, qty: 1 });
+      cart.push({ ...productData, qty: Math.min(maxQty, addQty) });
     }
     saveCart(cart);
     updateCartBadge();
@@ -108,6 +112,7 @@
   const page = document.getElementById('productPage');
   const id   = location.pathname.split('/').pop();
   let selectedSize = '';
+  let selectedQty = 1;
   let product = null;
   let stockBySize = null;
   let offerCountdownTimer = null;
@@ -129,7 +134,8 @@
   function formatReviewDate(iso) {
     if (!iso) return '';
     try {
-      return new Intl.DateTimeFormat('es-DO', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(iso));
+      const locale = window.CalzianiI18n.lang === 'en' ? 'en-US' : 'es-DO';
+      return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(iso));
     } catch { return ''; }
   }
 
@@ -164,8 +170,8 @@
     const tick = () => {
       const ms = msUntilMidnightRD();
       el.textContent = ms <= 0
-        ? '🕐 Precio especial termina pronto'
-        : `🕐 Precio especial termina en ${formatCountdown(ms)}`;
+        ? t('pp_offer_ending_soon')
+        : `${t('pp_offer_ends_in')} ${formatCountdown(ms)}`;
     };
     tick();
     offerCountdownTimer = setInterval(tick, 1000);
@@ -204,7 +210,7 @@
     const bySize = await fetchProductStock(productId);
     const n = Number(bySize[size]);
     if (Number.isFinite(n) && n > 0 && n <= 3) {
-      el.textContent = `⚡ Solo quedan ${n} en talla ${size}`;
+      el.textContent = `⚡ ${t('pp_urgency_prefix')} ${n} ${t('pp_urgency_suffix')} ${size}`;
       el.classList.remove('hidden');
     } else {
       el.classList.add('hidden');
@@ -275,12 +281,12 @@
         return;
       }
       if (!/^image\/(jpeg|jpg|png|webp|gif)$/i.test(file.type)) {
-        if (errEl) { errEl.textContent = 'Formato no válido. Usá JPG, PNG o WEBP.'; errEl.classList.remove('hidden'); }
+        if (errEl) { errEl.textContent = t('review_err_format'); errEl.classList.remove('hidden'); }
         e.target.value = '';
         return;
       }
       if (file.size > 8 * 1024 * 1024) {
-        if (errEl) { errEl.textContent = 'La imagen no puede superar 8 MB.'; errEl.classList.remove('hidden'); }
+        if (errEl) { errEl.textContent = t('review_err_size'); errEl.classList.remove('hidden'); }
         e.target.value = '';
         return;
       }
@@ -313,15 +319,15 @@
 
       errEl?.classList.add('hidden');
       if (!selectedReviewRating) {
-        if (errEl) { errEl.textContent = 'Seleccioná una calificación.'; errEl.classList.remove('hidden'); }
+        if (errEl) { errEl.textContent = t('review_err_rating'); errEl.classList.remove('hidden'); }
         return;
       }
       if (review_text.length < 10) {
-        if (errEl) { errEl.textContent = 'La reseña debe tener al menos 10 caracteres.'; errEl.classList.remove('hidden'); }
+        if (errEl) { errEl.textContent = t('review_err_length'); errEl.classList.remove('hidden'); }
         return;
       }
       if (!name) {
-        if (errEl) { errEl.textContent = 'Ingresá tu nombre.'; errEl.classList.remove('hidden'); }
+        if (errEl) { errEl.textContent = t('review_err_name'); errEl.classList.remove('hidden'); }
         return;
       }
 
@@ -344,7 +350,7 @@
           });
         }
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'No se pudo publicar la reseña.');
+        if (!res.ok) throw new Error(data.error || t('review_err_generic'));
         document.getElementById('reviewForm')?.reset();
         setReviewStars(0);
         clearReviewPhoto();
@@ -373,10 +379,10 @@
         summaryEl.innerHTML = `
           <div class="pp-reviews-stars">
             ${renderStars(avg)}
-            <span class="pp-reviews-count">(${count} reseña${count !== 1 ? 's' : ''})</span>
+            <span class="pp-reviews-count">(${count} ${count !== 1 ? t('review_plural') : t('review_singular')})</span>
           </div>`;
       } else {
-        summaryEl.innerHTML = `<p class="pp-reviews-empty">Sé el primero en <button type="button" class="pp-reviews-first" data-review-open>opinar</button></p>`;
+        summaryEl.innerHTML = `<p class="pp-reviews-empty">${t('review_be_first')} <button type="button" class="pp-reviews-first" data-review-open>${t('review_be_first_link')}</button></p>`;
       }
 
       if (sectionEl && listEl) {
@@ -384,12 +390,12 @@
           listEl.innerHTML = data.reviews.map(r => `
             <article class="pp-review-card">
               <div class="pp-review-card__head">
-                <span class="pp-review-card__name">${escHtml(r.reviewer_name || 'Cliente')}</span>
+                <span class="pp-review-card__name">${escHtml(r.reviewer_name || t('review_default_customer'))}</span>
                 <span class="pp-review-card__date">${formatReviewDate(r.created_at)}</span>
               </div>
               ${r.rating ? `<div class="pp-reviews-stars">${renderStars(r.rating)}</div>` : ''}
               <p class="pp-review-card__text">${escHtml(r.review_text || '')}</p>
-              ${r.photo ? `<div class="pp-review-card__photo"><img src="/img/customer-photos/${escHtml(r.photo)}" alt="Foto de compra de ${escHtml(r.reviewer_name || 'cliente')}" loading="lazy" /></div>` : ''}
+              ${r.photo ? `<div class="pp-review-card__photo"><img src="/img/customer-photos/${escHtml(r.photo)}" alt="${t('review_photo_alt')} ${escHtml(r.reviewer_name || t('review_default_customer'))}" loading="lazy" /></div>` : ''}
             </article>`).join('');
           sectionEl.hidden = false;
         } else {
@@ -462,16 +468,36 @@
     } catch {
       page.innerHTML = `
         <div class="pp-error">
-          <p>Producto no encontrado.</p>
-          <a href="/" class="pp-back-link">← Volver a la tienda</a>
+          <p>${t('pp_not_found')}</p>
+          <a href="/" class="pp-back-link">${t('pp_back_to_store')}</a>
         </div>`;
     }
+  }
+
+  function getMaxQtyAvailable(p) {
+    const sizeStock = selectedSize && p.sizes_stock ? p.sizes_stock[selectedSize] : undefined;
+    if (sizeStock !== undefined) return sizeStock;
+    return p.stock > 0 ? p.stock : undefined;
+  }
+
+  function updateQtyUI(p) {
+    const valueEl = document.getElementById('ppQtyValue');
+    const minusBtn = document.getElementById('ppQtyMinus');
+    const plusBtn = document.getElementById('ppQtyPlus');
+    if (!valueEl) return;
+    const outOfStock = p.stock === 0;
+    const maxQty = getMaxQtyAvailable(p);
+    if (maxQty !== undefined) selectedQty = Math.max(1, Math.min(selectedQty, maxQty));
+    valueEl.textContent = String(selectedQty);
+    if (minusBtn) minusBtn.disabled = outOfStock || selectedQty <= 1;
+    if (plusBtn) plusBtn.disabled = outOfStock || (maxQty !== undefined && selectedQty >= maxQty);
   }
 
   function render(p) {
     clearOfferCountdown();
     stockBySize = null;
     selectedSize = '';
+    selectedQty = 1;
     const isOffer  = p.compare_price && p.compare_price > p.price;
     const discount = isOffer ? Math.round((1 - p.price / p.compare_price) * 100) : 0;
     const sl       = stockLabel(p.stock);
@@ -484,7 +510,7 @@
     const imageUrl    = p.images?.[0]?.filename
       ? `${BASE}/img/products/${p.images[0].filename}`
       : `${BASE}/img/587730407_17843809347618797_3290323688225420457_n.jpg`;
-    const catLabel    = { calzado: 'Calzado' }[p.category] || p.category;
+    const catLabel    = CATEGORY_LABELS[p.category] || p.category;
     const priceUSD    = Number(p.price).toFixed(2);
     const metaDesc    = p.description
       ? `${p.description.slice(0, 130).trim()}… | Calziani`
@@ -542,7 +568,7 @@
         {
           "@type": "BreadcrumbList",
           "itemListElement": [
-            { "@type": "ListItem", "position": 1, "name": "Inicio", "item": BASE },
+            { "@type": "ListItem", "position": 1, "name": t('breadcrumb_home'), "item": BASE },
             { "@type": "ListItem", "position": 2, "name": catLabel, "item": `${BASE}/?category=${p.category}` },
             { "@type": "ListItem", "position": 3, "name": p.name, "item": productUrl }
           ]
@@ -553,6 +579,10 @@
     if (ldEl) ldEl.textContent = JSON.stringify(jsonLd);
 
     // ── Gallery HTML ──────────────────────────────────────────────────────────
+    const galleryBadgeHtml = isOffer
+      ? `<span class="pp-gallery__badge">−${discount}%</span>`
+      : (p.hot ? `<span class="pp-gallery__badge pp-gallery__badge--hot">HOT</span>` : '');
+
     let galleryHtml = '';
     if (images.length === 0) {
       galleryHtml = `<div class="pp-gallery pp-gallery--empty"><span>CALZIANI</span></div>`;
@@ -561,6 +591,7 @@
         <div class="pp-gallery">
           <div class="pp-gallery__main">
             <img src="/img/products/${images[0].filename}" alt="${escHtml(p.name)}" class="pp-gallery__main-img" id="ppMainImg" />
+            ${galleryBadgeHtml}
           </div>
         </div>`;
     } else {
@@ -573,6 +604,7 @@
         <div class="pp-gallery">
           <div class="pp-gallery__main">
             <img src="/img/products/${images[0].filename}" alt="${escHtml(p.name)}" class="pp-gallery__main-img" id="ppMainImg" />
+            ${galleryBadgeHtml}
             <button class="pp-arrow pp-arrow--prev" id="ppPrev">&#8249;</button>
             <button class="pp-arrow pp-arrow--next" id="ppNext">&#8250;</button>
           </div>
@@ -597,12 +629,32 @@
     // ── Sizes HTML (selectable) ───────────────────────────────────────────────
     const sizesHtml = p.sizes && p.sizes.length
       ? `<div class="pp-sizes">
-           <p class="pp-label">Talle <span class="pp-size-selected" id="ppSizeSelected"></span></p>
+           <p class="pp-label">${t('size_label')} <span class="pp-size-selected" id="ppSizeSelected"></span></p>
            <div class="pp-sizes-list" id="ppSizesList">
              ${p.sizes.map(s => `<button class="pp-size-tag pp-size-btn" data-size="${escHtml(s)}" type="button">${escHtml(s)}</button>`).join('')}
            </div>
            <p class="pp-size-urgency hidden" id="ppSizeUrgency"></p>
-           <p class="pp-size-err hidden" id="ppSizeErr">Seleccioná un talle para continuar.</p>
+           <p class="pp-size-err hidden" id="ppSizeErr">${t('pp_size_select_err')}</p>
+         </div>`
+      : '';
+
+    // ── Color variants HTML (Maison Margiela colorways, selectable) ──────────
+    const colorsHtml = (p.color_variants && p.color_variants.length)
+      ? `<div class="pp-colors">
+           <p class="pp-label">${t('pp_color_label')}</p>
+           <div class="pp-colors-list">
+             <button type="button" class="pp-color-swatch active" title="${escHtml(p.name)}" aria-current="true">
+               ${images[0]?.filename
+                 ? `<img class="pp-color-swatch__img" src="/img/products/${escHtml(images[0].filename)}" alt="${escHtml(p.name)}" />`
+                 : `<span class="pp-color-swatch__empty"></span>`}
+             </button>
+             ${p.color_variants.map(v => `
+               <a class="pp-color-swatch" href="/product/${v.id}" title="${escHtml(v.name)}">
+                 ${v.cover
+                   ? `<img class="pp-color-swatch__img" src="/img/products/${escHtml(v.cover)}" alt="${escHtml(v.name)}" />`
+                   : `<span class="pp-color-swatch__empty"></span>`}
+               </a>`).join('')}
+           </div>
          </div>`
       : '';
 
@@ -610,59 +662,95 @@
     const shipHtml = p.shipping_days
       ? `<div class="pp-ship">
            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="m16 8 5 0 2 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-           Envío: ${escHtml(p.shipping_days)}
+           ${t('pp_shipping_prefix')} ${escHtml(p.shipping_days)}
          </div>`
       : '';
     const stockHtml = `<p class="pp-stock pp-stock--${sl.cls || 'ok'}">${sl.text}</p>`;
 
     const trustTeaserHtml = `
       <button type="button" class="trust-teaser__link" data-trust-open data-trust-product-id="${p.id}">
-        ¿Cómo confiar en nosotros?
+        ${t('trust_banner_btn')}
       </button>`;
 
     // ── CTA Buttons ──────────────────────────────────────────────────────────
     const outOfStock = p.stock === 0;
     const ctaHtml = `
       <div class="pp-cta">
-        <button class="pp-btn-cart${outOfStock ? ' disabled' : ''}" id="ppAddCart" ${outOfStock ? 'disabled' : ''}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-          ${outOfStock ? 'Sin stock' : 'Agregar al carrito'}
-        </button>
-        ${!outOfStock ? `<button class="pp-btn-buy" id="ppBuyNow">Comprar ahora</button>` : ''}
+        <div class="pp-cta__row">
+          <div class="pp-qty" role="group" aria-label="Cantidad">
+            <button type="button" class="pp-qty__btn" id="ppQtyMinus" aria-label="Reducir cantidad">−</button>
+            <span class="pp-qty__value" id="ppQtyValue">1</span>
+            <button type="button" class="pp-qty__btn" id="ppQtyPlus" aria-label="Aumentar cantidad">+</button>
+          </div>
+          <button class="pp-btn-cart${outOfStock ? ' disabled' : ''}" id="ppAddCart" ${outOfStock ? 'disabled' : ''}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            ${outOfStock ? t('pp_out_of_stock') : t('pp_add_to_cart')}
+          </button>
+        </div>
+        ${!outOfStock ? `<button class="pp-btn-buy" id="ppBuyNow">${t('pp_buy_now')}</button>` : ''}
         <button class="pp-btn-fav${fav ? ' active' : ''}" id="ppFavBtn" aria-label="Favorito">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          ${fav ? 'En favoritos' : 'Agregar a favoritos'}
+          ${fav ? t('pp_in_favorite') : t('pp_add_favorite')}
         </button>
       </div>`;
 
-    const returnsHtml = `
-      <div class="pp-returns">
-        <p class="pp-returns__title">Devoluciones fáciles</p>
-        <p class="pp-returns__text">
-          Si hay algún problema con tu pedido, te ayudamos a resolverlo de forma sencilla.
-          <button type="button" class="pp-returns__link" id="ppReturnsLink">Ver política de devoluciones</button>
-        </p>
+    // ── Additional information accordion ──────────────────────────────────────
+    const shippingBody = (p.shipping_days ? `${t('pp_shipping_prefix')} ${escHtml(p.shipping_days)}. ` : '') + t('pp_shipping_info_text');
+    const accordionHtml = `
+      <div>
+        <p class="pp-accordion-title">${t('pp_additional_info')}</p>
+        <div class="pp-accordion" id="ppAccordion">
+          <div class="pp-accordion__item open" data-accordion-item>
+            <button type="button" class="pp-accordion__trigger" data-accordion-trigger>
+              <span class="pp-accordion__label">${t('pp_size_guide_title')}</span>
+              <span class="pp-accordion__icon">−</span>
+            </button>
+            <div class="pp-accordion__panel"><p class="pp-accordion__body">${t('pp_size_guide_text')}</p></div>
+          </div>
+          <div class="pp-accordion__item" data-accordion-item>
+            <button type="button" class="pp-accordion__trigger" data-accordion-trigger>
+              <span class="pp-accordion__label">${t('pp_shipping_info_title')}</span>
+              <span class="pp-accordion__icon">+</span>
+            </button>
+            <div class="pp-accordion__panel"><p class="pp-accordion__body">${shippingBody}</p></div>
+          </div>
+          <div class="pp-accordion__item" data-accordion-item>
+            <button type="button" class="pp-accordion__trigger" data-accordion-trigger>
+              <span class="pp-accordion__label">${t('pp_returns_title')}</span>
+              <span class="pp-accordion__icon">+</span>
+            </button>
+            <div class="pp-accordion__panel"><p class="pp-accordion__body">${t('pp_returns_text')} <button type="button" class="pp-accordion__link" id="ppReturnsLink">${t('pp_returns_link')}</button></p></div>
+          </div>
+          ${p.description ? `
+          <div class="pp-accordion__item" data-accordion-item>
+            <button type="button" class="pp-accordion__trigger" data-accordion-trigger>
+              <span class="pp-accordion__label">${t('pp_description')}</span>
+              <span class="pp-accordion__icon">+</span>
+            </button>
+            <div class="pp-accordion__panel"><p class="pp-accordion__body">${escHtml(p.description)}</p></div>
+          </div>` : ''}
+        </div>
       </div>`;
 
     const trustHtml = `
       <div class="pp-trust">
         <div class="pp-trust__item">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <span>100% Autenticidad garantizada</span>
+          <span>${t('pp_trust_authentic')}</span>
         </div>
         <div class="pp-trust__item">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="m16 8 5 0 2 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-          <span>Envío mundial disponible</span>
+          <span>${t('pp_trust_shipping')}</span>
         </div>
         <div class="pp-trust__item">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/><path d="M12 8v4l3 3"/></svg>
-          <span>Atención personalizada 24/7</span>
+          <span>${t('pp_trust_support')}</span>
         </div>
       </div>`;
 
     page.innerHTML = `
       <div class="pp-container">
-        <a href="/" class="pp-back">← Volver</a>
+        <a href="/" class="pp-back">${t('pp_back')}</a>
         <div class="pp-layout">
           ${galleryHtml}
           <div class="pp-info">
@@ -673,28 +761,27 @@
             ${shipHtml}
             ${stockHtml}
             ${sizesHtml}
+            ${colorsHtml}
             ${trustTeaserHtml}
             ${ctaHtml}
             <div class="pp-update-box">
-              <div class="pp-update-box__header">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <strong>ACTUALIZACIÓN:</strong>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div class="pp-update-box__body">
+                <p><strong>${t('pp_update_label')}</strong> ${t('pp_update_text1')}</p>
+                <p>${t('pp_update_text2')}</p>
               </div>
-              <p><strong>Estamos viralizándonos en redes sociales</strong> y tenemos muy pocas unidades disponibles.</p>
-              <p>¡Consíguelo ahora antes de que se agoten!</p>
             </div>
-            ${returnsHtml}
             ${trustHtml}
-            ${p.description ? `<div class="pp-desc"><p class="pp-label">Descripción</p><p>${escHtml(p.description)}</p></div>` : ''}
+            ${accordionHtml}
           </div>
         </div>
         <section class="pp-reviews-section" id="ppReviewsSection" aria-label="Reseñas de clientes" hidden>
-          <h2 class="pp-reviews-section__title">Opiniones de clientes</h2>
+          <h2 class="pp-reviews-section__title">${t('pp_reviews_title')}</h2>
           <div class="pp-reviews-list" id="ppReviewsList"></div>
-          <button type="button" class="pp-reviews-write" data-review-open>Escribir reseña</button>
+          <button type="button" class="pp-reviews-write" data-review-open>${t('pp_write_review')}</button>
         </section>
         <section class="pp-related" id="ppRelated" aria-label="Te podría gustar" hidden>
-          <h2 class="pp-related__title">Te podría gustar</h2>
+          <h2 class="pp-related__title">${t('pp_related_title')}</h2>
           <div class="pp-related__grid" id="ppRelatedGrid"></div>
         </section>
       </div>`;
@@ -724,18 +811,42 @@
         document.querySelectorAll('.pp-size-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         selectedSize = btn.dataset.size;
+        selectedQty = 1;
         const label = document.getElementById('ppSizeSelected');
         if (label) label.textContent = `— ${selectedSize}`;
         document.getElementById('ppSizeErr')?.classList.add('hidden');
         updateSizeUrgency(p.id, selectedSize);
+        updateQtyUI(p);
         // Show stock for selected size
         const sizeStock = p.sizes_stock?.[selectedSize];
         const stockEl = document.querySelector('.pp-stock');
         if (stockEl && sizeStock !== undefined) {
-          if (sizeStock === 0) { stockEl.textContent = 'Sin stock en este talle'; stockEl.className = 'pp-stock pp-stock--out'; }
-          else if (sizeStock > 0 && sizeStock < 5) { stockEl.textContent = 'Quedan pocas unidades'; stockEl.className = 'pp-stock pp-stock--low'; }
-          else { stockEl.textContent = 'Disponible'; stockEl.className = 'pp-stock pp-stock--ok'; }
+          if (sizeStock === 0) { stockEl.textContent = t('pp_out_of_stock_size'); stockEl.className = 'pp-stock pp-stock--out'; }
+          else if (sizeStock > 0 && sizeStock < 5) { stockEl.textContent = t('pp_low_stock'); stockEl.className = 'pp-stock pp-stock--low'; }
+          else { stockEl.textContent = t('pp_available'); stockEl.className = 'pp-stock pp-stock--ok'; }
         }
+      });
+    });
+
+    // ── Quantity stepper ──────────────────────────────────────────────────────
+    updateQtyUI(p);
+    document.getElementById('ppQtyMinus')?.addEventListener('click', () => {
+      selectedQty = Math.max(1, selectedQty - 1);
+      updateQtyUI(p);
+    });
+    document.getElementById('ppQtyPlus')?.addEventListener('click', () => {
+      const maxQty = getMaxQtyAvailable(p);
+      selectedQty = maxQty !== undefined ? Math.min(maxQty, selectedQty + 1) : selectedQty + 1;
+      updateQtyUI(p);
+    });
+
+    // ── Accordion ──────────────────────────────────────────────────────────────
+    document.querySelectorAll('[data-accordion-trigger]').forEach(trigger => {
+      trigger.addEventListener('click', () => {
+        const item = trigger.closest('[data-accordion-item]');
+        const icon = trigger.querySelector('.pp-accordion__icon');
+        const isOpen = item.classList.toggle('open');
+        if (icon) icon.textContent = isOpen ? '−' : '+';
       });
     });
 
@@ -746,14 +857,15 @@
         document.getElementById('ppSizesList')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
-      const sizeStock = selectedSize && p.sizes_stock ? p.sizes_stock[selectedSize] : p.stock;
-      const maxQty = sizeStock !== undefined && sizeStock > 0 ? sizeStock : (p.stock > 0 ? p.stock : undefined);
-      addToCart({ id: p.id, name: p.name, price: p.price, cover: p.images?.[0]?.filename || '', size: selectedSize, maxQty });
+      const maxQty = getMaxQtyAvailable(p);
+      addToCart({ id: p.id, name: p.name, price: p.price, cover: p.images?.[0]?.filename || '', size: selectedSize, qty: selectedQty, maxQty });
+      selectedQty = 1;
+      updateQtyUI(p);
       const btn = document.getElementById('ppAddCart');
       if (btn) {
-        btn.textContent = '¡Agregado! ✓';
+        btn.textContent = t('pp_added');
         btn.classList.add('added');
-        setTimeout(() => { btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> Agregar al carrito`; btn.classList.remove('added'); }, 2000);
+        setTimeout(() => { btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> ${t('pp_add_to_cart')}`; btn.classList.remove('added'); }, 2000);
       }
     });
 
@@ -764,9 +876,8 @@
         document.getElementById('ppSizesList')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
-      const sizeStockBuy = selectedSize && p.sizes_stock ? p.sizes_stock[selectedSize] : p.stock;
-      const maxQtyBuy = sizeStockBuy !== undefined && sizeStockBuy > 0 ? sizeStockBuy : (p.stock > 0 ? p.stock : undefined);
-      addToCart({ id: p.id, name: p.name, price: p.price, cover: p.images?.[0]?.filename || '', size: selectedSize, maxQty: maxQtyBuy });
+      const maxQtyBuy = getMaxQtyAvailable(p);
+      addToCart({ id: p.id, name: p.name, price: p.price, cover: p.images?.[0]?.filename || '', size: selectedSize, qty: selectedQty, maxQty: maxQtyBuy });
       window.location.href = '/?cart=open';
     });
 
@@ -776,7 +887,7 @@
       const btn = document.getElementById('ppFavBtn');
       btn.classList.toggle('active', now);
       btn.querySelector('svg').setAttribute('fill', now ? 'currentColor' : 'none');
-      btn.childNodes[btn.childNodes.length - 1].textContent = now ? ' En favoritos' : ' Agregar a favoritos';
+      btn.childNodes[btn.childNodes.length - 1].textContent = now ? ' ' + t('pp_in_favorite') : ' ' + t('pp_add_favorite');
     });
 
     // ── Gallery wiring ────────────────────────────────────────────────────────
@@ -801,6 +912,34 @@
       });
     }
   }
+
+  const RETURNS_BODY_HTML = {
+    es: `
+        <p class="terms-modal__lead">En Calziani queremos que compres con tranquilidad:</p>
+        <ol class="terms-modal__list">
+          <li><strong>Defectos o errores.</strong> Si tu pedido llega con falla de fábrica, producto dañado o envío incorrecto, gestionamos cambio o reembolso previa revisión.</li>
+          <li><strong>Plazo.</strong> Tenés <strong>7 días corridos</strong> desde que recibís el pedido para reportarlo, con el producto sin uso y fotos del caso.</li>
+          <li><strong>Arrepentimiento.</strong> No aplican devoluciones por cambio de opinión o talle elegido incorrectamente.</li>
+        </ol>
+        <p class="terms-modal__foot">¿Dudas? Escribinos por WhatsApp o Instagram y te ayudamos antes de comprar.</p>`,
+    en: `
+        <p class="terms-modal__lead">At Calziani we want you to shop with confidence:</p>
+        <ol class="terms-modal__list">
+          <li><strong>Defects or errors.</strong> If your order arrives with a manufacturing fault, damaged product, or wrong shipment, we'll arrange an exchange or refund after review.</li>
+          <li><strong>Timeframe.</strong> You have <strong>7 calendar days</strong> from receipt to report it, with the item unused and photos of the issue.</li>
+          <li><strong>Change of mind.</strong> Returns don't apply for change of mind or a size chosen incorrectly.</li>
+        </ol>
+        <p class="terms-modal__foot">Questions? Message us on WhatsApp or Instagram and we'll help before you buy.</p>`,
+  };
+  function applyReturnsModalBody() {
+    const el = document.getElementById('returnsModalBody');
+    if (el) el.innerHTML = RETURNS_BODY_HTML[window.CalzianiI18n.lang] || RETURNS_BODY_HTML.es;
+  }
+  applyReturnsModalBody();
+  document.addEventListener('calziani:langchange', () => {
+    applyReturnsModalBody();
+    loadProduct();
+  });
 
   loadCurrencyRates().then(() => {
     setupReviewModalOnce();

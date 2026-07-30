@@ -67,11 +67,11 @@
     <div class="header__inner">
       <a href="/" class="header__logo">CALZIANI</a>
       <nav class="header__nav">
-        <button class="nav-btn" data-cat="all" onclick="location.href='/'">Todo</button>
-        <button class="nav-btn" data-cat="calzado" onclick="location.href='/?cat=calzado'">Calzado</button>
+        <button class="nav-btn" data-cat="all" onclick="location.href='/'" data-i18n="cat_all">Todo</button>
+        <button class="nav-btn" data-cat="calzado" onclick="location.href='/?cat=calzado'" data-i18n="cat_calzado">Calzado</button>
       </nav>
       <div class="header__user" id="headerUser">
-        <button class="user-btn" id="loginTrigger">Iniciar sesión</button>
+        <button class="user-btn" id="loginTrigger" data-i18n="sign_in">Iniciar sesión</button>
       </div>
       <a href="/favoritos" class="fav-header-btn" aria-label="Favoritos" title="Mis favoritos">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
@@ -82,6 +82,9 @@
         <option value="USD">$ USD</option>
         <option value="EUR">€ EUR</option>
       </select>
+      <button class="lang-btn" id="langBtn" aria-label="Cambiar idioma">
+        <span id="langLabel">ES</span>
+      </button>
       <a href="/?cart=open" class="cart-btn" id="cartBtnProduct" aria-label="Carrito">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
         <span class="cart-badge hidden" id="cartBadgeProduct">0</span>
@@ -91,7 +94,7 @@
 
   <!-- PRODUCT PAGE -->
   <main class="product-page" id="productPage">
-    <div class="product-page__loading">Cargando...</div>
+    <div class="product-page__loading" data-i18n="loading">Cargando...</div>
   </main>
 
   <!-- FOOTER -->
@@ -108,16 +111,16 @@
           +1 809 307-6122
         </a>
       </div>
-      <span class="footer__copy">&copy; 2026 Todos los derechos reservados.</span>
+      <span class="footer__copy" data-i18n="footer_copy">&copy; 2026 Todos los derechos reservados.</span>
     </div>
     <div class="footer__legal">
       <nav class="footer__links" aria-label="Políticas">
-        <a class="footer__link" href="/quienes-somos">Quiénes somos</a>
-        <a class="footer__link" href="/politicas#devoluciones">Devoluciones y reembolsos</a>
-        <a class="footer__link" href="/politicas#entrega">Entrega y envío</a>
-        <a class="footer__link" href="/politicas#privacidad">Privacidad</a>
-        <a class="footer__link" href="/politicas#seguridad">Seguridad</a>
-        <a class="footer__link" href="/politicas#servicio-cliente">Servicio al cliente</a>
+        <a class="footer__link" href="/quienes-somos" data-i18n="footer_link_about">Quiénes somos</a>
+        <a class="footer__link" href="/politicas#devoluciones" data-i18n="footer_link_returns">Devoluciones y reembolsos</a>
+        <a class="footer__link" href="/politicas#entrega" data-i18n="footer_link_shipping">Entrega y envío</a>
+        <a class="footer__link" href="/politicas#privacidad" data-i18n="footer_privacy">Privacidad</a>
+        <a class="footer__link" href="/politicas#seguridad" data-i18n="footer_link_security">Seguridad</a>
+        <a class="footer__link" href="/politicas#servicio-cliente" data-i18n="footer_link_support">Servicio al cliente</a>
       </nav>
       <div class="footer__pay" aria-label="Medios de pago aceptados y autenticación segura">
         <img src="/img/payment/visa.png" alt="Visa" />
@@ -134,8 +137,8 @@
     <div class="modal__backdrop" id="returnsBackdrop"></div>
     <div class="modal__box terms-modal-box">
       <button type="button" class="auth-modal-close" id="returnsModalClose" aria-label="Cerrar">&times;</button>
-      <h2 class="terms-modal__title">Política de devoluciones</h2>
-      <div class="terms-modal__body">
+      <h2 class="terms-modal__title" data-i18n="returns_title">Política de devoluciones</h2>
+      <div class="terms-modal__body" id="returnsModalBody">
         <p class="terms-modal__lead">En Calziani queremos que compres con tranquilidad:</p>
         <ol class="terms-modal__list">
           <li><strong>Defectos o errores.</strong> Si tu pedido llega con falla de fábrica, producto dañado o envío incorrecto, gestionamos cambio o reembolso previa revisión.</li>
@@ -153,14 +156,14 @@
     <div class="modal__box trust-modal__box">
       <button type="button" class="auth-modal-close" id="trustModalClose" aria-label="Cerrar">&times;</button>
       <div class="trust-modal__hero">
-        <p class="trust-modal__eyebrow">Calziani</p>
-        <h2 class="trust-modal__title" id="trustModalTitle">Más de 300 clientes felices</h2>
-        <p class="trust-modal__tagline">Pioneros en vender lujo exclusivo y accesible en RD</p>
+        <p class="trust-modal__eyebrow" data-i18n="trust_modal_eyebrow">Calziani</p>
+        <h2 class="trust-modal__title" id="trustModalTitle" data-i18n="trust_modal_title">Más de 300 clientes felices</h2>
+        <p class="trust-modal__tagline" data-i18n="trust_modal_tagline">Pioneros en vender lujo exclusivo y accesible en RD</p>
       </div>
       <div class="trust-modal__divider"></div>
-      <p class="trust-modal__gallery-label">Testimonios reales</p>
+      <p class="trust-modal__gallery-label" data-i18n="trust_modal_gallery">Testimonios reales</p>
       <div id="trustGallery" class="trust-modal__gallery">
-        <p class="trust-modal__loading">Cargando testimonios...</p>
+        <p class="trust-modal__loading" data-i18n="trust_modal_loading">Cargando testimonios...</p>
       </div>
     </div>
   </div>
@@ -170,7 +173,7 @@
     <div class="modal__backdrop" id="reviewBackdrop"></div>
     <div class="modal__box terms-modal-box pp-review-modal">
       <button type="button" class="auth-modal-close" id="reviewModalClose" aria-label="Cerrar">&times;</button>
-      <h2 class="terms-modal__title">Dejá tu opinión</h2>
+      <h2 class="terms-modal__title" data-i18n="review_title">Dejá tu opinión</h2>
       <form id="reviewForm" class="pp-review-form">
         <div class="pp-review-form__stars" id="reviewStarsPick" role="group" aria-label="Calificación">
           <button type="button" class="pp-review-star" data-rating="1" aria-label="1 estrella">★</button>
@@ -179,22 +182,22 @@
           <button type="button" class="pp-review-star" data-rating="4" aria-label="4 estrellas">★</button>
           <button type="button" class="pp-review-star" data-rating="5" aria-label="5 estrellas">★</button>
         </div>
-        <label class="pp-review-form__label" for="reviewText">Tu reseña</label>
-        <textarea id="reviewText" class="pp-review-form__input" rows="4" minlength="10" maxlength="800" placeholder="Contanos qué te pareció el producto..." required></textarea>
-        <label class="pp-review-form__label" for="reviewName">Nombre</label>
-        <input type="text" id="reviewName" class="pp-review-form__input" maxlength="80" placeholder="Tu nombre" required />
-        <label class="pp-review-form__label" for="reviewPhoto">Foto de tu compra <span class="pp-review-form__optional">(opcional)</span></label>
+        <label class="pp-review-form__label" for="reviewText" data-i18n="review_text_label">Tu reseña</label>
+        <textarea id="reviewText" class="pp-review-form__input" rows="4" minlength="10" maxlength="800" placeholder="Contanos qué te pareció el producto..." data-i18n-placeholder="review_text_ph" required></textarea>
+        <label class="pp-review-form__label" for="reviewName" data-i18n="review_name_label">Nombre</label>
+        <input type="text" id="reviewName" class="pp-review-form__input" maxlength="80" placeholder="Tu nombre" data-i18n-placeholder="auth_full_name_ph" required />
+        <label class="pp-review-form__label" for="reviewPhoto"><span data-i18n="review_photo_label">Foto de tu compra</span> <span class="pp-review-form__optional" data-i18n="review_optional">(opcional)</span></label>
         <div class="pp-review-form__photo">
           <input type="file" id="reviewPhoto" class="pp-review-form__file" accept="image/jpeg,image/png,image/webp,image/gif" />
-          <label for="reviewPhoto" class="pp-review-form__photo-btn">Elegir foto</label>
+          <label for="reviewPhoto" class="pp-review-form__photo-btn" data-i18n="review_choose_photo">Elegir foto</label>
           <div class="pp-review-form__preview hidden" id="reviewPhotoPreview">
             <img id="reviewPhotoImg" alt="Vista previa" />
             <button type="button" class="pp-review-form__photo-remove" id="reviewPhotoRemove" aria-label="Quitar foto">&times;</button>
           </div>
         </div>
-        <p class="pp-review-form__hint">JPG, PNG o WEBP · máx. 8 MB</p>
+        <p class="pp-review-form__hint" data-i18n="review_hint">JPG, PNG o WEBP · máx. 8 MB</p>
         <p class="pp-review-form__err hidden" id="reviewFormErr"></p>
-        <button type="submit" class="pp-review-form__submit" id="reviewSubmitBtn">Publicar reseña</button>
+        <button type="submit" class="pp-review-form__submit" id="reviewSubmitBtn" data-i18n="review_submit">Publicar reseña</button>
       </form>
     </div>
   </div>
@@ -202,6 +205,7 @@
   <script src="/js/whatsapp-float.js"></script>
   <script src="/js/pixel.js"></script>
   <script src="/js/trust.js"></script>
+  <script src="/js/i18n.js?v=20260729"></script>
   <script src="/js/product.js"></script>
 </body>
 </html>

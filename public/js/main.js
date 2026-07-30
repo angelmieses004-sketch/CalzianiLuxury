@@ -32,79 +32,8 @@
     return after;
   }
 
-  // ─── Translations ─────────────────────────────────────────────────────────────
-  const T = {
-    es: {
-      announcement:       'ENVÍO MUNDIAL GRATUITO EN PEDIDOS +$150',
-      cat_all:            'Todo',
-      cat_calzado:        'Calzado',
-      search_placeholder: 'Buscar...',
-      sign_in:            'Iniciar sesión',
-      hero_eyebrow:       'Est. Santiago, RD',
-      hero_sub:           'Calzado de marca verificado como auténtico. Coordinamos la entrega por WhatsApp hasta tu puerta.',
-      hero_cta:           'Explorar colección',
-      sale_title:         'OFERTAS DE TEMPORADA',
-      sale_sub:           'Aprovecha los mejores precios en productos seleccionados',
-      sale_cta:           'Ver ofertas',
-      sale_products_title:'Ofertas',
-      all_products:       'Todos los productos',
-      size_label:         'Talle',
-      loading:            'Cargando...',
-      footer_copy:        '© 2026 Todos los derechos reservados.',
-      available:          'Disponible',
-      stock_low_hint:     'Quedan pocas unidades',
-      out_of_stock:       'Sin stock',
-      add_to_cart:        'Agregar',
-      cat_label_calzado:  'Calzado',
-      title_all:          'Todos los productos',
-      title_calzado:      'Calzado',
-      terms_checkbox:     'Acepto los términos y condiciones de Calziani.',
-      terms_read:         'Ver términos completos',
-      terms_err:          'Debés aceptar los términos para continuar.',
-      terms_modal_title:  'Términos y condiciones',
-      promo_label:        'Código de descuento',
-      promo_apply:        'Aplicar',
-      promo_remove:       'Quitar código',
-      promo_discount_label: 'Descuento (−20%)',
-      size_pick_title:    'Elegí talle',
-      size_pick_sub:      'Tocá un talle para agregarlo al carrito.',
-    },
-    en: {
-      announcement:       'FREE WORLDWIDE SHIPPING ON ORDERS +$150',
-      cat_all:            'All',
-      cat_calzado:        'Footwear',
-      search_placeholder: 'Search...',
-      sign_in:            'Sign in',
-      hero_eyebrow:       'Est. Santiago, RD',
-      hero_sub:           'Brand-name footwear verified authentic. We coordinate delivery over WhatsApp, right to your door.',
-      hero_cta:           'Shop collection',
-      sale_title:         'SEASONAL SALE',
-      sale_sub:           'Get the best prices on selected products',
-      sale_cta:           'View sale',
-      sale_products_title:'Sale',
-      all_products:       'All products',
-      size_label:         'Size',
-      loading:            'Loading...',
-      footer_copy:        '© 2026 All rights reserved.',
-      available:          'Available',
-      stock_low_hint:     'Few units left',
-      out_of_stock:       'Out of stock',
-      add_to_cart:        'Add',
-      cat_label_calzado:  'Footwear',
-      title_all:          'All products',
-      title_calzado:      'Footwear',
-      terms_checkbox:     'I accept Calziani\'s terms and conditions.',
-      terms_read:         'Read full terms',
-      terms_err:          'You must accept the terms to continue.',
-      terms_modal_title:  'Terms and conditions',
-      promo_label:        'Discount code',
-      promo_apply:        'Apply',
-      promo_remove:       'Remove code',
-      promo_discount_label: 'Discount (−20%)',
-      size_pick_title:    'Choose size',
-      size_pick_sub:      'Tap a size to add to cart.',
-    },
-  };
+  // ─── Translations (shared engine in i18n.js, loaded before this file) ─────────
+  const t = window.CalzianiI18n.t;
 
   const TERMS_BODY_HTML = {
     es: `
@@ -134,43 +63,18 @@
   function applyTermsModalBody() {
     const el = document.getElementById('termsModalBody');
     if (!el) return;
-    el.innerHTML = TERMS_BODY_HTML[activeLang] || TERMS_BODY_HTML.es;
+    el.innerHTML = TERMS_BODY_HTML[window.CalzianiI18n.lang] || TERMS_BODY_HTML.es;
   }
 
-  let activeLang = localStorage.getItem('calziani_lang') || 'es';
-
-  function t(key) {
-    if (T[activeLang] && Object.prototype.hasOwnProperty.call(T[activeLang], key)) return T[activeLang][key];
-    if (Object.prototype.hasOwnProperty.call(T.es, key)) return T.es[key];
-    return key;
-  }
-
-  function applyTranslations() {
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-      const key = el.dataset.i18n;
-      el.textContent = t(key);
-    });
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-      el.placeholder = t(el.dataset.i18nPlaceholder);
-    });
-    document.documentElement.lang = activeLang;
-    const langLabel = document.getElementById('langLabel');
-    if (langLabel) langLabel.textContent = activeLang.toUpperCase();
-    // Update section title based on current category
+  function applyPageTranslations() {
     if (sectionTitle) sectionTitle.textContent = t(`title_${currentCategory}`);
     applyTermsModalBody();
   }
 
-  function initLangBtn() {
-    const btn = document.getElementById('langBtn');
-    if (!btn) return;
-    btn.addEventListener('click', () => {
-      activeLang = activeLang === 'es' ? 'en' : 'es';
-      localStorage.setItem('calziani_lang', activeLang);
-      applyTranslations();
-      renderProducts(lastProducts, lastProductsMeta.total, lastProductsMeta.page, lastProductsMeta.pages);
-    });
-  }
+  document.addEventListener('calziani:langchange', () => {
+    applyPageTranslations();
+    renderProducts(lastProducts, lastProductsMeta.total, lastProductsMeta.page, lastProductsMeta.pages);
+  });
 
   const CATEGORY_LABELS = {
     get calzado()   { return t('cat_label_calzado'); },
@@ -495,7 +399,7 @@
       if (!res.ok) {
         setPromoData(null);
         if (promoMsg) {
-          promoMsg.textContent = data.error || (activeLang === 'en' ? 'Invalid code.' : 'Código no válido.');
+          promoMsg.textContent = data.error || (window.CalzianiI18n.lang === 'en' ? 'Invalid code.' : 'Código no válido.');
           promoMsg.classList.remove('hidden');
         }
         promoClearBtn?.classList.add('hidden');
@@ -512,11 +416,11 @@
       }
     } catch {
       if (promoMsg) {
-        promoMsg.textContent = activeLang === 'en' ? 'Connection error.' : 'Error de conexión.';
+        promoMsg.textContent = window.CalzianiI18n.lang === 'en' ? 'Connection error.' : 'Error de conexión.';
         promoMsg.classList.remove('hidden');
       }
     } finally {
-      if (promoApplyBtn) { promoApplyBtn.disabled = false; promoApplyBtn.textContent = activeLang === 'en' ? 'Apply' : 'Aplicar'; }
+      if (promoApplyBtn) { promoApplyBtn.disabled = false; promoApplyBtn.textContent = window.CalzianiI18n.lang === 'en' ? 'Apply' : 'Aplicar'; }
     }
     updateCartUI();
   }
@@ -1792,8 +1696,7 @@
   }
 
   // ─── Init ─────────────────────────────────────────────────────────────────────
-  applyTranslations();
-  initLangBtn();
+  applyPageTranslations();
   renderSizeFilter(currentCategory);
   initBrandFilter();
   initBrandStrip();
@@ -1942,10 +1845,10 @@ document.addEventListener('DOMContentLoaded', function () {
   copyBtn.addEventListener('click', function () {
     var btn = copyBtn;
     function showCopied() {
-      btn.textContent = '¡COPIADO!';
+      btn.textContent = window.CalzianiI18n.lang === 'en' ? 'COPIED!' : '¡COPIADO!';
       btn.classList.add('cpn-copied');
       setTimeout(function () {
-        btn.textContent = 'COPIAR';
+        btn.textContent = t('cpn_copy');
         btn.classList.remove('cpn-copied');
         close();
       }, 1500);
