@@ -626,12 +626,19 @@
          </div>`
       : `<div class="pp-pricing"><span class="pp-price">${formatPrice(p.price)}</span>${dopRefHtml}</div>`;
 
-    // ── Sizes HTML (selectable) ───────────────────────────────────────────────
+    // ── Sizes HTML (collapsed dropdown — click to reveal all sizes) ──────────
     const sizesHtml = p.sizes && p.sizes.length
       ? `<div class="pp-sizes">
-           <p class="pp-label">${t('size_label')} <span class="pp-size-selected" id="ppSizeSelected"></span></p>
-           <div class="pp-sizes-list" id="ppSizesList">
-             ${p.sizes.map(s => `<button class="pp-size-tag pp-size-btn" data-size="${escHtml(s)}" type="button">${escHtml(s)}</button>`).join('')}
+           <div class="pp-size-select-wrap">
+             <button type="button" class="pp-size-select" id="ppSizeTrigger" aria-haspopup="listbox" aria-expanded="false">
+               <span id="ppSizeTriggerText">${t('pp_size_placeholder')}</span>
+               <svg class="pp-size-select__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+             </button>
+             <div class="pp-size-panel hidden" id="ppSizePanel" role="listbox">
+               <div class="pp-sizes-list" id="ppSizesList">
+                 ${p.sizes.map(s => `<button class="pp-size-tag pp-size-btn" data-size="${escHtml(s)}" type="button" role="option">${escHtml(s)}</button>`).join('')}
+               </div>
+             </div>
            </div>
            <p class="pp-size-urgency hidden" id="ppSizeUrgency"></p>
            <p class="pp-size-err hidden" id="ppSizeErr">${t('pp_size_select_err')}</p>
@@ -674,20 +681,25 @@
 
     // ── CTA Buttons ──────────────────────────────────────────────────────────
     const outOfStock = p.stock === 0;
+    // Add to cart / Buy now live in .pp-cta-sticky, which becomes a fixed
+    // bottom bar on mobile (matching the Farfetch-style always-visible buy
+    // bar) while staying inline on desktop. Favorite stays in normal flow.
     const ctaHtml = `
       <div class="pp-cta">
-        <div class="pp-cta__row">
-          <div class="pp-qty" role="group" aria-label="Cantidad">
-            <button type="button" class="pp-qty__btn" id="ppQtyMinus" aria-label="Reducir cantidad">−</button>
-            <span class="pp-qty__value" id="ppQtyValue">1</span>
-            <button type="button" class="pp-qty__btn" id="ppQtyPlus" aria-label="Aumentar cantidad">+</button>
+        <div class="pp-cta-sticky" id="ppCtaSticky">
+          <div class="pp-cta__row">
+            <div class="pp-qty" role="group" aria-label="Cantidad">
+              <button type="button" class="pp-qty__btn" id="ppQtyMinus" aria-label="Reducir cantidad">−</button>
+              <span class="pp-qty__value" id="ppQtyValue">1</span>
+              <button type="button" class="pp-qty__btn" id="ppQtyPlus" aria-label="Aumentar cantidad">+</button>
+            </div>
+            <button class="pp-btn-cart${outOfStock ? ' disabled' : ''}" id="ppAddCart" ${outOfStock ? 'disabled' : ''}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              ${outOfStock ? t('pp_out_of_stock') : t('pp_add_to_cart')}
+            </button>
           </div>
-          <button class="pp-btn-cart${outOfStock ? ' disabled' : ''}" id="ppAddCart" ${outOfStock ? 'disabled' : ''}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-            ${outOfStock ? t('pp_out_of_stock') : t('pp_add_to_cart')}
-          </button>
+          ${!outOfStock ? `<button class="pp-btn-buy" id="ppBuyNow">${t('pp_buy_now')}</button>` : ''}
         </div>
-        ${!outOfStock ? `<button class="pp-btn-buy" id="ppBuyNow">${t('pp_buy_now')}</button>` : ''}
         <button class="pp-btn-fav${fav ? ' active' : ''}" id="ppFavBtn" aria-label="Favorito">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           ${fav ? t('pp_in_favorite') : t('pp_add_favorite')}
@@ -803,6 +815,31 @@
       if (isOffer) initOfferCountdown();
       fetchProductStock(p.id);
 
+    // ── Size dropdown (collapsed by default — click to reveal all sizes) ─────
+    const sizeTrigger = document.getElementById('ppSizeTrigger');
+    const sizePanel = document.getElementById('ppSizePanel');
+    function openSizePanel() {
+      if (!sizeTrigger || !sizePanel) return;
+      sizePanel.classList.remove('hidden');
+      sizeTrigger.classList.add('open');
+      sizeTrigger.setAttribute('aria-expanded', 'true');
+    }
+    function closeSizePanel() {
+      if (!sizeTrigger || !sizePanel) return;
+      sizePanel.classList.add('hidden');
+      sizeTrigger.classList.remove('open');
+      sizeTrigger.setAttribute('aria-expanded', 'false');
+    }
+    sizeTrigger?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sizePanel?.classList.contains('hidden') ? openSizePanel() : closeSizePanel();
+    });
+    document.addEventListener('click', (e) => {
+      if (sizePanel && !sizePanel.classList.contains('hidden') && !e.target.closest('.pp-size-select-wrap')) {
+        closeSizePanel();
+      }
+    });
+
     // ── Size selection ────────────────────────────────────────────────────────
     document.querySelectorAll('.pp-size-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -810,11 +847,12 @@
         btn.classList.add('active');
         selectedSize = btn.dataset.size;
         selectedQty = 1;
-        const label = document.getElementById('ppSizeSelected');
-        if (label) label.textContent = `— ${selectedSize}`;
+        const triggerText = document.getElementById('ppSizeTriggerText');
+        if (triggerText) triggerText.textContent = `${t('size_label')} — ${selectedSize}`;
         document.getElementById('ppSizeErr')?.classList.add('hidden');
         updateSizeUrgency(p.id, selectedSize);
         updateQtyUI(p);
+        closeSizePanel();
         // Show stock for selected size
         const sizeStock = p.sizes_stock?.[selectedSize];
         const stockEl = document.querySelector('.pp-stock');
@@ -852,7 +890,8 @@
     document.getElementById('ppAddCart')?.addEventListener('click', () => {
       if (p.sizes?.length && !selectedSize) {
         document.getElementById('ppSizeErr')?.classList.remove('hidden');
-        document.getElementById('ppSizesList')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        openSizePanel();
+        sizeTrigger?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
       const maxQty = getMaxQtyAvailable(p);
@@ -871,7 +910,8 @@
     document.getElementById('ppBuyNow')?.addEventListener('click', () => {
       if (p.sizes?.length && !selectedSize) {
         document.getElementById('ppSizeErr')?.classList.remove('hidden');
-        document.getElementById('ppSizesList')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        openSizePanel();
+        sizeTrigger?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
       const maxQtyBuy = getMaxQtyAvailable(p);

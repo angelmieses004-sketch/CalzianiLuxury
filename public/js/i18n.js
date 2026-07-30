@@ -244,6 +244,7 @@ window.CalzianiI18n = (function () {
       pp_size_guide_text:              'Te recomendamos elegir tu talla habitual. Si estás entre dos talles, elegí la más grande.',
       pp_shipping_info_title:          'Envío y entrega',
       pp_shipping_info_text:           'Envío a todo el mundo. Coordinamos la entrega final por WhatsApp y podés hacer seguimiento en tiempo real desde "Rastrear pedido".',
+      pp_size_placeholder:             'Elegí talla',
 
       // Product card
       out_of_stock:      'Sin stock',
@@ -498,6 +499,7 @@ window.CalzianiI18n = (function () {
       pp_size_guide_text:              'We recommend choosing your usual size. If you\'re between two sizes, choose the larger one.',
       pp_shipping_info_title:          'Shipping & delivery',
       pp_shipping_info_text:           'Worldwide shipping. We coordinate final delivery over WhatsApp and you can track your order in real time from "Track order".',
+      pp_size_placeholder:             'Choose size',
 
       out_of_stock:      'Out of stock',
       stock_low_hint:     'Few units left',
