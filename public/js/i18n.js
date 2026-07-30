@@ -526,6 +526,14 @@ window.CalzianiI18n = (function () {
     },
   };
 
+  // 'calziani_lang_manual' marks a real click on the language toggle — only
+  // that overrides the Spanish default forever. A plain 'calziani_lang' value
+  // (from an old visit, or a previous geo guess) is just a cache for instant
+  // paint; it's never allowed to permanently lock in the wrong language.
+  function isManualChoice() {
+    return localStorage.getItem('calziani_lang_manual') === '1';
+  }
+
   function detectLang() {
     const stored = localStorage.getItem('calziani_lang');
     if (stored === 'es' || stored === 'en') return stored;
@@ -537,17 +545,18 @@ window.CalzianiI18n = (function () {
 
   let activeLang = detectLang();
 
-  // Only runs when there's no stored/explicit choice yet. Uses the visitor's
-  // IP (via /api/geo) rather than browser language, which foreign travelers
-  // or DR expats often leave in English/Spanish regardless of where they are.
+  // Skips only for an explicit manual choice. Otherwise it always re-checks
+  // the visitor's IP (via /api/geo) — rather than browser language, which
+  // foreign travelers or DR expats often leave in English/Spanish regardless
+  // of where they physically are — and self-corrects any stale cached value.
   async function refineLangFromGeo() {
-    if (localStorage.getItem('calziani_lang')) return;
+    if (isManualChoice()) return;
     let country = null;
     try {
       const res = await fetch('/api/geo');
       const data = await res.json();
       country = data.country || null;
-    } catch { /* network hiccup — keep the Spanish default */ }
+    } catch { /* network hiccup — keep the current default */ }
     const resolved = country && country !== 'DO' ? 'en' : 'es';
     localStorage.setItem('calziani_lang', resolved);
     if (resolved !== activeLang) {
@@ -578,6 +587,7 @@ window.CalzianiI18n = (function () {
   function setLang(lang) {
     activeLang = lang === 'en' ? 'en' : 'es';
     localStorage.setItem('calziani_lang', activeLang);
+    localStorage.setItem('calziani_lang_manual', '1');
     applyTranslations();
     document.dispatchEvent(new CustomEvent('calziani:langchange', { detail: { lang: activeLang } }));
   }
