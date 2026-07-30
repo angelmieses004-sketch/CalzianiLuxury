@@ -10,6 +10,7 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const bcrypt = require('bcryptjs');
+const geoip = require('geoip-lite');
 const db = require('./database');
 
 // In production use /data/img/products (persistent volume); locally use public/img/products
@@ -526,6 +527,10 @@ async function sendVerificationEmail(toEmail, code) {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Behind Railway's proxy, req.ip only reflects the real client IP if we trust
+// the X-Forwarded-For header — needed for /api/geo's language detection.
+app.set('trust proxy', true);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -1684,6 +1689,19 @@ app.post('/api/admin/webhook-token/regenerate', requireAuth, (req, res) => {
     ON CONFLICT(key) DO UPDATE SET value = excluded.value
   `).run(newToken);
   res.json({ token: newToken });
+});
+
+// ─── Geo (drives default ES/EN language: DR visitors get Spanish, everyone
+// else defaults to English) ────────────────────────────────────────────────
+app.get('/api/geo', (req, res) => {
+  try {
+    let ip = req.ip || '';
+    if (ip.startsWith('::ffff:')) ip = ip.slice(7);
+    const geo = geoip.lookup(ip);
+    res.json({ country: geo?.country || null });
+  } catch {
+    res.json({ country: null });
+  }
 });
 
 // ─── Currency rates ───────────────────────────────────────────────────────────

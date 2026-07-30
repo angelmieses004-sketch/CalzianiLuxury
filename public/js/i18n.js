@@ -529,13 +529,33 @@ window.CalzianiI18n = (function () {
   function detectLang() {
     const stored = localStorage.getItem('calziani_lang');
     if (stored === 'es' || stored === 'en') return stored;
-    const browserLangs = navigator.languages || [navigator.language || 'es'];
-    const detected = browserLangs.some(l => String(l).toLowerCase().startsWith('es')) ? 'es' : 'en';
-    localStorage.setItem('calziani_lang', detected);
-    return detected;
+    // Calziani ships from the Dominican Republic — default to Spanish for the
+    // first paint, then refineLangFromGeo() switches to English for visitors
+    // whose IP resolves outside the DR.
+    return 'es';
   }
 
   let activeLang = detectLang();
+
+  // Only runs when there's no stored/explicit choice yet. Uses the visitor's
+  // IP (via /api/geo) rather than browser language, which foreign travelers
+  // or DR expats often leave in English/Spanish regardless of where they are.
+  async function refineLangFromGeo() {
+    if (localStorage.getItem('calziani_lang')) return;
+    let country = null;
+    try {
+      const res = await fetch('/api/geo');
+      const data = await res.json();
+      country = data.country || null;
+    } catch { /* network hiccup — keep the Spanish default */ }
+    const resolved = country && country !== 'DO' ? 'en' : 'es';
+    localStorage.setItem('calziani_lang', resolved);
+    if (resolved !== activeLang) {
+      activeLang = resolved;
+      applyTranslations();
+      document.dispatchEvent(new CustomEvent('calziani:langchange', { detail: { lang: activeLang } }));
+    }
+  }
 
   function t(key) {
     if (T[activeLang] && Object.prototype.hasOwnProperty.call(T[activeLang], key)) return T[activeLang][key];
@@ -571,6 +591,7 @@ window.CalzianiI18n = (function () {
   document.addEventListener('DOMContentLoaded', () => {
     applyTranslations();
     initLangBtn();
+    refineLangFromGeo();
   });
 
   return {

@@ -758,10 +758,8 @@
             <h1 class="pp-name">${escHtml(p.name)}</h1>
             <div class="pp-reviews-summary" id="ppReviewsSummary"></div>
             ${priceHtml}
-            ${shipHtml}
-            ${stockHtml}
-            ${sizesHtml}
-            ${colorsHtml}
+            <div class="pp-meta-row">${stockHtml}${shipHtml}</div>
+            <div class="pp-size-color-row">${sizesHtml}${colorsHtml}</div>
             ${trustTeaserHtml}
             ${ctaHtml}
             <div class="pp-update-box">
