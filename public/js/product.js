@@ -116,6 +116,7 @@
   let product = null;
   let stockBySize = null;
   let offerCountdownTimer = null;
+  let viewersTimer = null;
   let selectedReviewRating = 0;
   let reviewModalReady = false;
   let reviewPhotoObjectUrl = null;
@@ -180,6 +181,41 @@
       const mo = new MutationObserver(() => {
         if (!document.getElementById('ppOfferCountdown')) {
           clearOfferCountdown();
+          mo.disconnect();
+        }
+      });
+      mo.observe(pageEl, { childList: true, subtree: true });
+    }
+  }
+
+  function clearViewersTimer() {
+    if (viewersTimer) {
+      clearInterval(viewersTimer);
+      viewersTimer = null;
+    }
+  }
+
+  // Nudges the fake "viewing now" count by a few people every so often so it
+  // reads as live rather than a static number — same social-proof idea as
+  // "N people are looking at this" elsewhere on the web. Not real traffic.
+  function initViewersFluctuation(startCount) {
+    clearViewersTimer();
+    const el = document.getElementById('ppViewersCount');
+    if (!el) return;
+    let current = startCount;
+    const tick = () => {
+      const liveEl = document.getElementById('ppViewersCount');
+      if (!liveEl) { clearViewersTimer(); return; }
+      const delta = Math.floor(Math.random() * 7) - 3; // -3..+3
+      current = Math.min(115, Math.max(65, current + delta));
+      liveEl.textContent = current;
+    };
+    viewersTimer = setInterval(tick, 9000 + Math.random() * 6000);
+    const pageEl = document.getElementById('productPage');
+    if (pageEl) {
+      const mo = new MutationObserver(() => {
+        if (!document.getElementById('ppViewersCount')) {
+          clearViewersTimer();
           mo.disconnect();
         }
       });
@@ -495,6 +531,7 @@
 
   function render(p) {
     clearOfferCountdown();
+    clearViewersTimer();
     stockBySize = null;
     selectedSize = '';
     selectedQty = 1;
@@ -583,15 +620,24 @@
       ? `<span class="pp-gallery__badge">−${discount}%</span>`
       : (p.hot ? `<span class="pp-gallery__badge pp-gallery__badge--hot">HOT</span>` : '');
 
+    // Fake live-viewer count — social proof to nudge purchases. Not real data.
+    const viewerCount = 65 + Math.floor(Math.random() * 51); // 65–115
+    const viewersHtml = `
+      <span class="pp-gallery__viewers">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <strong id="ppViewersCount">${viewerCount}</strong> ${t('pp_viewers_suffix')}
+      </span>`;
+
     let galleryHtml = '';
     if (images.length === 0) {
-      galleryHtml = `<div class="pp-gallery pp-gallery--empty"><span>CALZIANI</span></div>`;
+      galleryHtml = `<div class="pp-gallery pp-gallery--empty"><span>CALZIANI</span>${viewersHtml}</div>`;
     } else if (images.length === 1) {
       galleryHtml = `
         <div class="pp-gallery">
           <div class="pp-gallery__main">
             <img src="/img/products/${images[0].filename}" alt="${escHtml(p.name)}" class="pp-gallery__main-img" id="ppMainImg" />
             ${galleryBadgeHtml}
+            ${viewersHtml}
           </div>
         </div>`;
     } else {
@@ -605,6 +651,7 @@
           <div class="pp-gallery__main">
             <img src="/img/products/${images[0].filename}" alt="${escHtml(p.name)}" class="pp-gallery__main-img" id="ppMainImg" />
             ${galleryBadgeHtml}
+            ${viewersHtml}
             <button class="pp-arrow pp-arrow--prev" id="ppPrev">&#8249;</button>
             <button class="pp-arrow pp-arrow--next" id="ppNext">&#8250;</button>
           </div>
@@ -844,6 +891,7 @@
       loadRelatedProducts(p.id);
       loadProductReviews(p.id);
       if (isOffer) initOfferCountdown();
+      initViewersFluctuation(viewerCount);
       fetchProductStock(p.id);
 
     // ── Size-select bottom sheet ───────────────────────────────────────────────

@@ -42,6 +42,7 @@
 }
 
 .pp-gallery--empty {
+  position: relative;
   aspect-ratio: 1;
   background: var(--gray-100);
   border-radius: var(--radius-lg);
@@ -101,6 +102,29 @@
   flex-shrink: 0;
 }
 .pp-gallery__badge--hot { background: var(--black); color: var(--brass); }
+
+/* Fake live-viewer social proof, bottom-left so it never collides with the
+   sale/hot pennant up top */
+.pp-gallery__viewers {
+  position: absolute;
+  bottom: 0.85rem;
+  left: 0.85rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: var(--shadow-card);
+  font-size: 0.74rem;
+  color: var(--gray-600);
+  pointer-events: none;
+}
+.pp-gallery__viewers svg { flex-shrink: 0; color: var(--gray-600); }
+.pp-gallery__viewers strong { color: var(--black); font-weight: 700; }
 
 .pp-arrow {
   position: absolute;

@@ -197,6 +197,18 @@ function validateCartStock(cart) {
   return { ok: true };
 }
 
+/** Marks the most recent checkout_leads row for this phone as converted (best-effort). */
+function markLeadConverted(phone, orderNumber) {
+  try {
+    const normalizedPhone = String(phone || '').replace(/\D/g, '');
+    if (!normalizedPhone) return;
+    db.prepare(`
+      UPDATE checkout_leads SET converted = 1, order_number = ?
+      WHERE id = (SELECT id FROM checkout_leads WHERE phone = ? ORDER BY created_at DESC LIMIT 1)
+    `).run(orderNumber, normalizedPhone);
+  } catch (e) { console.error('markLeadConverted:', e.message); }
+}
+
 function attachImages(product) {
   const imgs = getProductImages(product.id);
   return {
@@ -1992,11 +2004,13 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
   try {
     const { cart, shipping, subtotal, shippingFee, total, promoCode } = req.body || {};
     if (!Array.isArray(cart) || !cart.length) {
+      console.error('[CHECKOUT_REJECT]', JSON.stringify({ handler: 'whatsapp-submit', reason: 'empty_cart', body: req.body }));
       return res.status(400).json({ error: 'Carrito vacío.' });
     }
     const s = shipping || {};
     if (!String(s.name || '').trim() || !String(s.phone || '').trim() || !String(s.country || '').trim()
         || !String(s.address || '').trim()) {
+      console.error('[CHECKOUT_REJECT]', JSON.stringify({ handler: 'whatsapp-submit', reason: 'missing_shipping', body: req.body }));
       return res.status(400).json({ error: 'Datos de envío incompletos.' });
     }
     const allowedMethods = ['whatsapp', 'cod', 'pending'];
@@ -2006,37 +2020,53 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
     const fee = Number(shippingFee);
 
     const stockCheck = validateCartStock(cart);
-    if (!stockCheck.ok) return res.status(400).json({ error: stockCheck.error });
+    if (!stockCheck.ok) {
+      console.error('[CHECKOUT_REJECT]', JSON.stringify({ handler: 'whatsapp-submit', reason: 'invalid_product', body: req.body }));
+      return res.status(400).json({ error: stockCheck.error });
+    }
 
     // For pending saves skip promo validation — the user hasn't confirmed payment yet
     const promoRes = isPendingSave
       ? { ok: true, discountedSubtotal: lineSubtotal, redeem: false }
       : applyPromoCalziani(cart, promoCode, s.phone);
-    if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
+    if (!promoRes.ok) {
+      console.error('[CHECKOUT_REJECT]', JSON.stringify({ handler: 'whatsapp-submit', reason: 'promo_invalid', body: req.body }));
+      return res.status(400).json({ error: promoRes.error });
+    }
 
     const { met: thresholdMet, discount: thresholdDiscount, finalSubtotal: discountedSubtotal } =
       applyCartThreshold(lineSubtotal, promoRes.discountedSubtotal);
 
     if (thresholdMet) {
-      if (!isPendingSave && Math.abs(fee) > 0.02) return res.status(400).json({ error: 'Envío debe ser gratis con la oferta aplicada.' });
+      if (!isPendingSave && Math.abs(fee) > 0.02) {
+        console.error('[CHECKOUT_REJECT]', JSON.stringify({ handler: 'whatsapp-submit', reason: 'shipping_not_free', body: req.body }));
+        return res.status(400).json({ error: 'Envío debe ser gratis con la oferta aplicada.' });
+      }
     } else {
-      if (!isPendingSave && !validateShippingFee(fee)) return res.status(400).json({ error: 'Costo de envío no válido.' });
+      if (!isPendingSave && !validateShippingFee(fee)) {
+        console.error('[CHECKOUT_REJECT]', JSON.stringify({ handler: 'whatsapp-submit', reason: 'invalid_shipping_fee', body: req.body }));
+        return res.status(400).json({ error: 'Costo de envío no válido.' });
+      }
     }
     const shipFee = thresholdMet ? 0 : fee;
 
     const clientTotal = Number(total);
     const clientSub = Number(subtotal);
-    // For pending saves accept the client total directly (promo already applied on frontend)
-    const totalCheck = isPendingSave && Number.isFinite(clientTotal)
-      ? clientTotal
-      : Math.round((discountedSubtotal + shipFee) * 100) / 100;
-    if (!isPendingSave) {
-      if (!Number.isFinite(clientTotal) || Math.abs(totalCheck - clientTotal) > 0.02) {
-        return res.status(400).json({ error: 'Total no coincide.' });
-      }
-      if (!Number.isFinite(clientSub) || Math.abs(discountedSubtotal - clientSub) > 0.02) {
-        return res.status(400).json({ error: 'Subtotal no coincide.' });
-      }
+    const totalCheck = Math.round((discountedSubtotal + shipFee) * 100) / 100;
+    // Never reject on a client/server total mismatch — same treatment as
+    // card-link-submit. The server value below is always what's actually stored;
+    // the client value was only ever used to reject, never to charge.
+    if (!Number.isFinite(clientTotal) || Math.abs(totalCheck - clientTotal) > 0.02
+        || !Number.isFinite(clientSub) || Math.abs(discountedSubtotal - clientSub) > 0.02) {
+      console.error('[CHECKOUT_MISMATCH]', JSON.stringify({
+        handler: 'whatsapp-submit',
+        clientTotal, serverTotal: totalCheck,
+        clientSub, serverSub: discountedSubtotal,
+        promoCode: promoRes.redeem ? promoRes.code : null,
+        promoPercent: promoRes.redeem ? promoRes.percent : null,
+        thresholdMet,
+        cart: cart.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty, size: i.size })),
+      }));
     }
 
     // Duplicate guard: reject if an identical order (same phone + same total) was placed in the last 2 minutes
@@ -2052,6 +2082,7 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
       LIMIT 1
     `).get(totalCheck, normalizedPhone);
     if (recentDuplicate) {
+      console.error('[CHECKOUT_REJECT]', JSON.stringify({ handler: 'whatsapp-submit', reason: 'duplicate_order', body: req.body }));
       return res.status(409).json({
         error: `Ya existe un pedido reciente con estos datos (${recentDuplicate.order_number}). Si querés hacer otro pedido, esperá unos minutos.`,
       });
@@ -2106,6 +2137,7 @@ app.post('/api/orders/whatsapp-submit', (req, res) => {
       }
     });
     tx();
+    markLeadConverted(payload.shipping.phone, orderNum);
 
     const numItems = cart.reduce((s, i) => s + (Number(i.qty) || 1), 0);
     sendMetaPurchaseEvent({
@@ -2160,40 +2192,62 @@ app.post('/api/orders/card-link-submit', (req, res) => {
   try {
     const { cart, shipping, subtotal, shippingFee, total, promoCode } = req.body || {};
     if (!Array.isArray(cart) || !cart.length) {
+      console.error('[CHECKOUT_REJECT]', JSON.stringify({ handler: 'card-link-submit', reason: 'empty_cart', body: req.body }));
       return res.status(400).json({ error: 'Carrito vacío.' });
     }
     const s = shipping || {};
     if (!String(s.name || '').trim() || !String(s.phone || '').trim() || !String(s.country || '').trim()
         || !String(s.address || '').trim()) {
+      console.error('[CHECKOUT_REJECT]', JSON.stringify({ handler: 'card-link-submit', reason: 'missing_shipping', body: req.body }));
       return res.status(400).json({ error: 'Datos de envío incompletos.' });
     }
     const lineSubtotal = cart.reduce((sum, i) => sum + Number(i.price) * Number(i.qty), 0);
     const fee = Number(shippingFee);
 
     const stockCheck = validateCartStock(cart);
-    if (!stockCheck.ok) return res.status(400).json({ error: stockCheck.error });
+    if (!stockCheck.ok) {
+      console.error('[CHECKOUT_REJECT]', JSON.stringify({ handler: 'card-link-submit', reason: 'invalid_product', body: req.body }));
+      return res.status(400).json({ error: stockCheck.error });
+    }
 
     const promoRes = applyPromoCalziani(cart, promoCode, s.phone);
-    if (!promoRes.ok) return res.status(400).json({ error: promoRes.error });
+    if (!promoRes.ok) {
+      console.error('[CHECKOUT_REJECT]', JSON.stringify({ handler: 'card-link-submit', reason: 'promo_invalid', body: req.body }));
+      return res.status(400).json({ error: promoRes.error });
+    }
 
     const { met: thresholdMet, discount: thresholdDiscount, finalSubtotal: discountedSubtotal } =
       applyCartThreshold(lineSubtotal, promoRes.discountedSubtotal);
 
     if (thresholdMet) {
-      if (Math.abs(fee) > 0.02) return res.status(400).json({ error: 'Envío debe ser gratis con la oferta aplicada.' });
+      if (Math.abs(fee) > 0.02) {
+        console.error('[CHECKOUT_REJECT]', JSON.stringify({ handler: 'card-link-submit', reason: 'shipping_not_free', body: req.body }));
+        return res.status(400).json({ error: 'Envío debe ser gratis con la oferta aplicada.' });
+      }
     } else {
-      if (!validateShippingFee(fee)) return res.status(400).json({ error: 'Costo de envío no válido.' });
+      if (!validateShippingFee(fee)) {
+        console.error('[CHECKOUT_REJECT]', JSON.stringify({ handler: 'card-link-submit', reason: 'invalid_shipping_fee', body: req.body }));
+        return res.status(400).json({ error: 'Costo de envío no válido.' });
+      }
     }
     const shipFee = thresholdMet ? 0 : fee;
 
     const totalCheck = Math.round((discountedSubtotal + shipFee) * 100) / 100;
     const clientTotal = Number(total);
     const clientSub = Number(subtotal);
-    if (!Number.isFinite(clientTotal) || Math.abs(totalCheck - clientTotal) > 0.02) {
-      return res.status(400).json({ error: 'Total no coincide.' });
-    }
-    if (!Number.isFinite(clientSub) || Math.abs(discountedSubtotal - clientSub) > 0.02) {
-      return res.status(400).json({ error: 'Subtotal no coincide.' });
+    // Never reject on a client/server total mismatch — the server value below is
+    // always what actually gets charged. Just log it so drift is visible in Railway.
+    if (!Number.isFinite(clientTotal) || Math.abs(totalCheck - clientTotal) > 0.02
+        || !Number.isFinite(clientSub) || Math.abs(discountedSubtotal - clientSub) > 0.02) {
+      console.error('[CHECKOUT_MISMATCH]', JSON.stringify({
+        handler: 'card-link-submit',
+        clientTotal, serverTotal: totalCheck,
+        clientSub, serverSub: discountedSubtotal,
+        promoCode: promoRes.redeem ? promoRes.code : null,
+        promoPercent: promoRes.redeem ? promoRes.percent : null,
+        thresholdMet,
+        cart: cart.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty, size: i.size })),
+      }));
     }
 
     const customerEmail = isValidEmail(s.email) ? String(s.email).trim() : null;
@@ -2236,6 +2290,7 @@ app.post('/api/orders/card-link-submit', (req, res) => {
       }
     });
     tx();
+    markLeadConverted(payload.shipping.phone, orderNum);
 
     const cardLinkOrderSummary = {
       orderNumber: orderNum,
@@ -2273,6 +2328,63 @@ app.post('/api/orders/card-link-submit', (req, res) => {
     }
     res.status(500).json({ error: 'Error al guardar el pedido.' });
   }
+});
+
+// ─── Partial lead capture (phone blur before checkout is submitted) ──────────
+app.post('/api/checkout/lead', (req, res) => {
+  try {
+    const { phone, name, cart } = req.body || {};
+    const normalizedPhone = String(phone || '').replace(/\D/g, '');
+    if (normalizedPhone.length < 8) return res.status(204).end();
+
+    const cartArr = Array.isArray(cart) ? cart : [];
+    const cartTotal = cartArr.reduce((sum, i) => sum + (Number(i.price) || 0) * (Number(i.qty) || 0), 0);
+    const leadName = String(name || '').trim();
+    const cartJson = JSON.stringify(cartArr);
+
+    const existing = db.prepare(`
+      SELECT id FROM checkout_leads
+      WHERE phone = ? AND created_at >= datetime('now', '-30 minutes')
+      ORDER BY created_at DESC LIMIT 1
+    `).get(normalizedPhone);
+
+    if (existing) {
+      db.prepare(`
+        UPDATE checkout_leads SET name = ?, cart_json = ?, cart_total = ? WHERE id = ?
+      `).run(leadName, cartJson, cartTotal, existing.id);
+    } else {
+      db.prepare(`
+        INSERT INTO checkout_leads (phone, name, cart_json, cart_total) VALUES (?, ?, ?, ?)
+      `).run(normalizedPhone, leadName, cartJson, cartTotal);
+    }
+
+    res.status(204).end();
+  } catch (e) {
+    console.error('checkout/lead:', e.message);
+    res.status(204).end();
+  }
+});
+
+// ─── Checkout attempt instrumentation (no table — just Railway logs) ────────
+app.post('/api/checkout/attempt', (req, res) => {
+  try {
+    console.error('[CHECKOUT_ATTEMPT]', JSON.stringify(req.body));
+  } catch (e) {
+    console.error('checkout/attempt:', e.message);
+  }
+  res.status(204).end();
+});
+
+app.get('/api/admin/checkout-leads', requireAuth, (req, res) => {
+  const onlyUnconverted = req.query.converted === '0';
+  const rows = onlyUnconverted
+    ? db.prepare(`SELECT * FROM checkout_leads WHERE converted = 0 ORDER BY created_at DESC`).all()
+    : db.prepare(`SELECT * FROM checkout_leads ORDER BY created_at DESC`).all();
+
+  res.json(rows.map(r => ({
+    ...r,
+    whatsapp_url: `https://wa.me/${r.phone}`,
+  })));
 });
 
 // ─── AZUL Payment Page ────────────────────────────────────────────────────────

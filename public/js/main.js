@@ -666,12 +666,49 @@
     const ok = !!(s.name && s.phone && s.address);
     const errEl = document.getElementById('shippingErr');
     if (errEl) errEl.classList.toggle('hidden', ok);
+    if (!ok) {
+      errEl?.scrollIntoView({ block: 'center' });
+      const firstInvalidId = !s.name ? 'shipName' : !s.phone ? 'shipPhone' : 'shipAddress';
+      document.getElementById(firstInvalidId)?.focus();
+    }
     return ok;
   }
 
+  // Instrumentación: registra un intento de checkout en el servidor (siempre
+  // 204, nunca bloquea ni muestra nada al usuario si falla).
+  function logCheckoutAttempt(body) {
+    try {
+      fetch('/api/checkout/attempt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        body: JSON.stringify(body),
+      }).catch(() => {});
+    } catch (_) {}
+  }
+
+  // Captura parcial del lead: guarda teléfono/nombre/carrito apenas el cliente
+  // sale del campo de teléfono, aunque nunca llegue a presionar "enviar".
+  document.getElementById('shipPhone')?.addEventListener('blur', () => {
+    try {
+      const s = getShippingInfo();
+      fetch('/api/checkout/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        body: JSON.stringify({ phone: s.phone, name: s.name, cart: getCart() }),
+      }).catch(() => {});
+    } catch (_) {}
+  });
+
   function validateTerms() {
     const ok = !!document.getElementById('acceptTerms')?.checked;
-    document.getElementById('termsErr')?.classList.toggle('hidden', ok);
+    const errEl = document.getElementById('termsErr');
+    errEl?.classList.toggle('hidden', ok);
+    if (!ok) {
+      errEl?.scrollIntoView({ block: 'center' });
+      document.getElementById('acceptTerms')?.focus();
+    }
     return ok;
   }
 
@@ -824,9 +861,24 @@
 
   // ─── Step 1 → Step 2 transition (saves order immediately) ──────────────────
   document.getElementById('btnGoToCheckout')?.addEventListener('click', async () => {
-    if (!validateShipping()) return;
+    const s0 = getShippingInfo();
+    logCheckoutAttempt({
+      phone: s0.phone,
+      hasName: !!s0.name,
+      hasAddress: !!s0.address,
+      termsChecked: !!document.getElementById('acceptTerms')?.checked,
+      cartCount: getCart().length,
+    });
+
+    if (!validateShipping()) {
+      logCheckoutAttempt({ blocked: true, failedOn: 'shipping' });
+      return;
+    }
     const cart = getCart();
-    if (!cart.length) return;
+    if (!cart.length) {
+      logCheckoutAttempt({ blocked: true, failedOn: 'other' });
+      return;
+    }
 
     const btn = document.getElementById('btnGoToCheckout');
     const prevHtml = btn.innerHTML;

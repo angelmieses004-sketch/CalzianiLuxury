@@ -231,6 +231,22 @@ try {
   db.exec(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
 } catch (_) {}
 
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS checkout_leads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phone TEXT NOT NULL,
+      name TEXT DEFAULT '',
+      cart_json TEXT DEFAULT '[]',
+      cart_total REAL DEFAULT 0,
+      converted INTEGER NOT NULL DEFAULT 0,
+      order_number TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_checkout_leads_created ON checkout_leads(created_at);
+  `);
+} catch (_) {}
+
 const settingsDefaults = [
   ['shipping_standard_usd',  '0'],
   ['shipping_standard_days', '15-22'],
