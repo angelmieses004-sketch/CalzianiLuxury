@@ -74,6 +74,7 @@
   document.addEventListener('calziani:langchange', () => {
     applyPageTranslations();
     renderProducts(lastProducts, lastProductsMeta.total, lastProductsMeta.page, lastProductsMeta.pages);
+    renderHeroSlides(lastFeatured);
   });
 
   const CATEGORY_LABELS = {
@@ -483,10 +484,11 @@
     const count = cartCount();
 
     // Badge
-    if (cartBadge) {
-      cartBadge.textContent = count;
-      cartBadge.classList.toggle('hidden', count === 0);
-    }
+    [cartBadge, document.getElementById('bnCartBadge')].forEach(badge => {
+      if (!badge) return;
+      badge.textContent = count;
+      badge.classList.toggle('hidden', count === 0);
+    });
 
     // Empty / filled state
     // Once an order has been placed (step 3 showing), leave the confirmation
@@ -1095,6 +1097,189 @@
   let currentProductsPage = 1;
   let productsRequestId = 0;
 
+  // ─── Product card (shared by grid, Selección and Ofertas) ───────────────────
+  // Products rendered on the page, by id — the card's quick-add "+" button
+  // needs the full object (sizes, stock) to open the size picker.
+  const productIndex = new Map();
+
+  function promoContext() {
+    const promo = activePromoData();
+    return {
+      promo,
+      excIds: promo ? (promo.excludedProductIds || []).map(Number) : [],
+      floors: promo ? (promo.floorProductPrices || {}) : {},
+    };
+  }
+
+  function offerDiscount(p) {
+    const isOffer = p.compare_price && p.compare_price > p.price;
+    return isOffer ? Math.round(Math.round((1 - p.price / p.compare_price) * 100) / 10) * 10 : 0;
+  }
+
+  function productCardHtml(p, ctx) {
+    productIndex.set(Number(p.id), p);
+    const isOffer  = p.compare_price && p.compare_price > p.price;
+    const discount = offerDiscount(p);
+    const sl       = stockLabel(aggregateStock(p));
+    const soldOut  = sl.cls === 'out';
+    const fav      = isFav(p.id);
+
+    // Coupon eligibility (exclusiones y piso por marca desde admin)
+    let promoEligible = ctx.promo && !isPromoExcludedProduct(p, ctx.excIds);
+    let priceAfterCoupon = 0, couponAmt = 0;
+    if (promoEligible) {
+      priceAfterCoupon = Math.round(promoUnitAfterDiscount(p.price, ctx.promo.percent, p, ctx.floors) * 100) / 100;
+      couponAmt = Math.round((p.price - priceAfterCoupon) * 100) / 100;
+      if (couponAmt <= 0) promoEligible = false;
+    }
+
+    const imgHtml = p.cover
+      ? `<img src="/img/products/${escHtml(p.cover)}" alt="${escHtml(p.name)}" class="product-card__img" loading="lazy" />`
+      : `<div class="product-card__img-empty"><span>CALZIANI</span></div>`;
+    const isHot = !!p.hot;
+    const badgeHtml = isOffer
+      ? `<span class="product-card__sale-badge">−${discount}%</span>`
+      : isHot
+        ? `<span class="product-card__hot-badge">HOT NOW</span>`
+        : soldOut
+          ? `<span class="product-card__stock-badge out">${t('out_of_stock')}</span>`
+          : p.low_stock ? `<span class="product-card__hot-badge">${t('pc_last_pairs')}</span>` : '';
+    const priceHtml = isOffer
+      ? `<span class="pc-price pc-price--sale">${formatPrice(p.price)}</span><span class="pc-price-orig">${formatPrice(p.compare_price)}</span>`
+      : isHot
+        ? `<span class="pc-price pc-price--hot">${formatPrice(p.price)}</span>`
+        : `<span class="pc-price">${formatPrice(p.price)}</span>`;
+    const couponHtml = promoEligible ? `
+      <div class="pc-coupon-block">
+        <span class="pc-coupon-badge">− ${formatPrice(couponAmt)} cupón</span>
+        <span class="pc-coupon-after">${formatPrice(priceAfterCoupon)} con cupón</span>
+      </div>` : '';
+    const lowStockMsg = p.low_stock ? `<div class="pc-low-stock-msg"><span class="pc-low-stock-dot">●</span><strong>Pocas unidades</strong><span class="pc-low-stock-text"> - Compra ahora antes de que se agoten</span></div>` : '';
+
+    return `<div class="product-card-wrap">
+      <a class="product-card" href="/product/${p.id}" aria-label="Ver ${escHtml(p.name)}">
+        <div class="product-card__media">
+          ${imgHtml}
+          ${badgeHtml}
+          <button class="pc-fav-btn${fav ? ' active' : ''}" data-id="${p.id}" aria-label="Favorito" title="Favorito">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </button>
+        </div>
+        <div class="product-card__info">
+          <p class="pc-category">${escHtml(p.brand_name || CATEGORY_LABELS[p.category] || p.category)}</p>
+          <h3 class="pc-name">${escHtml(p.name)}</h3>
+          <div class="pc-buy">
+            <div class="pc-pricing">${priceHtml}</div>
+            <button type="button" class="pc-add" data-add-id="${p.id}" aria-label="${t('add_to_cart')}: ${escHtml(p.name)}"${soldOut ? ' disabled' : ''}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+          ${couponHtml}
+        </div>
+      </a>
+      ${lowStockMsg}
+    </div>`;
+  }
+
+  // Quick-add "+" on any card — delegated so re-rendered grids need no rewiring.
+  // preventDefault keeps the surrounding card link from navigating.
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.pc-add');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    beginAddToCart(productIndex.get(Number(btn.dataset.addId)));
+  });
+
+  // ─── Home hero carousel (featured products as slides) ───────────────────────
+  const HERO_TONES = ['lime', 'stone', 'ink', 'sage'];
+  let lastFeatured = [];
+
+  function renderHeroSlides(products) {
+    const rail = document.getElementById('heroRail');
+    if (!rail) return;
+    lastFeatured = products;
+    rail.querySelectorAll('.hero-slide--product').forEach(el => el.remove());
+    products.filter(p => p.cover).slice(0, 5).forEach((p, i) => {
+      const discount = offerDiscount(p);
+      const cta = discount
+        ? `${discount}% OFF | ${t('hero_slide_cta')}`
+        : `${formatPrice(p.price)} | ${t('hero_slide_cta')}`;
+      rail.insertAdjacentHTML('beforeend', `
+        <a class="hero-slide hero-slide--product hero-slide--${HERO_TONES[i % HERO_TONES.length]}" href="/product/${p.id}">
+          <p class="hero-slide__brand">${escHtml(p.brand_name || 'Calziani')}</p>
+          <h3 class="hero-slide__title">${escHtml(p.name)}</h3>
+          <p class="hero-slide__desc">${t('hero_slide_desc')}</p>
+          <span class="hero-slide__cta">${cta}</span>
+          <img class="hero-slide__img" src="/img/products/${escHtml(p.cover)}" alt="${escHtml(p.name)}" loading="lazy" />
+        </a>`);
+    });
+    renderHeroDots();
+  }
+
+  function renderHeroDots() {
+    const rail = document.getElementById('heroRail');
+    const dots = document.getElementById('heroDots');
+    if (!rail || !dots) return;
+    const count = rail.children.length;
+    dots.innerHTML = Array.from({ length: count }, (_, i) =>
+      `<button type="button" class="hero-dots__dot${i === 0 ? ' active' : ''}" data-i="${i}" aria-label="Slide ${i + 1}"></button>`
+    ).join('');
+    dots.classList.toggle('hidden', count < 2);
+  }
+
+  function initHeroCarousel() {
+    const rail = document.getElementById('heroRail');
+    const dots = document.getElementById('heroDots');
+    if (!rail || !dots) return;
+    renderHeroDots();
+    let raf = 0;
+    rail.addEventListener('scroll', () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const slides = [...rail.children];
+        let active = 0, best = Infinity;
+        slides.forEach((s, i) => {
+          const d = Math.abs(s.offsetLeft - rail.offsetLeft - rail.scrollLeft);
+          if (d < best) { best = d; active = i; }
+        });
+        dots.querySelectorAll('.hero-dots__dot').forEach((d, i) => d.classList.toggle('active', i === active));
+      });
+    }, { passive: true });
+    dots.addEventListener('click', e => {
+      const dot = e.target.closest('.hero-dots__dot');
+      const slide = dot && rail.children[Number(dot.dataset.i)];
+      if (slide) rail.scrollTo({ left: slide.offsetLeft - rail.offsetLeft, behavior: 'smooth' });
+    });
+  }
+
+  // ─── Category / brand chips ─────────────────────────────────────────────────
+  function initChips() {
+    const rail = document.getElementById('chipRail');
+    if (!rail) return;
+    rail.addEventListener('click', e => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      rail.querySelectorAll('.chip').forEach(c => {
+        c.classList.toggle('active', c === chip);
+        c.setAttribute('aria-pressed', String(c === chip));
+      });
+      if (chip.dataset.chipCat) {
+        document.querySelector(`.nav-btn[data-cat="${chip.dataset.chipCat}"]`)?.click();
+      } else if (chip.dataset.chipBrand) {
+        // Reuse the brand filter's own handler so its dropdown label stays in sync
+        const item = document.querySelector(`.brand-dropdown-item[data-brand="${chip.dataset.chipBrand}"]`);
+        if (item) item.click();
+        else {
+          currentBrand = Number(chip.dataset.chipBrand);
+          currentProductsPage = 1;
+          fetchProducts(currentCategory, searchInput.value, currentSize, 1, currentBrand);
+        }
+      }
+      document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
+    });
+  }
+
   // ─── Selección de Calziani ───────────────────────────────────────────────────
   async function loadSeleccionSection() {
     const section = document.getElementById('seleccionSection');
@@ -1104,66 +1289,11 @@
       const res = await fetch('/api/featured');
       if (!res.ok) return;
       const products = await res.json();
+      renderHeroSlides(products);
       if (!products.length) { section.classList.add('hidden'); return; }
 
-      const _promo     = activePromoData();
-      const _promoExcIds = _promo ? (_promo.excludedProductIds || []).map(Number) : [];
-      const _promoFloors = _promo ? (_promo.floorProductPrices || {}) : {};
-
-      selGrid.innerHTML = products.map(p => {
-        const isOffer  = p.compare_price && p.compare_price > p.price;
-        const discount = isOffer ? Math.round(Math.round((1 - p.price / p.compare_price) * 100) / 10) * 10 : 0;
-        const avail    = aggregateStock(p);
-        const sl       = stockLabel(avail);
-        const fav      = isFav(p.id);
-
-        let promoEligible = _promo && !isPromoExcludedProduct(p, _promoExcIds);
-        let priceAfterCoupon = 0, couponAmt = 0;
-        if (promoEligible) {
-          priceAfterCoupon = Math.round(promoUnitAfterDiscount(p.price, _promo.percent, p, _promoFloors) * 100) / 100;
-          couponAmt = Math.round((p.price - priceAfterCoupon) * 100) / 100;
-          if (couponAmt <= 0) promoEligible = false;
-        }
-
-        const imgHtml = p.cover
-          ? `<img src="/img/products/${escHtml(p.cover)}" alt="${escHtml(p.name)}" class="product-card__img" loading="lazy" />`
-          : `<div class="product-card__img-empty"><span>CALZIANI</span></div>`;
-        const isHot = !!p.hot;
-        const badgeHtml = isOffer
-          ? `<span class="product-card__sale-badge">−${discount}%</span>`
-          : isHot
-            ? `<span class="product-card__hot-badge">HOT NOW</span>`
-            : (sl.cls === 'out' ? `<span class="product-card__stock-badge out">${t('out_of_stock')}</span>` : '');
-        const priceHtml = isOffer
-          ? `<span class="pc-price pc-price--sale">${formatPrice(p.price)}</span><span class="pc-price-orig">${formatPrice(p.compare_price)}</span>`
-          : isHot
-            ? `<span class="pc-price pc-price--hot">${formatPrice(p.price)}</span>`
-            : `<span class="pc-price">${formatPrice(p.price)}</span>`;
-        const couponHtml = promoEligible ? `
-          <div class="pc-coupon-block">
-            <span class="pc-coupon-badge">− ${formatPrice(couponAmt)} cupón</span>
-            <span class="pc-coupon-after">${formatPrice(priceAfterCoupon)} con cupón</span>
-          </div>` : '';
-
-        const lowStockMsg = p.low_stock ? `<div class="pc-low-stock-msg"><span class="pc-low-stock-dot">●</span><strong>Pocas unidades</strong><span class="pc-low-stock-text"> - Compra ahora antes de que se agoten</span></div>` : '';
-        return `<div class="product-card-wrap">
-          <a class="product-card" href="/product/${p.id}" aria-label="Ver ${escHtml(p.name)}">
-            <div class="product-card__media">
-              ${imgHtml}${badgeHtml}
-              <button class="pc-fav-btn${fav ? ' active' : ''}" data-id="${p.id}" aria-label="Favorito" title="Favorito">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-              </button>
-            </div>
-            <div class="product-card__info">
-              <p class="pc-category">${CATEGORY_LABELS[p.category] || p.category}</p>
-              <h3 class="pc-name">${escHtml(p.name)}</h3>
-              <div class="pc-pricing">${priceHtml}</div>
-              ${couponHtml}
-            </div>
-          </a>
-          ${lowStockMsg}
-        </div>`;
-      }).join('');
+      const ctx = promoContext();
+      selGrid.innerHTML = products.map(p => productCardHtml(p, ctx)).join('');
 
       section.classList.remove('hidden');
 
@@ -1234,72 +1364,8 @@
     }
 
     // Coupon badge only shows when the user has actually applied a valid code
-    const _promo = activePromoData();
-    const _promoExcIds  = _promo ? (_promo.excludedProductIds || []).map(Number) : [];
-    const _promoFloors  = _promo ? (_promo.floorProductPrices || {}) : {};
-
-    grid.innerHTML = products.map(p => {
-      const isOffer  = p.compare_price && p.compare_price > p.price;
-      const discount = isOffer ? Math.round(Math.round((1 - p.price / p.compare_price) * 100) / 10) * 10 : 0;
-      const avail    = aggregateStock(p);
-      const sl       = stockLabel(avail);
-      const fav      = isFav(p.id);
-
-      // Coupon eligibility (exclusiones y piso por marca desde admin)
-      const basePrice = p.price;
-      let priceAfterCoupon = 0;
-      let couponAmt        = 0;
-      let promoEligible    = _promo && !isPromoExcludedProduct(p, _promoExcIds);
-      if (promoEligible) {
-        priceAfterCoupon = Math.round(promoUnitAfterDiscount(basePrice, _promo.percent, p, _promoFloors) * 100) / 100;
-        couponAmt = Math.round((basePrice - priceAfterCoupon) * 100) / 100;
-        if (couponAmt <= 0) promoEligible = false;
-      }
-
-      const imgHtml = p.cover
-        ? `<img src="/img/products/${escHtml(p.cover)}" alt="${escHtml(p.name)}" class="product-card__img" loading="lazy" />`
-        : `<div class="product-card__img-empty"><span>CALZIANI</span></div>`;
-
-      const isHot = !!p.hot;
-      const badgeHtml = isOffer
-        ? `<span class="product-card__sale-badge">−${discount}%</span>`
-        : isHot
-          ? `<span class="product-card__hot-badge">HOT NOW</span>`
-          : (sl.cls === 'out' ? `<span class="product-card__stock-badge out">${t('out_of_stock')}</span>` : '');
-
-      const priceHtml = isOffer
-        ? `<span class="pc-price pc-price--sale">${formatPrice(p.price)}</span><span class="pc-price-orig">${formatPrice(p.compare_price)}</span>`
-        : isHot
-          ? `<span class="pc-price pc-price--hot">${formatPrice(p.price)}</span>`
-          : `<span class="pc-price">${formatPrice(p.price)}</span>`;
-
-      const couponLabel = `− ${formatPrice(couponAmt)} cupón`;
-      const couponHtml = promoEligible ? `
-        <div class="pc-coupon-block">
-          <span class="pc-coupon-badge">${couponLabel}</span>
-          <span class="pc-coupon-after">${formatPrice(priceAfterCoupon)} con cupón</span>
-        </div>` : '';
-
-      const lowStockMsg = p.low_stock ? `<div class="pc-low-stock-msg"><span class="pc-low-stock-dot">●</span><strong>Pocas unidades</strong><span class="pc-low-stock-text"> - Compra ahora antes de que se agoten</span></div>` : '';
-      return `<div class="product-card-wrap">
-        <a class="product-card" href="/product/${p.id}" aria-label="Ver ${escHtml(p.name)}">
-          <div class="product-card__media">
-            ${imgHtml}
-            ${badgeHtml}
-            <button class="pc-fav-btn${fav ? ' active' : ''}" data-id="${p.id}" aria-label="Favorito" title="Favorito">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            </button>
-          </div>
-          <div class="product-card__info">
-            <p class="pc-category">${CATEGORY_LABELS[p.category] || p.category}</p>
-            <h3 class="pc-name">${escHtml(p.name)}</h3>
-            <div class="pc-pricing">${priceHtml}</div>
-            ${couponHtml}
-          </div>
-        </a>
-        ${lowStockMsg}
-      </div>`;
-    }).join('');
+    const ctx = promoContext();
+    grid.innerHTML = products.map(p => productCardHtml(p, ctx)).join('');
 
     // Fav buttons
     grid.querySelectorAll('.pc-fav-btn').forEach(btn => {
@@ -1309,6 +1375,7 @@
         const now = toggleFav(id);
         btn.classList.toggle('active', now);
         btn.querySelector('svg').setAttribute('fill', now ? 'currentColor' : 'none');
+        updateFavHeaderCount();
       });
     });
 
@@ -1436,6 +1503,9 @@
       if (!brands.length) return;
       list.innerHTML = brands.map(b => `<span class="brand-strip__name">${escHtml(b.name)}</span>`).join('');
       strip.classList.remove('hidden');
+      document.getElementById('chipRail')?.insertAdjacentHTML('beforeend', brands.map(b =>
+        `<button type="button" class="chip" data-chip-brand="${b.id}" aria-pressed="false">${escHtml(b.name)}</button>`
+      ).join(''));
     } catch { /* no brands, keep hidden */ }
   }
 
@@ -1590,8 +1660,26 @@
     finally { regSubmitBtn.disabled = false; regSubmitBtn.textContent = 'Crear cuenta'; }
   });
 
+  // Home greeting: "Bienvenido a / Calziani" for guests, "Hola de nuevo, / <nombre>" once signed in
+  function setHomeGreeting(user) {
+    const hello = document.getElementById('homeHello');
+    const name  = document.getElementById('homeName');
+    if (!hello || !name) return;
+    hello.dataset.i18n = user ? 'home_hello_user' : 'home_hello_guest';
+    hello.innerHTML = t(hello.dataset.i18n);
+    if (user) {
+      name.removeAttribute('data-i18n');
+      name.textContent = user.name.split(' ')[0];
+    } else {
+      name.dataset.i18n = 'home_guest';
+      name.innerHTML = t('home_guest');
+    }
+  }
+
   function setUserUI(user) {
     currentUser = user;
+    setHomeGreeting(user);
+    userDropdown?.classList.add('hidden');
     if (!user) {
       window.CalzianiPixel?.clearAdvancedMatching();
       headerUser.innerHTML = `<button class="user-btn" id="loginTrigger">Iniciar sesión</button>`;
@@ -1619,6 +1707,7 @@
 
     document.getElementById('userAvatarBtn')?.addEventListener('click', e => {
       e.stopPropagation();
+      userDropdown.classList.remove('user-dropdown--bottom');
       userDropdown.classList.toggle('hidden');
       const rect = e.currentTarget.getBoundingClientRect();
       userDropdown.style.top   = (rect.bottom + 8) + 'px';
@@ -1678,11 +1767,58 @@
   // ─── Favorites header count ───────────────────────────────────────────────────
   function updateFavHeaderCount() {
     const cnt = getFavs().length;
-    const el = document.getElementById('favHeaderCount');
-    if (!el) return;
-    el.textContent = cnt;
-    el.classList.toggle('hidden', cnt === 0);
+    ['favHeaderCount', 'bnFavBadge'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = cnt;
+      el.classList.toggle('hidden', cnt === 0);
+    });
   }
+
+  // ─── Mobile bottom nav ────────────────────────────────────────────────────────
+  function initBottomNav() {
+    const nav = document.getElementById('bottomNav');
+    if (!nav) return;
+    const items = nav.querySelectorAll('[data-bn]');
+    const setActive = key => items.forEach(i => {
+      const on = i.dataset.bn === key;
+      i.classList.toggle('active', on);
+      if (on) i.setAttribute('aria-current', 'page'); else i.removeAttribute('aria-current');
+    });
+
+    nav.querySelector('[data-bn="home"]')?.addEventListener('click', e => {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    // Same path as the header cart button, so InitiateCheckout still fires
+    document.getElementById('bnCart')?.addEventListener('click', () => cartBtn?.click());
+    document.getElementById('bnAccount')?.addEventListener('click', e => {
+      e.stopPropagation();
+      if (!currentUser) { openAuthModal('login'); return; }
+      userDropdown.classList.add('user-dropdown--bottom');
+      userDropdown.classList.toggle('hidden');
+    });
+
+    const productsEl = document.getElementById('products');
+    if ('IntersectionObserver' in window && productsEl) {
+      new IntersectionObserver(([entry]) => {
+        setActive(entry.isIntersecting || entry.boundingClientRect.top < 0 ? 'shop' : 'home');
+      }, { rootMargin: '0px 0px -50% 0px' }).observe(productsEl);
+    }
+  }
+
+  // Search icon in the home greeting: on mobile the header search row is
+  // collapsed, so this reveals it; on desktop it just focuses the field.
+  document.getElementById('homeSearchBtn')?.addEventListener('click', () => {
+    const headerEl = document.querySelector('.header');
+    const open = !headerEl.classList.contains('header--search-open') || !!searchInput.value.trim();
+    headerEl.classList.toggle('header--search-open', open);
+    headerEl.classList.remove('header--hidden');
+    if (open) {
+      headerEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      searchInput.focus({ preventScroll: true });
+    }
+  });
 
   // ─── Sale section ─────────────────────────────────────────────────────────────
   async function loadSaleProducts() {
@@ -1706,32 +1842,8 @@
       // Render sale grid
       const saleGrid = document.getElementById('saleGrid');
       if (!saleGrid) return;
-      saleGrid.innerHTML = sale.map(p => {
-        const discount = Math.round(Math.round((1 - p.price / p.compare_price) * 100) / 10) * 10;
-        const imgHtml = p.cover
-          ? `<img src="/img/products/${escHtml(p.cover)}" alt="${escHtml(p.name)}" class="product-card__img" loading="lazy" />`
-          : `<div class="product-card__img-empty"><span>CALZIANI</span></div>`;
-        const fav = isFav(p.id);
-        return `<div class="product-card-wrap">
-          <a class="product-card" href="/product/${p.id}">
-            <div class="product-card__media">
-              ${imgHtml}
-              <span class="product-card__sale-badge">−${discount}%</span>
-              <button class="pc-fav-btn${fav ? ' active' : ''}" data-id="${p.id}" aria-label="Favorito">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-              </button>
-            </div>
-            <div class="product-card__info">
-              <p class="pc-category">${CATEGORY_LABELS[p.category] || p.category}</p>
-              <h3 class="pc-name">${escHtml(p.name)}</h3>
-              <div class="pc-pricing">
-                <span class="pc-price pc-price--sale">${formatPrice(p.price)}</span>
-                <span class="pc-price-orig">${formatPrice(p.compare_price)}</span>
-              </div>
-            </div>
-          </a>
-        </div>`;
-      }).join('');
+      const ctx = promoContext();
+      saleGrid.innerHTML = sale.map(p => productCardHtml(p, ctx)).join('');
 
       // Wire fav + cart buttons in sale grid
       saleGrid.querySelectorAll('.pc-fav-btn').forEach(btn => {
@@ -1752,6 +1864,9 @@
   renderSizeFilter(currentCategory);
   initBrandFilter();
   initBrandStrip();
+  initChips();
+  initHeroCarousel();
+  initBottomNav();
 
   // Revalidate any stored promo code — clear it if the code was disabled or expired on the server
   (async () => {
@@ -1777,7 +1892,7 @@
       const res = await fetch('/api/promo/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: 'VERANO' }),
+        body: JSON.stringify({ code: 'HALLOWEEN' }),
       });
       if (!res.ok) return;
       const data = await res.json();
@@ -1824,7 +1939,7 @@
 document.addEventListener('DOMContentLoaded', function () {
 (function () {
   var KEY  = 'calziani_cpn_seen';
-  var CODE = 'VERANO';
+  var CODE = 'HALLOWEEN';
 
   // Una sola vez por sesión
   if (sessionStorage.getItem(KEY)) return;

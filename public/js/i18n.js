@@ -261,6 +261,27 @@ window.CalzianiI18n = (function () {
       promo_remove:               'Quitar código',
       promo_discount_label:       'Descuento (−20%)',
 
+      // Home (app-style redesign)
+      home_hello_guest:  'Bienvenido a',
+      home_hello_user:   'Hola de nuevo,',
+      home_guest:        'Calziani',
+      home_categories:   'Categorías',
+      home_see_all:      'Ver todo',
+      home_search:       'Buscar',
+      hero_hw_brand:     'Calziani × Halloween',
+      hero_hw_title:     '10% OFF en toda la tienda',
+      hero_hw_desc:      'Solo este fin de semana. Usá el código <strong>HALLOWEEN</strong> al confirmar tu pedido.',
+      hero_hw_cta:       '10% OFF | COMPRAR',
+      hero_slide_cta:    'COMPRAR',
+      hero_slide_desc:   '100% auténtico · Envío mundial · Pagás al recibir en Santiago.',
+      pc_last_pairs:     'Últimos pares',
+      bn_label:          'Navegación principal',
+      bn_home:           'Inicio',
+      bn_shop:           'Tienda',
+      bn_favs:           'Favoritos',
+      bn_cart:           'Carrito',
+      bn_account:        'Cuenta',
+
       // Coupon popup
       cpn_badge:   'CÓDIGO LIMITADO',
       cpn_valid:    'VÁLIDO POR TIEMPO LIMITADO',
@@ -517,6 +538,27 @@ window.CalzianiI18n = (function () {
       promo_remove:               'Remove code',
       promo_discount_label:       'Discount (−20%)',
 
+      // Home (app-style redesign)
+      home_hello_guest:  'Welcome to',
+      home_hello_user:   'Welcome back,',
+      home_guest:        'Calziani',
+      home_categories:   'Categories',
+      home_see_all:      'See all',
+      home_search:       'Search',
+      hero_hw_brand:     'Calziani × Halloween',
+      hero_hw_title:     '10% OFF the whole store',
+      hero_hw_desc:      'This weekend only. Use code <strong>HALLOWEEN</strong> when you confirm your order.',
+      hero_hw_cta:       '10% OFF | SHOP NOW',
+      hero_slide_cta:    'SHOP NOW',
+      hero_slide_desc:   '100% authentic · Worldwide shipping · Pay on delivery in Santiago.',
+      pc_last_pairs:     'Last pairs',
+      bn_label:          'Main navigation',
+      bn_home:           'Home',
+      bn_shop:           'Shop',
+      bn_favs:           'Favorites',
+      bn_cart:           'Cart',
+      bn_account:        'Account',
+
       // Coupon popup
       cpn_badge:   'LIMITED CODE',
       cpn_valid:    'VALID FOR A LIMITED TIME',
@@ -584,6 +626,9 @@ window.CalzianiI18n = (function () {
     });
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
       el.placeholder = t(el.dataset.i18nPlaceholder);
+    });
+    document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+      el.setAttribute('aria-label', t(el.dataset.i18nAria));
     });
     document.documentElement.lang = activeLang;
     const langLabel = document.getElementById('langLabel');
